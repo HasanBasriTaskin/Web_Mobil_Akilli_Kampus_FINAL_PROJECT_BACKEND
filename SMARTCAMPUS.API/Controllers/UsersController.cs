@@ -30,7 +30,15 @@ namespace SMARTCAMPUS.API.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(string id)
         {
-            // TODO: Check if current user is Admin OR accessing their own data
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var isAdmin = User.IsInRole("Admin");
+
+            // Allow if Admin OR accessing own data
+            if (!isAdmin && currentUserId != id)
+            {
+                return StatusCode(403, "Access Denied: You can only view your own profile.");
+            }
+
             var result = await _userService.GetUserByIdAsync(id);
             if (!result.IsSuccessful) return StatusCode(result.StatusCode, result);
             return Ok(result);
@@ -39,6 +47,15 @@ namespace SMARTCAMPUS.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateUser(string id, [FromBody] UserUpdateDto userUpdateDto)
         {
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var isAdmin = User.IsInRole("Admin");
+
+            // Allow if Admin OR accessing own data
+            if (!isAdmin && currentUserId != id)
+            {
+                return StatusCode(403, "Access Denied: You can only update your own profile.");
+            }
+
             var result = await _userService.UpdateUserAsync(id, userUpdateDto);
             if (!result.IsSuccessful) return StatusCode(result.StatusCode, result);
             return Ok(result);

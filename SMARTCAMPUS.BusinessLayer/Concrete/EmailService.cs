@@ -8,11 +8,13 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
     {
         private readonly IHostEnvironment _env;
         private readonly ILogger<EmailService> _logger;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
-        public EmailService(IHostEnvironment env, ILogger<EmailService> logger)
+        public EmailService(IHostEnvironment env, ILogger<EmailService> logger, Microsoft.Extensions.Configuration.IConfiguration configuration)
         {
             _env = env;
             _logger = logger;
+            _configuration = configuration;
         }
 
         public async Task SendPasswordResetEmailAsync(string to, string resetLink)
@@ -35,8 +37,38 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
             else
             {
-                // TODO: Production: Implement real SMTP or SendGrid logic here
-                _logger.LogInformation($"[ProdEmail] Sending Password Reset email to {to}...");
+                try 
+                {
+                    var host = _configuration["EmailSettings:Host"];
+                    var port = int.Parse(_configuration["EmailSettings:Port"] ?? "587");
+                    var enableSsl = bool.Parse(_configuration["EmailSettings:EnableSsl"] ?? "true");
+                    var fromEmail = _configuration["EmailSettings:FromEmail"];
+                    var password = _configuration["EmailSettings:Password"];
+
+                    using (var client = new System.Net.Mail.SmtpClient(host, port))
+                    {
+                        client.EnableSsl = enableSsl;
+                        client.Credentials = new System.Net.NetworkCredential(fromEmail, password);
+                        
+                        var mailMessage = new System.Net.Mail.MailMessage
+                        {
+                            From = new System.Net.Mail.MailAddress(fromEmail!),
+                            Subject = "Reset Your Password",
+                            Body = $"Please reset your password by clicking here: <a href='{resetLink}'>{resetLink}</a>",
+                            IsBodyHtml = true
+                        };
+
+                        mailMessage.To.Add(to);
+
+                        await client.SendMailAsync(mailMessage);
+                        _logger.LogInformation($"[ProdEmail] Email sent to {to}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"[ProdEmail Error] Failed to send email: {ex.Message}");
+                }
+                
                 await Task.CompletedTask;
             }
         }
