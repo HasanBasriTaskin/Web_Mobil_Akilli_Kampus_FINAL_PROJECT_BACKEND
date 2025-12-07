@@ -39,6 +39,11 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
             await _context.SaveChangesAsync();
         }
 
+        public async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync()
+        {
+            return await _context.Database.BeginTransactionAsync();
+        }
+
         public async ValueTask DisposeAsync()
         {
             await _context.DisposeAsync();
