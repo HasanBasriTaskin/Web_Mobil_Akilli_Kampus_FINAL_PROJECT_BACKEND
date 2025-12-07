@@ -13,6 +13,7 @@ using SMARTCAMPUS.BusinessLayer.ValidationRules.Auth;
 using SMARTCAMPUS.BusinessLayer.Tools;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Concrete;
+using SMARTCAMPUS.API.Middleware; 
 
 var builder = WebApplication.CreateBuilder(args);
 
