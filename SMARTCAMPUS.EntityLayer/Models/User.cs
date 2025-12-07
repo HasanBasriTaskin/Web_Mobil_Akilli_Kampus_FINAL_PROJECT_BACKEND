@@ -8,7 +8,7 @@ namespace SMARTCAMPUS.EntityLayer.Models
         public string FullName { get; set; } = null!;
         public string? ProfilePictureUrl { get; set; }
         public bool IsActive { get; set; } = true;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime? UpdatedAt { get; set; }
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedDate { get; set; }
     }
 }

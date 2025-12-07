@@ -2,9 +2,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SMARTCAMPUS.EntityLayer.Models
 {
-    public class Faculty
+    public class Faculty : BaseEntity
     {
-        public int Id { get; set; }
+        // Id inherited from BaseEntity
         public string EmployeeNumber { get; set; } = null!;
         public string Title { get; set; } = null!; // Dr., Prof., etc.
         public string? OfficeLocation { get; set; }

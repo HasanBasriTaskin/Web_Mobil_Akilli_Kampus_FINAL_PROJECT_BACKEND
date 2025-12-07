@@ -1,8 +1,9 @@
 using System.Linq.Expressions;
+using SMARTCAMPUS.EntityLayer.Models;
 
 namespace SMARTCAMPUS.DataAccessLayer.Abstract
 {
-    public interface IGenericDal<T> where T : class
+    public interface IGenericDal<T> where T : BaseEntity
     {
         Task<T> GetByIdAsync(int id);
         Task<IEnumerable<T>> GetAllAsync();

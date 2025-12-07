@@ -2,20 +2,23 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SMARTCAMPUS.EntityLayer.Models
 {
-    public class RefreshToken
+    public class RefreshToken : BaseEntity
     {
-        public int Id { get; set; }
+        // Id inherited
         public string Token { get; set; } = null!;
         public DateTime Expires { get; set; }
         public bool IsExpired => DateTime.UtcNow >= Expires;
         
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        // CreatedDate inherited (was CreatedAt)
         public string? CreatedByIp { get; set; }
         
         public DateTime? Revoked { get; set; }
         public string? RevokedByIp { get; set; }
         public string? ReasonRevoked { get; set; }
-        public bool IsActive => Revoked == null && !IsExpired;
+        
+        // BaseEntity has IsActive (stored boolean).
+        // This computed property checks validity based on expiry/revocation.
+        public bool IsValid => Revoked == null && !IsExpired;
         
         // Foreign Key
         public string UserId { get; set; } = null!;
