@@ -2,11 +2,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SMARTCAMPUS.EntityLayer.Models
 {
-    public class PasswordResetToken
+    public class PasswordResetToken : BaseEntity
     {
-        public int Id { get; set; }
+        // Id inherited
         public string Token { get; set; } = null!; // Hashed or original token
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        // CreatedDate inherited
         public DateTime ExpiresAt { get; set; }
         public bool IsUsed { get; set; } = false;
         
