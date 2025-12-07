@@ -13,42 +13,40 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
     {
         private readonly UserManager<User> _userManager;
         private readonly IMapper _mapper;
+        private readonly SMARTCAMPUS.DataAccessLayer.Context.CampusContext _context;
 
         // Note: Using 'UserManager' here refers to Identity's UserManager
-        public UserService(UserManager<User> userManager, IMapper mapper)
+        public UserService(UserManager<User> userManager, IMapper mapper, SMARTCAMPUS.DataAccessLayer.Context.CampusContext context)
         {
             _userManager = userManager;
             _mapper = mapper;
+            _context = context;
         }
 
         public async Task<PagedResponse<UserListDto>> GetUsersAsync(int pageNumber, int pageSize)
         {
-            var query = _userManager.Users.AsQueryable();
+            // Optimized Query: Fetch User + Roles in single roundtrip (or optimized batches)
+            var query = from u in _context.Users
+                        select new UserListDto
+                        {
+                            Id = u.Id,
+                            FullName = u.FullName,
+                            Email = u.Email!,
+                            PhoneNumber = u.PhoneNumber,
+                            IsActive = u.IsActive,
+                            Roles = (from ur in _context.UserRoles
+                                     join r in _context.Roles on ur.RoleId equals r.Id
+                                     where ur.UserId == u.Id
+                                     select r.Name!).ToList()
+                        };
 
             var totalRecords = await query.CountAsync();
             
-            var users = await query
+            var userDtos = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            var userDtos = new List<UserListDto>();
-
-            // Need to fetch roles for each user? 
-            // Warning: Loop inside async might be N+1 problem if not careful. 
-            // Identity doesn't eager load roles by default in a simple way for Lists.
-            // For performance, we might want to skip roles in lists or use a joined query.
-            // Let's settle for basic mapping for now, assuming Roles are not strict requirement for List view, 
-            // OR we fetch them. 
-            
-            foreach (var user in users)
-            {
-                var dto = _mapper.Map<UserListDto>(user);
-                dto.Roles = (await _userManager.GetRolesAsync(user)).ToList();
-                userDtos.Add(dto);
-            }
-
-            // TODO: Paginate Response needs to be simpler or PagedResponse constructor needs to handle it.
             return new PagedResponse<UserListDto>(userDtos, pageNumber, pageSize, totalRecords);
         }
 
