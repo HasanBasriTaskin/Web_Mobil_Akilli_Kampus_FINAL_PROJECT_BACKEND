@@ -1,4 +1,4 @@
-namespace PROJECT_NAME.API
+namespace SMARTCAMPUS.API
 {
     public class WeatherForecast
     {
