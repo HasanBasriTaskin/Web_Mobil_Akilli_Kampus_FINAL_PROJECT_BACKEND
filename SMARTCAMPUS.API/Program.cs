@@ -34,6 +34,14 @@ builder.Services.AddIdentity<User, Role>(options =>
 .AddEntityFrameworkStores<CampusContext>()
 .AddDefaultTokenProviders();
 
+// 4. Repository & Unit of Work Registration
+builder.Services.AddScoped(typeof(IGenericDal<>), typeof(GenericRepository<>));
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+builder.Services.AddScoped<IStudentDal, EfStudentDal>();
+builder.Services.AddScoped<IFacultyDal, EfFacultyDal>();
+builder.Services.AddScoped<IDepartmentDal, EfDepartmentDal>();
+
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
