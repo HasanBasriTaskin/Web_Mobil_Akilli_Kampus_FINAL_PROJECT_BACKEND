@@ -11,9 +11,13 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
         {
             CreateMap<User, RegisterStudentDto>().ReverseMap();
             
+            
+            CreateMap<User, UserListDto>();
+            CreateMap<UserUpdateDto, User>();
+
             CreateMap<User, UserProfileDto>()
                 .ForMember(dest => dest.IdString, opt => opt.MapFrom(src => src.Id))
-                .ForMember(dest => dest.Roles, opt => opt.Ignore()); // Roles logic handles separately usually, or via custom resolver
+                .ForMember(dest => dest.Roles, opt => opt.Ignore());
         }
     }
 }
