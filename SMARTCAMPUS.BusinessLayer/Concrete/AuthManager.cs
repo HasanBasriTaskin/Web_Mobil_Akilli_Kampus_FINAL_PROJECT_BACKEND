@@ -310,6 +310,32 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             return Response<NoDataDto>.Success(200);
         }
 
+        public async Task<Response<NoDataDto>> ChangePasswordAsync(ChangePasswordDto changePasswordDto)
+        {
+            var user = await _userManager.FindByIdAsync(changePasswordDto.UserId);
+            if (user == null) return Response<NoDataDto>.Fail("Kullanıcı bulunamadı", 404);
+
+            if (changePasswordDto.NewPassword != changePasswordDto.ConfirmNewPassword)
+            {
+                return Response<NoDataDto>.Fail("Şifreler uyuşmuyor.", 400);
+            }
+
+            var result = await _userManager.ChangePasswordAsync(user, changePasswordDto.OldPassword, changePasswordDto.NewPassword);
+            if (!result.Succeeded)
+            {
+               var errors = result.Errors.Select(e => e.Description).ToList();
+               return Response<NoDataDto>.Fail(errors, 400);
+            }
+
+            return Response<NoDataDto>.Success(200);
+        }
+
+        public async Task<Response<NoDataDto>> LogoutAsync(string refreshToken)
+        {
+             // Logout logic is essentially revoking the refresh token
+             return await RevokeRefreshTokenAsync(refreshToken);
+        }
+
         private string GetIpAddress()
         {
             if (_httpContextAccessor.HttpContext?.Request.Headers.ContainsKey("X-Forwarded-For") == true)

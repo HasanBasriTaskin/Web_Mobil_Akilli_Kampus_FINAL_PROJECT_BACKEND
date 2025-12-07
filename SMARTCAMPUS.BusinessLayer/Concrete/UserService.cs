@@ -122,5 +122,39 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
             return Response<NoDataDto>.Success(200);
         }
+
+        public async Task<Response<string>> UploadProfilePictureAsync(string userId, Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Response<string>.Fail("Kullanıcı bulunamadı", 404);
+
+            if (file == null || file.Length == 0)
+                return Response<string>.Fail("Dosya boş", 400);
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+            var extension = System.IO.Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+                return Response<string>.Fail("Geçersiz dosya tipi", 400);
+
+            // Ensure directory exists
+            var uploadsFolder = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profile-pictures");
+            if (!System.IO.Directory.Exists(uploadsFolder))
+                System.IO.Directory.CreateDirectory(uploadsFolder);
+
+            var uniqueFileName = $"{userId}_{Guid.NewGuid()}{extension}";
+            var filePath = System.IO.Path.Combine(uploadsFolder, uniqueFileName);
+
+            using (var stream = new System.IO.FileStream(filePath, System.IO.FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var fileUrl = $"/uploads/profile-pictures/{uniqueFileName}";
+            user.ProfilePictureUrl = fileUrl;
+            
+            await _userManager.UpdateAsync(user);
+
+            return Response<string>.Success(fileUrl, 200);
+        }
     }
 }

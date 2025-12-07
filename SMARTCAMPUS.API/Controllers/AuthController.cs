@@ -4,7 +4,7 @@ using SMARTCAMPUS.EntityLayer.DTOs.Auth;
 
 namespace SMARTCAMPUS.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
     {
@@ -21,8 +21,6 @@ namespace SMARTCAMPUS.API.Controllers
             var result = await _authService.LoginAsync(loginDto);
             if (!result.IsSuccessful)
             {
-                // We could use a base controller method to handle Response<T> mapping
-                // For now, manual mapping based on StatusCode
                 return StatusCode(result.StatusCode, result);
             }
             return Ok(result);
@@ -85,6 +83,36 @@ namespace SMARTCAMPUS.API.Controllers
             if (!result.IsSuccessful)
             {
                  return StatusCode(result.StatusCode, result);
+            }
+            return Ok(result);
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] RefreshTokenDto refreshTokenDto)
+        {
+            var result = await _authService.LogoutAsync(refreshTokenDto.Token);
+             if (!result.IsSuccessful)
+            {
+                return StatusCode(result.StatusCode, result);
+            }
+            return Ok(result);
+        }
+
+        [HttpPost("change-password")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+        {
+            // Security: Ensure the user is changing their own password
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userId != changePasswordDto.UserId)
+            {
+                return Unauthorized("You can only change your own password.");
+            }
+
+            var result = await _authService.ChangePasswordAsync(changePasswordDto);
+            if (!result.IsSuccessful)
+            {
+                return StatusCode(result.StatusCode, result);
             }
             return Ok(result);
         }
