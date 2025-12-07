@@ -27,7 +27,7 @@ namespace SMARTCAMPUS.API.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterStudentDto registerDto)
+        public async Task<IActionResult> Register(RegisterUserDto registerDto)
         {
             var result = await _authService.RegisterAsync(registerDto);
             if (!result.IsSuccessful)

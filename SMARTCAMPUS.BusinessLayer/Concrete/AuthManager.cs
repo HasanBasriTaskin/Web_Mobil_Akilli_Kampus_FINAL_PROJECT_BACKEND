@@ -85,27 +85,45 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             return Response<TokenDto>.Success(tokenDto, 200);
         }
 
-        public async Task<Response<TokenDto>> RegisterAsync(RegisterStudentDto registerDto)
+        public async Task<Response<TokenDto>> RegisterAsync(RegisterUserDto registerDto)
         {
-            // 1. Check if user exists
+            if (registerDto.UserType == "Student")
+            {
+                return await RegisterStudentAsync(registerDto);
+            }
+            else if (registerDto.UserType == "Faculty")
+            {
+                return await RegisterFacultyAsync(registerDto);
+            }
+            else
+            {
+                return Response<TokenDto>.Fail("Geçersiz kullanıcı tipi", 400);
+            }
+        }
+
+        private async Task<Response<TokenDto>> RegisterStudentAsync(RegisterUserDto registerDto)
+        {
+             // 1. Check if user exists
             var userExists = await _userManager.FindByEmailAsync(registerDto.Email);
             if (userExists != null)
             {
                 return Response<TokenDto>.Fail("Bu e-posta adresiyle kayıtlı kullanıcı zaten var", 400);
             }
 
-            // 2. Create Transaction
-            // Use transaction to ensure atomic creation of User and Student
-            
+            if (string.IsNullOrEmpty(registerDto.StudentNumber))
+            {
+                 return Response<TokenDto>.Fail("Öğrenci numarası zorunludur", 400);
+            }
+
             using var transaction = await _unitOfWork.BeginTransactionAsync();
 
             try 
             {
-                // 3. Create Identity User
+                // Create Identity User
                 var user = _mapper.Map<User>(registerDto);
                 user.UserName = registerDto.Email; 
                 user.CreatedDate = DateTime.UtcNow;
-                user.IsActive = false; // Requires email verification
+                user.IsActive = false; 
 
                 var result = await _userManager.CreateAsync(user, registerDto.Password);
                 if (!result.Succeeded)
@@ -116,7 +134,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
                 await _userManager.AddToRoleAsync(user, "Student");
 
-                // 4. Create Student Entity
+                // Create Student Entity
                 var student = new Student
                 {
                     UserId = user.Id,
@@ -129,50 +147,111 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
                 await transaction.CommitAsync();
 
-                // 5. Generate Token
-                var roles = new List<string> { "Student" };
-                var tokenDto = _tokenGenerator.GenerateToken(user, roles);
-
-                // Save Refresh Token
-                var refreshTokenEntity = new RefreshToken
-                {
-                    UserId = user.Id,
-                    Token = tokenDto.RefreshToken,
-                    Expires = tokenDto.RefreshTokenExpiration,
-                    CreatedDate = DateTime.UtcNow,
-                    CreatedByIp = GetIpAddress() 
-                };
-
-                await _unitOfWork.RefreshTokens.AddAsync(refreshTokenEntity);
-                await _unitOfWork.CommitAsync();
-
-                // 6. Send Verification Email
-                var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                
-                // Audit: Save token to custom table
-                var verifTokenEntity = new EmailVerificationToken
-                {
-                    UserId = user.Id,
-                    Token = emailToken,
-                    ExpiresAt = DateTime.UtcNow.AddHours(24), // Identity validation uses its own expiry, this is for audit
-                    CreatedDate = DateTime.UtcNow
-                };
-                await _unitOfWork.EmailVerificationTokens.AddAsync(verifTokenEntity);
-                await _unitOfWork.CommitAsync();
-
-                var clientUrl = _configuration["ClientSettings:Url"] ?? "http://localhost:3000";
-                var verifyLink = $"{clientUrl}/verify-email?userId={user.Id}&token={Uri.EscapeDataString(emailToken)}";
-                
-                await _notificationService.SendEmailVerificationAsync(user.Email!, verifyLink);
-
-                return Response<TokenDto>.Success(tokenDto, 201);
+                // Generate Token & Send Email
+                return await ProcessPostRegistrationAsync(user, new List<string> { "Student" });
             }
             catch (Exception ex)
             {
                await transaction.RollbackAsync();
-               // Log exception
                return Response<TokenDto>.Fail($"Registration failed: {ex.Message}", 500);
             }
+        }
+
+        private async Task<Response<TokenDto>> RegisterFacultyAsync(RegisterUserDto registerDto)
+        {
+             // 1. Check if user exists
+            var userExists = await _userManager.FindByEmailAsync(registerDto.Email);
+            if (userExists != null)
+            {
+                return Response<TokenDto>.Fail("Bu e-posta adresiyle kayıtlı kullanıcı zaten var", 400);
+            }
+
+            if (string.IsNullOrEmpty(registerDto.EmployeeNumber) || string.IsNullOrEmpty(registerDto.Title))
+            {
+                 return Response<TokenDto>.Fail("Sicil numarası ve Ünvan zorunludur", 400);
+            }
+
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+
+            try 
+            {
+                // Create Identity User
+                var user = _mapper.Map<User>(registerDto);
+                user.UserName = registerDto.Email; 
+                user.CreatedDate = DateTime.UtcNow;
+                user.IsActive = false; 
+
+                var result = await _userManager.CreateAsync(user, registerDto.Password);
+                if (!result.Succeeded)
+                {
+                    var errors = result.Errors.Select(e => e.Description).ToList();
+                    return Response<TokenDto>.Fail(errors, 400);
+                }
+
+                await _userManager.AddToRoleAsync(user, "Faculty");
+
+                // Create Faculty Entity
+                var faculty = new Faculty
+                {
+                    UserId = user.Id,
+                    EmployeeNumber = registerDto.EmployeeNumber,
+                    Title = registerDto.Title,
+                    OfficeLocation = registerDto.OfficeLocation,
+                    DepartmentId = registerDto.DepartmentId
+                };
+
+                await _unitOfWork.Faculties.AddAsync(faculty);
+                await _unitOfWork.CommitAsync();
+
+                await transaction.CommitAsync();
+
+                // Generate Token & Send Email
+                return await ProcessPostRegistrationAsync(user, new List<string> { "Faculty" });
+            }
+            catch (Exception ex)
+            {
+               await transaction.RollbackAsync();
+               return Response<TokenDto>.Fail($"Registration failed: {ex.Message}", 500);
+            }
+        }
+
+        private async Task<Response<TokenDto>> ProcessPostRegistrationAsync(User user, List<string> roles)
+        {
+             // Generate Token
+            var tokenDto = _tokenGenerator.GenerateToken(user, roles);
+
+            // Save Refresh Token
+            var refreshTokenEntity = new RefreshToken
+            {
+                UserId = user.Id,
+                Token = tokenDto.RefreshToken,
+                Expires = tokenDto.RefreshTokenExpiration,
+                CreatedDate = DateTime.UtcNow,
+                CreatedByIp = GetIpAddress() 
+            };
+
+            await _unitOfWork.RefreshTokens.AddAsync(refreshTokenEntity);
+            await _unitOfWork.CommitAsync();
+
+            // Send Verification Email
+            var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            
+            var verifTokenEntity = new EmailVerificationToken
+            {
+                UserId = user.Id,
+                Token = emailToken,
+                ExpiresAt = DateTime.UtcNow.AddHours(24),
+                CreatedDate = DateTime.UtcNow
+            };
+            await _unitOfWork.EmailVerificationTokens.AddAsync(verifTokenEntity);
+            await _unitOfWork.CommitAsync();
+
+            var clientUrl = _configuration["ClientSettings:Url"] ?? "http://localhost:3000";
+            var verifyLink = $"{clientUrl}/verify-email?userId={user.Id}&token={Uri.EscapeDataString(emailToken)}";
+            
+            await _notificationService.SendEmailVerificationAsync(user.Email!, verifyLink);
+
+            return Response<TokenDto>.Success(tokenDto, 201);
         }
 
         public async Task<Response<NoDataDto>> VerifyEmailAsync(string userId, string token)
