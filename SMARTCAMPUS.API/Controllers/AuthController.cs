@@ -28,15 +28,33 @@ namespace SMARTCAMPUS.API.Controllers
             return Ok(result);
         }
 
-        [HttpPost("register-student")]
-        public async Task<IActionResult> RegisterStudent(RegisterStudentDto registerDto)
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(RegisterStudentDto registerDto)
         {
-            var result = await _authService.RegisterStudentAsync(registerDto);
+            var result = await _authService.RegisterAsync(registerDto);
             if (!result.IsSuccessful)
             {
                 return StatusCode(result.StatusCode, result);
             }
             return StatusCode(201, result);
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto forgotPasswordDto)
+        {
+            var result = await _authService.ForgotPasswordAsync(forgotPasswordDto);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordDto resetPasswordDto)
+        {
+            var result = await _authService.ResetPasswordAsync(resetPasswordDto);
+            if (!result.IsSuccessful)
+            {
+                 return StatusCode(result.StatusCode, result);
+            }
+            return Ok(result);
         }
     }
 }

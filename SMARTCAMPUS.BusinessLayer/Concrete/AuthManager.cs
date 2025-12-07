@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.Extensions.Configuration; // Add this
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore; // Added for FirstOrDefaultAsync
 using SMARTCAMPUS.BusinessLayer.Abstract;
@@ -21,13 +22,17 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
         private readonly IMapper _mapper;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly INotificationService _notificationService;
+        private readonly IConfiguration _configuration;
 
         public AuthManager(UserManager<User> userManager, 
                            SignInManager<User> signInManager, 
                            JwtTokenGenerator tokenGenerator, 
                            IMapper mapper, 
                            IUnitOfWork unitOfWork,
-                           IHttpContextAccessor httpContextAccessor)
+                           IHttpContextAccessor httpContextAccessor,
+                           INotificationService notificationService,
+                           IConfiguration configuration)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -35,6 +40,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             _mapper = mapper;
             _unitOfWork = unitOfWork;
             _httpContextAccessor = httpContextAccessor;
+            _notificationService = notificationService;
+            _configuration = configuration;
         }
 
         public async Task<Response<TokenDto>> LoginAsync(LoginDto loginDto)
@@ -73,7 +80,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             return Response<TokenDto>.Success(tokenDto, 200);
         }
 
-        public async Task<Response<TokenDto>> RegisterStudentAsync(RegisterStudentDto registerDto)
+        public async Task<Response<TokenDto>> RegisterAsync(RegisterStudentDto registerDto)
         {
             // 1. Check if user exists
             var userExists = await _userManager.FindByEmailAsync(registerDto.Email);
@@ -94,7 +101,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 var user = _mapper.Map<User>(registerDto);
                 user.UserName = registerDto.Email; 
                 user.CreatedAt = DateTime.UtcNow;
-                user.IsActive = true;
+                user.IsActive = false; // Requires email verification
 
                 var result = await _userManager.CreateAsync(user, registerDto.Password);
                 if (!result.Succeeded)
@@ -212,6 +219,58 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 
                 _unitOfWork.RefreshTokens.Update(existingToken);
                 await _unitOfWork.CommitAsync();
+            }
+
+            return Response<NoDataDto>.Success(200);
+        }
+
+        public async Task<Response<NoDataDto>> ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto)
+        {
+            var user = await _userManager.FindByEmailAsync(forgotPasswordDto.Email);
+            if (user == null)
+            {
+                // To prevent email enumeration, we should return success even if user not found.
+                // But for development/debugging, distinct messages might be helpful.
+                // Standard security practice: "If the email is registered, a reset link has been sent."
+                return Response<NoDataDto>.Success(200); 
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            // Save token metadata to our custom table
+            var passwordResetToken = new PasswordResetToken
+            {
+                UserId = user.Id,
+                Token = token,
+                ExpiresAt = DateTime.UtcNow.AddHours(1), // Identity tokens have their own lifespan but we can track metadata
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.PasswordResetTokens.AddAsync(passwordResetToken);
+            await _unitOfWork.CommitAsync();
+
+            // Send Email
+            var clientUrl = _configuration["ClientSettings:Url"] ?? "http://localhost:3000";
+            var resetLink = $"{clientUrl}/reset-password?email={user.Email}&token={Uri.EscapeDataString(token)}";
+            
+            await _notificationService.SendPasswordResetEmailAsync(user.Email!, resetLink);
+            
+            return Response<NoDataDto>.Success(200);
+        }
+
+        public async Task<Response<NoDataDto>> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
+        {
+            var user = await _userManager.FindByEmailAsync(resetPasswordDto.Email);
+            if (user == null)
+            {
+                 return Response<NoDataDto>.Fail("Invalid request", 400);
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, resetPasswordDto.Token, resetPasswordDto.NewPassword);
+            if (!result.Succeeded)
+            {
+                var errors = result.Errors.Select(e => e.Description).ToList();
+                return Response<NoDataDto>.Fail(errors, 400);
             }
 
             return Response<NoDataDto>.Success(200);
