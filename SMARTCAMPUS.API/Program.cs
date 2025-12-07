@@ -75,6 +75,15 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// 6. CORS Configuration
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowClient",
+        b => b.WithOrigins("http://localhost:3000") // ClientSettings:Url
+              .AllowAnyMethod()
+              .AllowAnyHeader());
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -85,6 +94,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowClient");
 
 // Add Global Exception Middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();
