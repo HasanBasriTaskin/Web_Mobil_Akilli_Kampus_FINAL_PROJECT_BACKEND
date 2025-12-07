@@ -53,7 +53,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
         public async Task<Response<UserProfileDto>> GetUserByIdAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return Response<UserProfileDto>.Fail("User not found", 404);
+            if (user == null) return Response<UserProfileDto>.Fail("Kullanıcı bulunamadı", 404);
 
             var dto = _mapper.Map<UserProfileDto>(user);
             return Response<UserProfileDto>.Success(dto, 200);
@@ -62,7 +62,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
         public async Task<Response<NoDataDto>> UpdateUserAsync(string userId, UserUpdateDto userUpdateDto)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return Response<NoDataDto>.Fail("User not found", 404);
+            if (user == null) return Response<NoDataDto>.Fail("Kullanıcı bulunamadı", 404);
 
             user.FullName = userUpdateDto.FullName;
             user.Email = userUpdateDto.Email;
@@ -81,7 +81,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
         public async Task<Response<NoDataDto>> DeleteUserAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return Response<NoDataDto>.Fail("User not found", 404);
+            if (user == null) return Response<NoDataDto>.Fail("Kullanıcı bulunamadı", 404);
 
             // Soft Delete: Mark as inactive
             user.IsActive = false;
@@ -111,7 +111,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
         public async Task<Response<NoDataDto>> AssignRolesAsync(string userId, List<string> roles)
         {
              var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return Response<NoDataDto>.Fail("User not found", 404);
+            if (user == null) return Response<NoDataDto>.Fail("Kullanıcı bulunamadı", 404);
 
             var currentRoles = await _userManager.GetRolesAsync(user);
             var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);

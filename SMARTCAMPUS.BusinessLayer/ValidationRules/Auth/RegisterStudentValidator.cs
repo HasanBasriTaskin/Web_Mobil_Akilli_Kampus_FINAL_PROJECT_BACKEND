@@ -7,12 +7,12 @@ namespace SMARTCAMPUS.BusinessLayer.ValidationRules.Auth
     {
         public RegisterStudentValidator()
         {
-            RuleFor(x => x.FullName).NotEmpty().MinimumLength(2).WithMessage("Full Name is required.");
-            RuleFor(x => x.Email).NotEmpty().EmailAddress().WithMessage("Valid email is required.");
-            RuleFor(x => x.Password).NotEmpty().MinimumLength(6).WithMessage("Password must be at least 6 characters.");
-            RuleFor(x => x.ConfirmPassword).Equal(x => x.Password).WithMessage("Passwords do not match.");
-            RuleFor(x => x.StudentNumber).NotEmpty().WithMessage("Student Number is required.");
-            RuleFor(x => x.DepartmentId).GreaterThan(0).WithMessage("Department is required.");
+            RuleFor(x => x.FullName).NotEmpty().MinimumLength(2).WithMessage("Ad Soyad zorunludur ve en az 2 karakter olmalıdır.");
+            RuleFor(x => x.Email).NotEmpty().EmailAddress().WithMessage("Geçerli bir e-posta adresi giriniz.");
+            RuleFor(x => x.Password).NotEmpty().MinimumLength(6).WithMessage("Şifre en az 6 karakter olmalıdır.");
+            RuleFor(x => x.ConfirmPassword).Equal(x => x.Password).WithMessage("Şifreler uyuşmuyor.");
+            RuleFor(x => x.StudentNumber).NotEmpty().WithMessage("Öğrenci Numarası zorunludur.");
+            RuleFor(x => x.DepartmentId).GreaterThan(0).WithMessage("Bölüm seçimi zorunludur.");
         }
     }
 }

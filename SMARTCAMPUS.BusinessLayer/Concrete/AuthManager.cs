@@ -49,18 +49,18 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             var user = await _userManager.FindByEmailAsync(loginDto.Email);
             if (user == null)
             {
-                return Response<TokenDto>.Fail("Invalid email or password", 400); 
+                return Response<TokenDto>.Fail("Geçersiz e-posta veya şifre", 400); 
             }
 
             if (!user.IsActive)
             {
-                return Response<TokenDto>.Fail("Account is not active. Please verify your email.", 400);
+                return Response<TokenDto>.Fail("Hesap aktif değil. Lütfen e-postanızı doğrulayın.", 400);
             }
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
             if (!result.Succeeded)
             {
-                 return Response<TokenDto>.Fail("Invalid email or password", 400);
+                 return Response<TokenDto>.Fail("Geçersiz e-posta veya şifre", 400); // Güvenlik için aynı mesaj
             }
 
             // Get Roles
@@ -75,7 +75,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 UserId = user.Id,
                 Token = tokenDto.RefreshToken,
                 Expires = tokenDto.RefreshTokenExpiration,
-                CreatedAt = DateTime.UtcNow, 
+                CreatedDate = DateTime.UtcNow, 
                 CreatedByIp = GetIpAddress()
             };
 
@@ -91,7 +91,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             var userExists = await _userManager.FindByEmailAsync(registerDto.Email);
             if (userExists != null)
             {
-                return Response<TokenDto>.Fail("User with this email already exists", 400);
+                return Response<TokenDto>.Fail("Bu e-posta adresiyle kayıtlı kullanıcı zaten var", 400);
             }
 
             // 2. Create Transaction
@@ -104,7 +104,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 // 3. Create Identity User
                 var user = _mapper.Map<User>(registerDto);
                 user.UserName = registerDto.Email; 
-                user.CreatedAt = DateTime.UtcNow;
+                user.CreatedDate = DateTime.UtcNow;
                 user.IsActive = false; // Requires email verification
 
                 var result = await _userManager.CreateAsync(user, registerDto.Password);
@@ -139,12 +139,31 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     UserId = user.Id,
                     Token = tokenDto.RefreshToken,
                     Expires = tokenDto.RefreshTokenExpiration,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedDate = DateTime.UtcNow,
                     CreatedByIp = GetIpAddress() 
                 };
 
                 await _unitOfWork.RefreshTokens.AddAsync(refreshTokenEntity);
                 await _unitOfWork.CommitAsync();
+
+                // 6. Send Verification Email
+                var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                
+                // Audit: Save token to custom table
+                var verifTokenEntity = new EmailVerificationToken
+                {
+                    UserId = user.Id,
+                    Token = emailToken,
+                    ExpiresAt = DateTime.UtcNow.AddHours(24), // Identity validation uses its own expiry, this is for audit
+                    CreatedDate = DateTime.UtcNow
+                };
+                await _unitOfWork.EmailVerificationTokens.AddAsync(verifTokenEntity);
+                await _unitOfWork.CommitAsync();
+
+                var clientUrl = _configuration["ClientSettings:Url"] ?? "http://localhost:3000";
+                var verifyLink = $"{clientUrl}/verify-email?userId={user.Id}&token={Uri.EscapeDataString(emailToken)}";
+                
+                await _notificationService.SendEmailVerificationAsync(user.Email!, verifyLink);
 
                 return Response<TokenDto>.Success(tokenDto, 201);
             }
@@ -156,28 +175,42 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
+        public async Task<Response<NoDataDto>> VerifyEmailAsync(string userId, string token)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Response<NoDataDto>.Fail("Kullanıcı bulunamadı", 404);
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+            if (!result.Succeeded)
+            {
+                return Response<NoDataDto>.Fail("E-posta doğrulama başarısız", 400);
+            }
+
+            user.IsActive = true;
+            await _userManager.UpdateAsync(user);
+
+            return Response<NoDataDto>.Success(200);
+        }
+
         public async Task<Response<TokenDto>> CreateTokenByRefreshTokenAsync(string refreshToken)
         {
             var existingToken = await _unitOfWork.RefreshTokens.Where(x => x.Token == refreshToken).FirstOrDefaultAsync();
 
             if (existingToken == null)
             {
-                return Response<TokenDto>.Fail("Token not found", 404);
+                return Response<TokenDto>.Fail("Token bulunamadı", 404);
             }
 
-            if (!existingToken.IsActive) // Revoked or Expired
+            if (!existingToken.IsValid) // Revoked or Expired
             {
-               return Response<TokenDto>.Fail("Token is not active", 400); 
+               return Response<TokenDto>.Fail("Token aktif değil", 400); 
             }
 
             var user = await _userManager.FindByIdAsync(existingToken.UserId);
             if (user == null)
             {
-                 return Response<TokenDto>.Fail("User not found", 404);
+                 return Response<TokenDto>.Fail("Kullanıcı bulunamadı", 404);
             }
-
-            // Logic: Rotate Refresh Token?
-            // Yes, standard practice: Revoke old, issue new.
             
             existingToken.Revoked = DateTime.UtcNow;
             existingToken.RevokedByIp = GetIpAddress();
@@ -193,7 +226,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 UserId = user.Id,
                 Token = newTokenDto.RefreshToken,
                 Expires = newTokenDto.RefreshTokenExpiration,
-                CreatedAt = DateTime.UtcNow,
+                CreatedDate = DateTime.UtcNow,
                 CreatedByIp = GetIpAddress()
             };
 
@@ -212,7 +245,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 return Response<NoDataDto>.Fail("Token not found", 404);
             }
 
-            if (existingToken.IsActive)
+            if (existingToken.IsValid)
             {
                 existingToken.Revoked = DateTime.UtcNow;
                 existingToken.RevokedByIp = GetIpAddress();
@@ -244,7 +277,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 UserId = user.Id,
                 Token = token,
                 ExpiresAt = DateTime.UtcNow.AddHours(1), // Identity tokens have their own lifespan but we can track metadata
-                CreatedAt = DateTime.UtcNow
+                CreatedDate = DateTime.UtcNow
             };
 
             await _unitOfWork.PasswordResetTokens.AddAsync(passwordResetToken);

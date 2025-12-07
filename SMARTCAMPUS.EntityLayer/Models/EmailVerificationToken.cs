@@ -2,11 +2,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SMARTCAMPUS.EntityLayer.Models
 {
-    public class EmailVerificationToken
+    public class EmailVerificationToken : BaseEntity
     {
-        public int Id { get; set; }
+        // Id inherited
         public string Token { get; set; } = null!;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        // CreatedDate inherited
         public DateTime ExpiresAt { get; set; }
         public bool IsVerified { get; set; } = false;
         public DateTime? VerifiedAt { get; set; }

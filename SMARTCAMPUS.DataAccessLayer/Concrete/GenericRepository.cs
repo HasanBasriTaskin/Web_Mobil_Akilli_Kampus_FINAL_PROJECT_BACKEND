@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.DataAccessLayer.Context;
+using SMARTCAMPUS.EntityLayer.Models;
 using System.Linq.Expressions;
 
 namespace SMARTCAMPUS.DataAccessLayer.Concrete
 {
-    public class GenericRepository<T> : IGenericDal<T> where T : class
+    public class GenericRepository<T> : IGenericDal<T> where T : BaseEntity
     {
         protected readonly CampusContext _context;
         private readonly DbSet<T> _dbSet;
