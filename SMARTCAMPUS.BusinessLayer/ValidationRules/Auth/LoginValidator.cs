@@ -7,8 +7,8 @@ namespace SMARTCAMPUS.BusinessLayer.ValidationRules.Auth
     {
         public LoginValidator()
         {
-            RuleFor(x => x.Email).NotEmpty().EmailAddress().WithMessage("Valid email is required.");
-            RuleFor(x => x.Password).NotEmpty().WithMessage("Password is required.");
+            RuleFor(x => x.Email).NotEmpty().EmailAddress().WithMessage("Geçerli bir e-posta adresi giriniz.");
+            RuleFor(x => x.Password).NotEmpty().WithMessage("Şifre zorunludur.");
         }
     }
 }
