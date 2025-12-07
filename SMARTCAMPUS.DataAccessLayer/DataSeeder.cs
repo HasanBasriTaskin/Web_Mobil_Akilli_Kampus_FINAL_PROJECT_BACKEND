@@ -45,7 +45,7 @@ namespace SMARTCAMPUS.DataAccessLayer
                         Email = adminEmail,
                         FullName = adminName ?? "Admin",
                         EmailConfirmed = true,
-                        CreatedAt = DateTime.UtcNow,
+                        CreatedDate = DateTime.UtcNow,
                         IsActive = true
                     };
 

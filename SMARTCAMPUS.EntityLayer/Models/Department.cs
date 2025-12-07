@@ -2,9 +2,9 @@ using SMARTCAMPUS.EntityLayer.Models;
 
 namespace SMARTCAMPUS.EntityLayer.Models
 {
-    public class Department
+    public class Department : BaseEntity
     {
-        public int Id { get; set; }
+        // Id inherited from BaseEntity
         public string Name { get; set; } = null!;
         public string Code { get; set; } = null!;
         public string? Description { get; set; }

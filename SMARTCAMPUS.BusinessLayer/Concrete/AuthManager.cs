@@ -75,7 +75,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 UserId = user.Id,
                 Token = tokenDto.RefreshToken,
                 Expires = tokenDto.RefreshTokenExpiration,
-                CreatedAt = DateTime.UtcNow, 
+                CreatedDate = DateTime.UtcNow, 
                 CreatedByIp = GetIpAddress()
             };
 
@@ -104,7 +104,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 // 3. Create Identity User
                 var user = _mapper.Map<User>(registerDto);
                 user.UserName = registerDto.Email; 
-                user.CreatedAt = DateTime.UtcNow;
+                user.CreatedDate = DateTime.UtcNow;
                 user.IsActive = false; // Requires email verification
 
                 var result = await _userManager.CreateAsync(user, registerDto.Password);
@@ -139,7 +139,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     UserId = user.Id,
                     Token = tokenDto.RefreshToken,
                     Expires = tokenDto.RefreshTokenExpiration,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedDate = DateTime.UtcNow,
                     CreatedByIp = GetIpAddress() 
                 };
 
@@ -155,7 +155,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     UserId = user.Id,
                     Token = emailToken,
                     ExpiresAt = DateTime.UtcNow.AddHours(24), // Identity validation uses its own expiry, this is for audit
-                    CreatedAt = DateTime.UtcNow
+                    CreatedDate = DateTime.UtcNow
                 };
                 await _unitOfWork.EmailVerificationTokens.AddAsync(verifTokenEntity);
                 await _unitOfWork.CommitAsync();
@@ -201,7 +201,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 return Response<TokenDto>.Fail("Token bulunamadı", 404);
             }
 
-            if (!existingToken.IsActive) // Revoked or Expired
+            if (!existingToken.IsValid) // Revoked or Expired
             {
                return Response<TokenDto>.Fail("Token aktif değil", 400); 
             }
@@ -226,7 +226,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 UserId = user.Id,
                 Token = newTokenDto.RefreshToken,
                 Expires = newTokenDto.RefreshTokenExpiration,
-                CreatedAt = DateTime.UtcNow,
+                CreatedDate = DateTime.UtcNow,
                 CreatedByIp = GetIpAddress()
             };
 
@@ -245,7 +245,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 return Response<NoDataDto>.Fail("Token not found", 404);
             }
 
-            if (existingToken.IsActive)
+            if (existingToken.IsValid)
             {
                 existingToken.Revoked = DateTime.UtcNow;
                 existingToken.RevokedByIp = GetIpAddress();
@@ -277,7 +277,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 UserId = user.Id,
                 Token = token,
                 ExpiresAt = DateTime.UtcNow.AddHours(1), // Identity tokens have their own lifespan but we can track metadata
-                CreatedAt = DateTime.UtcNow
+                CreatedDate = DateTime.UtcNow
             };
 
             await _unitOfWork.PasswordResetTokens.AddAsync(passwordResetToken);
