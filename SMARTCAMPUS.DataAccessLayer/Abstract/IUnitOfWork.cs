@@ -5,6 +5,10 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
         IStudentDal Students { get; }
         IFacultyDal Faculties { get; }
         IDepartmentDal Departments { get; }
+        
+        IRefreshTokenDal RefreshTokens { get; }
+        IPasswordResetTokenDal PasswordResetTokens { get; }
+        IEmailVerificationTokenDal EmailVerificationTokens { get; }
 
         Task CommitAsync();
         void Commit();

@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.Models;
 using Serilog;
+using SMARTCAMPUS.DataAccessLayer.Abstract;
+using SMARTCAMPUS.DataAccessLayer.Concrete;
+using SMARTCAMPUS.DataAccessLayer;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,6 +45,10 @@ builder.Services.AddScoped<IStudentDal, EfStudentDal>();
 builder.Services.AddScoped<IFacultyDal, EfFacultyDal>();
 builder.Services.AddScoped<IDepartmentDal, EfDepartmentDal>();
 
+builder.Services.AddScoped<IRefreshTokenDal, EfRefreshTokenDal>();
+builder.Services.AddScoped<IPasswordResetTokenDal, EfPasswordResetTokenDal>();
+builder.Services.AddScoped<IEmailVerificationTokenDal, EfEmailVerificationTokenDal>();
+
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -62,5 +69,12 @@ app.UseAuthentication(); // Must be before Authorization
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Run Seeder
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    await DataSeeder.SeedAsync(services);
+}
 
 app.Run();
