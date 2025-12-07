@@ -85,6 +85,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Add Global Exception Middleware
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
 app.UseAuthentication(); // Must be before Authorization
 app.UseAuthorization();
 
