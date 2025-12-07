@@ -52,6 +52,11 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 return Response<TokenDto>.Fail("Invalid email or password", 400); 
             }
 
+            if (!user.IsActive)
+            {
+                return Response<TokenDto>.Fail("Account is not active. Please verify your email.", 400);
+            }
+
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
             if (!result.Succeeded)
             {

@@ -96,7 +96,23 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             // Actually, Soft Delete is safer.
             
             user.IsActive = false;
-            // logic to invalidate tokens?
+            
+            // Invalidate all refresh tokens for this user
+            var activeTokens = await _context.RefreshTokens.Where(x => x.UserId == userId && x.Revoked == null).ToListAsync();
+            foreach (var token in activeTokens)
+            {
+                token.Revoked = DateTime.UtcNow;
+                token.ReasonRevoked = "User deleted (Soft Delete)";
+                // token.RevokedByIp = ... // We don't have IP here easily unless injected HttpContext, skipping for now or adding later
+            }
+            // _context.UpdateRange(activeTokens); // Not needed if tracking is on, but good practice. 
+            // Actually UserManager Update will save User, but tokens are separate dbset in context. 
+            // We need to save context. 
+            // _userManager shares context? Yes usually. 
+            // But let's be explicit. If _userManager.UpdateAsync saves changes, it might only save User.
+            // Safest way: _context.SaveChanges() or _context.SaveChangesAsync()
+            
+            await _context.SaveChangesAsync();
             
             var result = await _userManager.UpdateAsync(user);
              if (!result.Succeeded)
