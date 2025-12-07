@@ -5,14 +5,14 @@ namespace SMARTCAMPUS.BusinessLayer.Common
 {
     public class Response<T>
     {
-        public T Data { get; set; }
+        public T? Data { get; set; }
 
         [JsonIgnore]
         public int StatusCode { get; set; }
 
         public bool IsSuccessful { get; set; }
 
-        public List<string> Errors { get; set; }
+        public List<string>? Errors { get; set; }
 
         // Static factory methods for successful responses
         public static Response<T> Success(T data, int statusCode)

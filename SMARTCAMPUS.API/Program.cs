@@ -10,12 +10,17 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using SMARTCAMPUS.BusinessLayer.Mappings;
 using SMARTCAMPUS.BusinessLayer.ValidationRules.Auth;
+using SMARTCAMPUS.BusinessLayer.Tools;
+using SMARTCAMPUS.BusinessLayer.Abstract;
+using SMARTCAMPUS.BusinessLayer.Concrete;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Configure Serilog
 builder.Host.UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration));
+
+builder.Services.AddHttpContextAccessor();
 
 // Add services to the container.
 
@@ -53,8 +58,11 @@ builder.Services.AddScoped<IRefreshTokenDal, EfRefreshTokenDal>();
 builder.Services.AddScoped<IPasswordResetTokenDal, EfPasswordResetTokenDal>();
 builder.Services.AddScoped<IEmailVerificationTokenDal, EfEmailVerificationTokenDal>();
 
-// 5. Business Layer Services (AutoMapper & FluentValidation)
+// 5. Business Layer Services (AutoMapper & FluentValidation & Tools)
 builder.Services.AddAutoMapper(typeof(MappingProfile));
+builder.Services.AddScoped<JwtTokenGenerator>();
+builder.Services.AddScoped<IAuthService, AuthManager>();
+
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>();

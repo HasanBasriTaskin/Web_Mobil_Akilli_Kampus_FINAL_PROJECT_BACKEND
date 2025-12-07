@@ -12,5 +12,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
 
         Task CommitAsync();
         void Commit();
+        Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync();
     }
 }
