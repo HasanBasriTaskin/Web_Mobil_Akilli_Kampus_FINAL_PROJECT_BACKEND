@@ -146,6 +146,25 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 await _unitOfWork.RefreshTokens.AddAsync(refreshTokenEntity);
                 await _unitOfWork.CommitAsync();
 
+                // 6. Send Verification Email
+                var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                
+                // Audit: Save token to custom table
+                var verifTokenEntity = new EmailVerificationToken
+                {
+                    UserId = user.Id,
+                    Token = emailToken,
+                    ExpiresAt = DateTime.UtcNow.AddHours(24), // Identity validation uses its own expiry, this is for audit
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.EmailVerificationTokens.AddAsync(verifTokenEntity);
+                await _unitOfWork.CommitAsync();
+
+                var clientUrl = _configuration["ClientSettings:Url"] ?? "http://localhost:3000";
+                var verifyLink = $"{clientUrl}/verify-email?userId={user.Id}&token={Uri.EscapeDataString(emailToken)}";
+                
+                await _notificationService.SendEmailVerificationAsync(user.Email!, verifyLink);
+
                 return Response<TokenDto>.Success(tokenDto, 201);
             }
             catch (Exception ex)
@@ -154,6 +173,23 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                // Log exception
                return Response<TokenDto>.Fail($"Registration failed: {ex.Message}", 500);
             }
+        }
+
+        public async Task<Response<NoDataDto>> VerifyEmailAsync(string userId, string token)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Response<NoDataDto>.Fail("User not found", 404);
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+            if (!result.Succeeded)
+            {
+                return Response<NoDataDto>.Fail("Email verification failed", 400);
+            }
+
+            user.IsActive = true;
+            await _userManager.UpdateAsync(user);
+
+            return Response<NoDataDto>.Success(200);
         }
 
         public async Task<Response<TokenDto>> CreateTokenByRefreshTokenAsync(string refreshToken)

@@ -56,5 +56,37 @@ namespace SMARTCAMPUS.API.Controllers
             }
             return Ok(result);
         }
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> CreateTokenByRefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
+        {
+            var result = await _authService.CreateTokenByRefreshTokenAsync(refreshTokenDto.Token);
+            if (!result.IsSuccessful)
+            {
+                return StatusCode(result.StatusCode, result);
+            }
+            return Ok(result);
+        }
+
+        [HttpPost("revoke-token")]
+        public async Task<IActionResult> RevokeRefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
+        {
+            var result = await _authService.RevokeRefreshTokenAsync(refreshTokenDto.Token);
+            if (!result.IsSuccessful)
+            {
+                return StatusCode(result.StatusCode, result);
+            }
+            return Ok(result);
+        }
+
+        [HttpPost("verify-email")]
+        public async Task<IActionResult> VerifyEmail([FromQuery] string userId, [FromQuery] string token)
+        {
+            var result = await _authService.VerifyEmailAsync(userId, token);
+            if (!result.IsSuccessful)
+            {
+                 return StatusCode(result.StatusCode, result);
+            }
+            return Ok(result);
+        }
     }
 }
