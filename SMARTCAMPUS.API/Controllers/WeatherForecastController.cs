@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace PROJECT_NAME.API.Controllers
+namespace SMARTCAMPUS.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]

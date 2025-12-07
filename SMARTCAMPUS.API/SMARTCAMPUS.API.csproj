@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -18,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PROJECT_NAME.BusinessLayer\PROJECT_NAME.BusinessLayer.csproj" />
-    <ProjectReference Include="..\PROJECT_NAME.EntityLayer\PROJECT_NAME.EntityLayer.csproj" />
+    <ProjectReference Include="..\SMARTCAMPUS.BusinessLayer\SMARTCAMPUS.BusinessLayer.csproj" />
+    <ProjectReference Include="..\SMARTCAMPUS.EntityLayer\SMARTCAMPUS.EntityLayer.csproj" />
   </ItemGroup>
 
 </Project>

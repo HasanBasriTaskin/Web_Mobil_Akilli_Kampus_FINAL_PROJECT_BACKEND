@@ -17,10 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PROJECT_NAME.API\PROJECT_NAME.API.csproj" />
-    <ProjectReference Include="..\PROJECT_NAME.BusinessLayer\PROJECT_NAME.BusinessLayer.csproj" />
-    <ProjectReference Include="..\PROJECT_NAME.DataAccessLayer\PROJECT_NAME.DataAccessLayer.csproj" />
-    <ProjectReference Include="..\PROJECT_NAME.EntityLayer\PROJECT_NAME.EntityLayer.csproj" />
+    <ProjectReference Include="..\SMARTCAMPUS.API\SMARTCAMPUS.API.csproj" />
+    <ProjectReference Include="..\SMARTCAMPUS.BusinessLayer\SMARTCAMPUS.BusinessLayer.csproj" />
+    <ProjectReference Include="..\SMARTCAMPUS.DataAccessLayer\SMARTCAMPUS.DataAccessLayer.csproj" />
+    <ProjectReference Include="..\SMARTCAMPUS.EntityLayer\SMARTCAMPUS.EntityLayer.csproj" />
   </ItemGroup>
 
   <ItemGroup>
