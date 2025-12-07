@@ -6,6 +6,10 @@ using Serilog;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.DataAccessLayer.Concrete;
 using SMARTCAMPUS.DataAccessLayer;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using SMARTCAMPUS.BusinessLayer.Mappings;
+using SMARTCAMPUS.BusinessLayer.ValidationRules.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,6 +52,12 @@ builder.Services.AddScoped<IDepartmentDal, EfDepartmentDal>();
 builder.Services.AddScoped<IRefreshTokenDal, EfRefreshTokenDal>();
 builder.Services.AddScoped<IPasswordResetTokenDal, EfPasswordResetTokenDal>();
 builder.Services.AddScoped<IEmailVerificationTokenDal, EfEmailVerificationTokenDal>();
+
+// 5. Business Layer Services (AutoMapper & FluentValidation)
+builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
