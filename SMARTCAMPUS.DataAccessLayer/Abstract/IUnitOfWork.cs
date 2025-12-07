@@ -1,0 +1,12 @@
+namespace SMARTCAMPUS.DataAccessLayer.Abstract
+{
+    public interface IUnitOfWork : IAsyncDisposable
+    {
+        IStudentDal Students { get; }
+        IFacultyDal Faculties { get; }
+        IDepartmentDal Departments { get; }
+
+        Task CommitAsync();
+        void Commit();
+    }
+}
