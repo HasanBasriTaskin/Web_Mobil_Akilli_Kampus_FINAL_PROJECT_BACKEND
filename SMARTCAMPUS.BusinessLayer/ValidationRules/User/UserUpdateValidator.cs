@@ -7,9 +7,9 @@ namespace SMARTCAMPUS.BusinessLayer.ValidationRules.User
     {
         public UserUpdateValidator()
         {
-            RuleFor(x => x.FullName).NotEmpty().WithMessage("Full Name is required").MaximumLength(100);
-            RuleFor(x => x.Email).NotEmpty().EmailAddress().WithMessage("Valid Email is required");
-            RuleFor(x => x.PhoneNumber).Matches(@"^\+?\d{10,15}$").WithMessage("Invalid Phone Number").When(x => !string.IsNullOrEmpty(x.PhoneNumber));
+            RuleFor(x => x.FullName).NotEmpty().WithMessage("Ad Soyad zorunludur.").MaximumLength(100);
+            RuleFor(x => x.Email).NotEmpty().EmailAddress().WithMessage("Geçerli bir e-posta adresi giriniz.");
+            RuleFor(x => x.PhoneNumber).Matches(@"^\+?\d{10,15}$").WithMessage("Geçersiz telefon numarası.").When(x => !string.IsNullOrEmpty(x.PhoneNumber));
         }
     }
 }
