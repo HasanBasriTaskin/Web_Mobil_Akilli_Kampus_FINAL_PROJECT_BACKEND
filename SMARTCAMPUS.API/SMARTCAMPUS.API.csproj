@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SMARTCAMPUS.BusinessLayer\SMARTCAMPUS.BusinessLayer.csproj" />
     <ProjectReference Include="..\SMARTCAMPUS.EntityLayer\SMARTCAMPUS.EntityLayer.csproj" />
+    <ProjectReference Include="..\SMARTCAMPUS.DataAccessLayer\SMARTCAMPUS.DataAccessLayer.csproj" />
   </ItemGroup>
 
 </Project>
