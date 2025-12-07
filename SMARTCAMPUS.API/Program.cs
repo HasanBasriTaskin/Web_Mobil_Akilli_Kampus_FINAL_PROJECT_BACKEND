@@ -3,12 +3,25 @@ using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.Models;
 using Serilog;
+using SMARTCAMPUS.DataAccessLayer.Abstract;
+using SMARTCAMPUS.DataAccessLayer.Concrete;
+using SMARTCAMPUS.DataAccessLayer;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using SMARTCAMPUS.BusinessLayer.Mappings;
+using SMARTCAMPUS.BusinessLayer.ValidationRules.Auth;
+using SMARTCAMPUS.BusinessLayer.Tools;
+using SMARTCAMPUS.BusinessLayer.Abstract;
+using SMARTCAMPUS.BusinessLayer.Concrete;
+using SMARTCAMPUS.API.Middleware; 
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Configure Serilog
 builder.Host.UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration));
+
+builder.Services.AddHttpContextAccessor();
 
 // Add services to the container.
 
@@ -34,6 +47,29 @@ builder.Services.AddIdentity<User, Role>(options =>
 .AddEntityFrameworkStores<CampusContext>()
 .AddDefaultTokenProviders();
 
+// 4. Repository & Unit of Work Registration
+builder.Services.AddScoped(typeof(IGenericDal<>), typeof(GenericRepository<>));
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+builder.Services.AddScoped<IStudentDal, EfStudentDal>();
+builder.Services.AddScoped<IFacultyDal, EfFacultyDal>();
+builder.Services.AddScoped<IDepartmentDal, EfDepartmentDal>();
+
+builder.Services.AddScoped<IRefreshTokenDal, EfRefreshTokenDal>();
+builder.Services.AddScoped<IPasswordResetTokenDal, EfPasswordResetTokenDal>();
+builder.Services.AddScoped<IEmailVerificationTokenDal, EfEmailVerificationTokenDal>();
+
+// 5. Business Layer Services (AutoMapper & FluentValidation & Tools)
+builder.Services.AddAutoMapper(typeof(MappingProfile));
+builder.Services.AddScoped<JwtTokenGenerator>();
+builder.Services.AddScoped<IAuthService, AuthManager>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<INotificationService, EmailService>();
+
+
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>(); // Scans assembly for all AbstractValidator<T>
+
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -50,9 +86,19 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Add Global Exception Middleware
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
 app.UseAuthentication(); // Must be before Authorization
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Run Seeder
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    await DataSeeder.SeedAsync(services);
+}
 
 app.Run();
