@@ -11,6 +11,10 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
         public IFacultyDal Faculties { get; }
         public IDepartmentDal Departments { get; }
 
+        public IRefreshTokenDal RefreshTokens { get; }
+        public IPasswordResetTokenDal PasswordResetTokens { get; }
+        public IEmailVerificationTokenDal EmailVerificationTokens { get; }
+
         public UnitOfWork(CampusContext context)
         {
             _context = context;
@@ -19,6 +23,10 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
             Students = new EfStudentDal(_context);
             Faculties = new EfFacultyDal(_context);
             Departments = new EfDepartmentDal(_context);
+            
+            RefreshTokens = new EfRefreshTokenDal(_context);
+            PasswordResetTokens = new EfPasswordResetTokenDal(_context);
+            EmailVerificationTokens = new EfEmailVerificationTokenDal(_context);
         }
 
         public void Commit()
