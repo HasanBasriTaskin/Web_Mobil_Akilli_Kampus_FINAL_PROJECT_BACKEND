@@ -95,8 +95,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
 
             // 2. Create Transaction
-            // Since Identity and EF Core share the same context in this setup (CampusContext), 
-            // we can use a transaction to ensure both User and Student are created or neither.
+            // Use transaction to ensure atomic creation of User and Student
             
             using var transaction = await _unitOfWork.BeginTransactionAsync();
 
@@ -122,10 +121,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 {
                     UserId = user.Id,
                     StudentNumber = registerDto.StudentNumber,
-                    DepartmentId = registerDto.DepartmentId,
-                    // FacultyId could be derived from Department -> Faculty relation if needed, 
-                    // or let database/navigation handle it if designed that way. 
-                    // For now, only DepartmentId is mandatory in DTO.
+                    DepartmentId = registerDto.DepartmentId
                 };
 
                 await _unitOfWork.Students.AddAsync(student);

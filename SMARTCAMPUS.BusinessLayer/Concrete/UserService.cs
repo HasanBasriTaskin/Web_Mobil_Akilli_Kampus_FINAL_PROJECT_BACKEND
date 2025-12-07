@@ -66,7 +66,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
             user.FullName = userUpdateDto.FullName;
             user.Email = userUpdateDto.Email;
-            user.UserName = userUpdateDto.Email; // Keep UserName synced with Email if that's the policy
+            user.UserName = userUpdateDto.Email;
             user.PhoneNumber = userUpdateDto.PhoneNumber;
 
             var result = await _userManager.UpdateAsync(user);
@@ -83,18 +83,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) return Response<NoDataDto>.Fail("User not found", 404);
 
-            // Soft delete logic is usually preferred (IsActive = false).
-            // But if requested "Delete", we can do Hard Delete or Soft Delete.
-            // Let's assume Hard Delete for now unless specified otherwise, OR check IsActive property.
-            // User entity has IsActive. Let's do Soft Delete!
-            
-            // Wait, standard Identity Delete causes row removal. 
-            // If we want Soft Delete, we Update IsActive = false.
-            
-            // "DeleteUser" usually implies removal. Let's do HARD delete for initial implementation 
-            // but be aware of foreign key constraints (Students, RefreshTokens etc).
-            // Actually, Soft Delete is safer.
-            
+            // Soft Delete: Mark as inactive
             user.IsActive = false;
             
             // Invalidate all refresh tokens for this user
@@ -103,14 +92,10 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             {
                 token.Revoked = DateTime.UtcNow;
                 token.ReasonRevoked = "User deleted (Soft Delete)";
-                // token.RevokedByIp = ... // We don't have IP here easily unless injected HttpContext, skipping for now or adding later
             }
-            // _context.UpdateRange(activeTokens); // Not needed if tracking is on, but good practice. 
-            // Actually UserManager Update will save User, but tokens are separate dbset in context. 
-            // We need to save context. 
-            // _userManager shares context? Yes usually. 
-            // But let's be explicit. If _userManager.UpdateAsync saves changes, it might only save User.
-            // Safest way: _context.SaveChanges() or _context.SaveChangesAsync()
+            
+            // Persist token changes
+            await _context.SaveChangesAsync();
             
             await _context.SaveChangesAsync();
             
