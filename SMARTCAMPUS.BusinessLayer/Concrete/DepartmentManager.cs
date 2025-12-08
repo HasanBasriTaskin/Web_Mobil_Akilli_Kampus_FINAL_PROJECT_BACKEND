@@ -17,8 +17,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<List<Department>>> GetDepartmentsAsync()
         {
-             var departments = await _unitOfWork.Departments.GetAll().ToListAsync();
-             return Response<List<Department>>.Success(departments, 200);
+             var departments = await _unitOfWork.Departments.GetAllAsync();
+             return Response<List<Department>>.Success(departments.ToList(), 200);
         }
     }
 }
