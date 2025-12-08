@@ -7,7 +7,6 @@ namespace SMARTCAMPUS.EntityLayer.Models
         // Id inherited from BaseEntity
         public string Name { get; set; } = null!;
         public string Code { get; set; } = null!;
-        public string Code { get; set; } = null!;
         public string? FacultyName { get; set; } // e.g. "Engineering Faculty"
         public string? Description { get; set; }
         
