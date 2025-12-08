@@ -5,7 +5,7 @@ using SMARTCAMPUS.EntityLayer.DTOs.User;
 
 namespace SMARTCAMPUS.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     [Authorize] // Require Auth for all user operations. 
     // Ideally [Authorize(Roles = "Admin")] for most, but let's stick to basic Auth for now or allow user to see their own?
@@ -17,6 +17,39 @@ namespace SMARTCAMPUS.API.Controllers
         public UsersController(IUserService userService)
         {
             _userService = userService;
+        }
+
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(currentUserId)) return Unauthorized();
+
+            var result = await _userService.GetUserByIdAsync(currentUserId);
+            if (!result.IsSuccessful) return StatusCode(result.StatusCode, result);
+            return Ok(result);
+        }
+
+        [HttpPut("me")]
+        public async Task<IActionResult> UpdateMyProfile([FromBody] UserUpdateDto userUpdateDto)
+        {
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+             if (string.IsNullOrEmpty(currentUserId)) return Unauthorized();
+
+            var result = await _userService.UpdateUserAsync(currentUserId, userUpdateDto);
+            if (!result.IsSuccessful) return StatusCode(result.StatusCode, result);
+            return Ok(result);
+        }
+
+        [HttpPost("me/profile-picture")]
+        public async Task<IActionResult> UploadProfilePicture(IFormFile file)
+        {
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(currentUserId)) return Unauthorized();
+
+            var result = await _userService.UploadProfilePictureAsync(currentUserId, file);
+            if (!result.IsSuccessful) return StatusCode(result.StatusCode, result);
+            return Ok(result);
         }
 
         [HttpGet]

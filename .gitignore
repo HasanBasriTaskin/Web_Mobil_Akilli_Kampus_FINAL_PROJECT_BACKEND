@@ -18,6 +18,12 @@
 **/appsettings.Production.json
 **/!appsettings.example.json
 
+# Coverage Report
+**/coverage-report/
+
+# Build logs 
+**/build_log.txt
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
