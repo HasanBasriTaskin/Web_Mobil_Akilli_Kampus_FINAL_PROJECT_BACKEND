@@ -4,29 +4,38 @@
 Part 1 kapsamında backend servislerinin doğruluğunu sağlamak amacıyla **Unit Test** çalışmaları yapılmıştır.
 
 ## Test Kapsamı
-Mevcut testler `SMARTCAMPUS.Tests` projesi altında bulunmaktadır ve öncelikli olarak iş mantığının (Business Logic) en yoğun olduğu **AuthManager** sınıfına odaklanılmıştır.
+Mevcut testler `SMARTCAMPUS.Tests` projesi altında bulunmaktadır. İş mantığının (Business Logic) en yoğun olduğu **AuthManager** sınıfına odaklanılmıştır.
 
-### 1. AuthManager Tests
-`AuthManager` sınıfı için aşağıdaki senaryolar test edilmiştir:
+### AuthManager Tests
 
-*   ✅ **Login_Successful**: Doğru bilgilerle giriş yapıldığında Token dönülmesi.
-*   ✅ **Login_Failed_WrongPassword**: Yanlış şifre ile girişin engellenmesi.
-*   ✅ **Register_Successful**: Başarılı kullanıcı kaydı.
-*   ✅ **Register_Failed_EmailExists**: Var olan email ile kaydın engellenmesi.
+| Kategori | Test Sayısı | Test Adları |
+|:---------|:-----------:|:------------|
+| **Login** | 4 | `LoginAsync_WithInvalidEmail_ReturnsFail`, `LoginAsync_WithInactiveAccount_ReturnsFail`, `LoginAsync_WithWrongPassword_ReturnsFail`, `LoginAsync_WithValidCredentials_ReturnsSuccessAndToken` |
+| **Register** | 4 | `RegisterAsync_WithExistingEmail_ReturnsFail`, `RegisterAsync_UserCreationFails_ReturnsFail`, `RegisterAsync_ExceptionThrown_ReturnsFail`, `RegisterAsync_Success_ReturnsToken` |
+| **Verify Email** | 3 | `VerifyEmailAsync_UserNotFound_ReturnsFail`, `VerifyEmailAsync_ConfirmationFails_ReturnsFail`, `VerifyEmailAsync_Success_ActivatesUser` |
+| **Refresh Token** | 4 | `CreateTokenByRefreshTokenAsync_TokenNotFound_ReturnsFail`, `CreateTokenByRefreshTokenAsync_TokenInvalid_ReturnsFail`, `CreateTokenByRefreshTokenAsync_UserNotFound_ReturnsFail`, `CreateTokenByRefreshTokenAsync_Success_ReturnsNewToken` |
+| **Revoke Token** | 2 | `RevokeRefreshTokenAsync_NotFound_ReturnsFail`, `RevokeRefreshTokenAsync_Success_RevokesToken` |
+| **Forgot Password** | 2 | `ForgotPasswordAsync_UserNotFound_ReturnsSuccess`, `ForgotPasswordAsync_Success_SendsEmail` |
+| **Reset Password** | 3 | `ResetPasswordAsync_UserNotFound_ReturnsFail`, `ResetPasswordAsync_ResetFails_ReturnsFail`, `ResetPasswordAsync_Success_ReturnsSuccess` |
+
+**Toplam: 22 Test**
 
 ## Test Sonuçları & Coverage
 
 | Modül | Test Sayısı | Durum | Tahmini Coverage |
-| :--- | :---: | :---: | :---: |
-| **Auth Service** | 4 | ✅ Geçti | %90 |
-| **User Service** | 0 | ⚠️ Eksik | %0 |
-| **Controllers** | 0 | ⚠️ Eksik | %0 |
+|:------|:-----------:|:-----:|:----------------:|
+| **Auth Service** | 22 | ✅ Geçti | ~85% |
+| **User Service** | 0 | ⚠️ Planlanıyor | %0 |
+| **Controllers** | 0 | ⚠️ Planlanıyor | %0 |
 
-> **Not:** Proje teslim süresi kısıtları nedeniyle şu an için sadece Kritik Yol (Critical Path) olan Authentication servisi test edilmiştir. İlerleyen aşamalarda Controller ve diğer servis testlerinin yazılması (%85 hedefine ulaşılması) planlanmaktadır.
+> **Not:** AuthManager için kapsamlı test senaryoları yazılmıştır. İlerleyen aşamalarda Controller ve diğer servis testlerinin eklenmesi planlanmaktadır.
 
 ## Nasıl Çalıştırılır?
-Testleri çalıştırmak için terminalde şu komutu kullanabilirsiniz:
 
 ```powershell
+# Testleri çalıştır
 dotnet test
+
+# Coverage raporu ile çalıştır
+.\run-tests-with-coverage.ps1
 ```

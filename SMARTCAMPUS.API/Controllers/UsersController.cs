@@ -54,9 +54,9 @@ namespace SMARTCAMPUS.API.Controllers
 
         [HttpGet]
         [Authorize(Roles = "Admin")] // Only Admin can list users
-        public async Task<IActionResult> GetUsers([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetUsers([FromQuery] UserQueryParameters queryParams)
         {
-            var result = await _userService.GetUsersAsync(pageNumber, pageSize);
+            var result = await _userService.GetUsersAsync(queryParams);
             return Ok(result);
         }
 

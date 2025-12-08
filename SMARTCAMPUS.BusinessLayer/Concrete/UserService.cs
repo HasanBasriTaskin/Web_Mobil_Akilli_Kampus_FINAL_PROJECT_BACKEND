@@ -23,10 +23,56 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             _context = context;
         }
 
-        public async Task<PagedResponse<UserListDto>> GetUsersAsync(int pageNumber, int pageSize)
+        public async Task<PagedResponse<UserListDto>> GetUsersAsync(UserQueryParameters queryParams)
         {
-            // Optimized Query: Fetch User + Roles in single roundtrip (or optimized batches)
-            var query = from u in _context.Users
+            // Base query
+            var usersQuery = _context.Users.AsQueryable();
+
+            // Search filter (name veya email)
+            if (!string.IsNullOrWhiteSpace(queryParams.Search))
+            {
+                var searchLower = queryParams.Search.ToLower();
+                usersQuery = usersQuery.Where(u => 
+                    u.FullName.ToLower().Contains(searchLower) || 
+                    u.Email!.ToLower().Contains(searchLower));
+            }
+
+            // Department filter
+            if (queryParams.DepartmentId.HasValue)
+            {
+                var departmentId = queryParams.DepartmentId.Value;
+                // Student veya Faculty departmanına göre filtrele
+                var studentUserIds = _context.Students
+                    .Where(s => s.DepartmentId == departmentId)
+                    .Select(s => s.UserId);
+                var facultyUserIds = _context.Faculties
+                    .Where(f => f.DepartmentId == departmentId)
+                    .Select(f => f.UserId);
+                
+                usersQuery = usersQuery.Where(u => 
+                    studentUserIds.Contains(u.Id) || facultyUserIds.Contains(u.Id));
+            }
+
+            // Role filter
+            if (!string.IsNullOrWhiteSpace(queryParams.Role))
+            {
+                var roleId = await _context.Roles
+                    .Where(r => r.Name == queryParams.Role)
+                    .Select(r => r.Id)
+                    .FirstOrDefaultAsync();
+                
+                if (!string.IsNullOrEmpty(roleId))
+                {
+                    var userIdsWithRole = _context.UserRoles
+                        .Where(ur => ur.RoleId == roleId)
+                        .Select(ur => ur.UserId);
+                    
+                    usersQuery = usersQuery.Where(u => userIdsWithRole.Contains(u.Id));
+                }
+            }
+
+            // Projection with roles
+            var query = from u in usersQuery
                         select new UserListDto
                         {
                             Id = u.Id,
@@ -43,11 +89,11 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             var totalRecords = await query.CountAsync();
             
             var userDtos = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
+                .Skip((queryParams.Page - 1) * queryParams.Limit)
+                .Take(queryParams.Limit)
                 .ToListAsync();
 
-            return new PagedResponse<UserListDto>(userDtos, pageNumber, pageSize, totalRecords);
+            return new PagedResponse<UserListDto>(userDtos, queryParams.Page, queryParams.Limit, totalRecords);
         }
 
         public async Task<Response<UserProfileDto>> GetUserByIdAsync(string userId)
@@ -130,6 +176,11 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
             if (file == null || file.Length == 0)
                 return Response<string>.Fail("Dosya boş", 400);
+
+            // 5MB limit kontrolü
+            const long maxFileSize = 5 * 1024 * 1024; // 5MB
+            if (file.Length > maxFileSize)
+                return Response<string>.Fail("Dosya boyutu en fazla 5MB olabilir", 400);
 
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
             var extension = System.IO.Path.GetExtension(file.FileName).ToLowerInvariant();
