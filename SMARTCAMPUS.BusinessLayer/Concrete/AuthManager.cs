@@ -355,7 +355,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             {
                 UserId = user.Id,
                 Token = token,
-                ExpiresAt = DateTime.UtcNow.AddHours(1), // Identity tokens have their own lifespan but we can track metadata
+                ExpiresAt = DateTime.UtcNow.AddHours(24), // 24 saat geçerlilik süresi
                 CreatedDate = DateTime.UtcNow
             };
 
