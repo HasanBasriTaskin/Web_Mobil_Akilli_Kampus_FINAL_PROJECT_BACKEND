@@ -9,9 +9,7 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
     {
         public MappingProfile()
         {
-            CreateMap<User, RegisterStudentDto>().ReverseMap();
-            
-            
+            CreateMap<RegisterUserDto, User>();
             CreateMap<User, UserListDto>();
             CreateMap<UserUpdateDto, User>();
 

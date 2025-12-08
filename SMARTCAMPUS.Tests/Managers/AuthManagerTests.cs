@@ -193,7 +193,7 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task RegisterAsync_WithExistingEmail_ReturnsFail()
         {
             // Arrange
-            var registerDto = new RegisterStudentDto { Email = "existing@test.com", Password = "Pass" };
+            var registerDto = new RegisterUserDto { Email = "existing@test.com", Password = "Pass", UserType = "Student" };
             var existingUser = new User { Email = registerDto.Email };
 
             _mockUserManager.Setup(x => x.FindByEmailAsync(registerDto.Email))
@@ -212,14 +212,14 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task RegisterAsync_UserCreationFails_ReturnsFail()
         {
             // Arrange
-            var registerDto = new RegisterStudentDto { Email = "new@test.com", Password = "Pass" };
+            var registerDto = new RegisterUserDto { Email = "new@test.com", Password = "Pass", UserType = "Student" };
 
             _mockUserManager.Setup(x => x.FindByEmailAsync(registerDto.Email))
                             .ReturnsAsync((User?)null);
 
             // Mock Transaction
             var mockTransaction = new Mock<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
-            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync(default))
+            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync())
                            .ReturnsAsync(mockTransaction.Object);
 
             // Mock Mapper
@@ -245,14 +245,14 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task RegisterAsync_ExceptionThrown_ReturnsFail()
         {
              // Arrange
-            var registerDto = new RegisterStudentDto { Email = "new@test.com", Password = "Pass" };
+            var registerDto = new RegisterUserDto { Email = "new@test.com", Password = "Pass", UserType = "Student" };
 
             _mockUserManager.Setup(x => x.FindByEmailAsync(registerDto.Email))
                             .ReturnsAsync((User?)null);
 
             // Mock Transaction
             var mockTransaction = new Mock<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
-            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync(default))
+            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync())
                            .ReturnsAsync(mockTransaction.Object);
 
             // Mock Mapper throws exception
@@ -274,11 +274,13 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task RegisterAsync_Success_ReturnsToken()
         {
              // Arrange
-            var registerDto = new RegisterStudentDto {
+            var registerDto = new RegisterUserDto {
                 Email = "new@test.com",
                 Password = "Pass",
                 StudentNumber = "123",
-                DepartmentId = 1
+                DepartmentId = 1,
+                UserType = "Student",
+                FullName = "Test Student"
             };
             var user = new User { Id = "u1", Email = registerDto.Email };
             var tokenDto = new TokenDto { AccessToken = "acc", RefreshToken = "ref" };
@@ -288,7 +290,7 @@ namespace SMARTCAMPUS.Tests.Managers
 
             // Mock Transaction
             var mockTransaction = new Mock<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
-            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync(default))
+            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync())
                            .ReturnsAsync(mockTransaction.Object);
 
             _mockMapper.Setup(x => x.Map<User>(registerDto)).Returns(user);
