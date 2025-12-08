@@ -18,7 +18,7 @@ namespace SMARTCAMPUS.BusinessLayer.Tools
             _configuration = configuration;
         }
 
-        public TokenDto GenerateToken(User user, IList<string> roles)
+        public virtual TokenDto GenerateToken(User user, IList<string> roles)
         {
             var claims = new List<Claim>
             {
