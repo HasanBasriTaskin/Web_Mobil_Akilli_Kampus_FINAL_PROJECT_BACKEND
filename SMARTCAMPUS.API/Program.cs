@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.Models;
+using SMARTCAMPUS.EntityLayer.DTOs;
 using Serilog;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.DataAccessLayer.Concrete;
@@ -13,17 +15,27 @@ using SMARTCAMPUS.BusinessLayer.ValidationRules.Auth;
 using SMARTCAMPUS.BusinessLayer.Tools;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Concrete;
+using SMARTCAMPUS.BusinessLayer.Common;
 using SMARTCAMPUS.API.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text; 
 
-var builder = WebApplication.CreateBuilder(args);
+// Bootstrap logger for catching startup errors
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-// 1. Configure Serilog
-builder.Host.UseSerilog((context, configuration) =>
-    configuration.ReadFrom.Configuration(context.Configuration));
+try
+{
+    Log.Information("Starting SmartCampus API...");
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // 1. Configure Serilog
+    builder.Host.UseSerilog((context, services, configuration) =>
+        configuration.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddHttpContextAccessor();
 
@@ -96,6 +108,25 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>(); // Scans assembly for all AbstractValidator<T>
 
 builder.Services.AddControllers();
+
+// Configure ApiBehaviorOptions to use Response<T> format for validation errors
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState
+            .Where(e => e.Value?.Errors.Count > 0)
+            .SelectMany(e => e.Value!.Errors.Select(error =>
+                string.IsNullOrEmpty(error.ErrorMessage)
+                    ? e.Key + " is invalid."
+                    : error.ErrorMessage))
+            .ToList();
+
+        var response = Response<NoDataDto>.Fail(errors, 400);
+        return new BadRequestObjectResult(response);
+    };
+});
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -149,6 +180,9 @@ app.UseHttpsRedirection();
 
 app.UseCors("AllowClient");
 
+// Enable Serilog request logging
+app.UseSerilogRequestLogging();
+
 // Add Global Exception Middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
@@ -164,4 +198,13 @@ using (var scope = app.Services.CreateScope())
     await DataSeeder.SeedAsync(services);
 }
 
-app.Run();
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
