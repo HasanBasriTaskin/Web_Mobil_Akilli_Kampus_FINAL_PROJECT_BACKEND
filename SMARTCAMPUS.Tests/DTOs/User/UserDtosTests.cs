@@ -28,25 +28,35 @@ namespace SMARTCAMPUS.Tests.DTOs.User
         }
     }
 
-    public class UserProfileDtoTests
+    public class UserDtoTests
     {
         [Fact]
-        public void UserProfileDto_ShouldInitializePropertiesCorrectly()
+        public void UserDto_ShouldInitializePropertiesCorrectly()
         {
-            var dto = new UserProfileDto
+            var dto = new UserDto
             {
                 Id = "1",
                 FullName = "John Doe",
                 Email = "john@example.com",
+                UserType = "Student",
+                Role = "Student",
+                IsEmailVerified = true,
+                IsActive = true,
+                PhoneNumber = "123456",
                 ProfilePictureUrl = "url",
-                Roles = new List<string> { "Student" }
+                CreatedAt = DateTime.UtcNow
             };
 
             dto.Id.Should().Be("1");
             dto.FullName.Should().Be("John Doe");
             dto.Email.Should().Be("john@example.com");
+            dto.UserType.Should().Be("Student");
+            dto.Role.Should().Be("Student");
+            dto.IsEmailVerified.Should().BeTrue();
+            dto.IsActive.Should().BeTrue();
+            dto.PhoneNumber.Should().Be("123456");
             dto.ProfilePictureUrl.Should().Be("url");
-            dto.Roles.Should().Contain("Student");
+            dto.Roles.Should().BeEmpty();
         }
     }
 
