@@ -125,7 +125,8 @@ namespace SMARTCAMPUS.Tests.Controllers
             // Arrange
             SetupHttpContext("admin1", new[] { "Admin" });
             var queryParams = new UserQueryParameters();
-            var response = new PagedResponse<UserListDto>(new List<UserListDto>(), 1, 10, 0);
+            var pagedData = new PagedResponse<UserListDto>(new List<UserListDto>(), 1, 10, 0);
+            var response = Response<PagedResponse<UserListDto>>.Success(pagedData, 200);
 
             _mockUserService.Setup(s => s.GetUsersAsync(queryParams))
                 .ReturnsAsync(response);

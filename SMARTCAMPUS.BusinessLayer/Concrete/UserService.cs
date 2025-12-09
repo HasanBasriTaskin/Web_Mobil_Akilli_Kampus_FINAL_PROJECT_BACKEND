@@ -13,10 +13,10 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
     {
         private readonly UserManager<User> _userManager;
         private readonly IMapper _mapper;
-        private readonly SMARTCAMPUS.DataAccessLayer.Context.CampusContext _context;
+        private readonly CampusContext _context;
 
         // Note: Using 'UserManager' here refers to Identity's UserManager
-        public UserService(UserManager<User> userManager, IMapper mapper, SMARTCAMPUS.DataAccessLayer.Context.CampusContext context)
+        public UserService(UserManager<User> userManager, IMapper mapper, CampusContext context)
         {
             _userManager = userManager;
             _mapper = mapper;
@@ -170,7 +170,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             return Response<NoDataDto>.Success(200);
         }
 
-        public async Task<Response<string>> UploadProfilePictureAsync(string userId, Microsoft.AspNetCore.Http.IFormFile file)
+        public async Task<Response<string>> UploadProfilePictureAsync(string userId, IFormFile file)
         {
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) return Response<string>.Fail("Kullanıcı bulunamadı", 404);
