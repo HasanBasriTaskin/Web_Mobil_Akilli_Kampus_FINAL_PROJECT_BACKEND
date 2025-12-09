@@ -44,27 +44,28 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             _configuration = configuration;
         }
 
-        public async Task<Response<TokenDto>> LoginAsync(LoginDto loginDto)
+        public async Task<Response<LoginResponseDto>> LoginAsync(LoginDto loginDto)
         {
             var user = await _userManager.FindByEmailAsync(loginDto.Email);
             if (user == null)
             {
-                return Response<TokenDto>.Fail("Geçersiz e-posta veya şifre", 400); 
+                return Response<LoginResponseDto>.Fail("Geçersiz e-posta veya şifre", 400); 
             }
 
             if (!user.IsActive)
             {
-                return Response<TokenDto>.Fail("Hesap aktif değil. Lütfen e-postanızı doğrulayın.", 400);
+                return Response<LoginResponseDto>.Fail("Hesap aktif değil. Lütfen e-postanızı doğrulayın.", 400);
             }
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
             if (!result.Succeeded)
             {
-                 return Response<TokenDto>.Fail("Geçersiz e-posta veya şifre", 400); // Güvenlik için aynı mesaj
+                 return Response<LoginResponseDto>.Fail("Geçersiz e-posta veya şifre", 400); // Güvenlik için aynı mesaj
             }
 
             // Get Roles
             var roles = await _userManager.GetRolesAsync(user);
+            var primaryRole = roles.FirstOrDefault() ?? "User";
 
             // Generate Token
             var tokenDto = _tokenGenerator.GenerateToken(user, roles);
@@ -82,7 +83,59 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             await _unitOfWork.RefreshTokens.AddAsync(refreshTokenEntity);
             await _unitOfWork.CommitAsync();
 
-            return Response<TokenDto>.Success(tokenDto, 200);
+            // Build user info based on role
+            var loginUserDto = new LoginUserDto
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                FullName = user.FullName,
+                UserType = primaryRole,
+                Role = primaryRole,
+                IsEmailVerified = user.EmailConfirmed,
+                IsActive = user.IsActive,
+                ProfilePictureUrl = user.ProfilePictureUrl,
+                CreatedAt = user.CreatedDate
+            };
+
+            // Fetch Student or Faculty info based on role
+            if (primaryRole == "Student")
+            {
+                var student = await _unitOfWork.Students.Where(s => s.UserId == user.Id).FirstOrDefaultAsync();
+                if (student != null)
+                {
+                    loginUserDto.Student = new StudentInfoDto
+                    {
+                        StudentNumber = student.StudentNumber,
+                        DepartmentId = student.DepartmentId,
+                        EnrollmentDate = student.CreatedDate
+                    };
+                }
+            }
+            else if (primaryRole == "Faculty")
+            {
+                var faculty = await _unitOfWork.Faculties.Where(f => f.UserId == user.Id).FirstOrDefaultAsync();
+                if (faculty != null)
+                {
+                    loginUserDto.Faculty = new FacultyInfoDto
+                    {
+                        EmployeeNumber = faculty.EmployeeNumber,
+                        Title = faculty.Title,
+                        DepartmentId = faculty.DepartmentId,
+                        OfficeLocation = faculty.OfficeLocation
+                    };
+                }
+            }
+
+            var loginResponse = new LoginResponseDto
+            {
+                AccessToken = tokenDto.AccessToken,
+                RefreshToken = tokenDto.RefreshToken,
+                AccessTokenExpiration = tokenDto.AccessTokenExpiration,
+                RefreshTokenExpiration = tokenDto.RefreshTokenExpiration,
+                User = loginUserDto
+            };
+
+            return Response<LoginResponseDto>.Success(loginResponse, 200);
         }
 
         public async Task<Response<TokenDto>> RegisterAsync(RegisterUserDto registerDto)
