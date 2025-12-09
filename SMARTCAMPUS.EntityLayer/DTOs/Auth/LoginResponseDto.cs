@@ -1,3 +1,5 @@
+using SMARTCAMPUS.EntityLayer.DTOs.User;
+
 namespace SMARTCAMPUS.EntityLayer.DTOs.Auth
 {
     public class LoginResponseDto
@@ -6,6 +8,6 @@ namespace SMARTCAMPUS.EntityLayer.DTOs.Auth
         public string RefreshToken { get; set; } = null!;
         public DateTime AccessTokenExpiration { get; set; }
         public DateTime RefreshTokenExpiration { get; set; }
-        public LoginUserDto User { get; set; } = null!;
+        public UserDto User { get; set; } = null!;
     }
 }
