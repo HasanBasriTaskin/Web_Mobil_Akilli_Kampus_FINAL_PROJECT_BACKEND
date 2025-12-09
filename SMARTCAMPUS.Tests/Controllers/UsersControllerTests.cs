@@ -50,7 +50,7 @@ namespace SMARTCAMPUS.Tests.Controllers
             // Arrange
             var userId = "u1";
             SetupHttpContext(userId, Array.Empty<string>());
-            var response = Response<UserProfileDto>.Success(new UserProfileDto { IdString = userId }, 200);
+            var response = Response<UserProfileDto>.Success(new UserProfileDto { Id = userId }, 200);
 
             _mockUserService.Setup(s => s.GetUserByIdAsync(userId))
                 .ReturnsAsync(response);
@@ -144,7 +144,7 @@ namespace SMARTCAMPUS.Tests.Controllers
             // Arrange
             var userId = "u1";
             SetupHttpContext(userId, Array.Empty<string>());
-            var response = Response<UserProfileDto>.Success(new UserProfileDto { IdString = userId }, 200);
+            var response = Response<UserProfileDto>.Success(new UserProfileDto { Id = userId }, 200);
 
             _mockUserService.Setup(s => s.GetUserByIdAsync(userId)).ReturnsAsync(response);
 
@@ -179,7 +179,7 @@ namespace SMARTCAMPUS.Tests.Controllers
             // Arrange
             SetupHttpContext("admin1", new[] { "Admin" });
             var otherUserId = "u2";
-            var response = Response<UserProfileDto>.Success(new UserProfileDto { IdString = otherUserId }, 200);
+            var response = Response<UserProfileDto>.Success(new UserProfileDto { Id = otherUserId }, 200);
 
             _mockUserService.Setup(s => s.GetUserByIdAsync(otherUserId)).ReturnsAsync(response);
 

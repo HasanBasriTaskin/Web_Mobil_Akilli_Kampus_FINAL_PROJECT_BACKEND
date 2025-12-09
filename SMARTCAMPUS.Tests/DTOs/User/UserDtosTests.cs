@@ -35,14 +35,14 @@ namespace SMARTCAMPUS.Tests.DTOs.User
         {
             var dto = new UserProfileDto
             {
-                IdString = "1",
+                Id = "1",
                 FullName = "John Doe",
                 Email = "john@example.com",
                 ProfilePictureUrl = "url",
                 Roles = new List<string> { "Student" }
             };
 
-            dto.IdString.Should().Be("1");
+            dto.Id.Should().Be("1");
             dto.FullName.Should().Be("John Doe");
             dto.Email.Should().Be("john@example.com");
             dto.ProfilePictureUrl.Should().Be("url");
