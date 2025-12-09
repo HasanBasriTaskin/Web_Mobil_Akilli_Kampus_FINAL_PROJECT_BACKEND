@@ -29,7 +29,7 @@ Write-Host "Running tests with coverage: $TestProjectPath..." -ForegroundColor C
 $resultDir = "$(Split-Path $TestProjectPath)/TestResults"
 
 # Updated exclusions to match requirements (Exclude Migrations, DataSeeder, Program, Context)
-dotnet test $TestProjectPath --collect:"XPlat Code Coverage" --results-directory $resultDir -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format="cobertura" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ExcludeByFile="**/DataSeeder.cs,**/Migrations/**/*.cs,**/*.Designer.cs,**/*.g*.cs,**/Program.cs,**/*Program.cs,**/Context/*.cs" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*]*Program,[*.Tests]*"
+dotnet test $TestProjectPath --collect:"XPlat Code Coverage" --results-directory $resultDir -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format="cobertura" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ExcludeByFile="**/DataSeeder.cs, **/Mappings/**,**/Migrations/**/*.cs,**/*.Designer.cs,**/*.g*.cs,**/Program.cs,**/*Program.cs,**/Context/*.cs" DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*]*Program,[*.Tests]*"
 
 $coverageFile = Get-ChildItem -Path $resultDir -Recurse -Filter "coverage.cobertura.xml" |
                 Sort-Object LastWriteTime -Descending |

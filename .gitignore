@@ -21,6 +21,9 @@
 # Coverage Report
 **/coverage-report/
 
+# Database Schema Export
+Database_Repo/
+
 # Build logs 
 **/build_log.txt
 
