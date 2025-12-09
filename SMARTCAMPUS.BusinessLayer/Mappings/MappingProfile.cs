@@ -12,9 +12,6 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
             CreateMap<RegisterUserDto, User>();
             CreateMap<User, UserListDto>();
             CreateMap<UserUpdateDto, User>();
-
-            CreateMap<User, UserProfileDto>()
-                .ForMember(dest => dest.Roles, opt => opt.Ignore());
         }
     }
 }

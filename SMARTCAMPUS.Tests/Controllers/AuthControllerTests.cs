@@ -8,6 +8,7 @@ using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Auth;
+using SMARTCAMPUS.EntityLayer.DTOs.User;
 using System.Security.Claims;
 using Xunit;
 
@@ -43,8 +44,13 @@ namespace SMARTCAMPUS.Tests.Controllers
         public async Task Login_ShouldReturnOk_WhenSuccessful()
         {
             var loginDto = new LoginDto { Email = "test@test.com", Password = "Password" };
-            var tokenDto = new TokenDto { AccessToken = "acc", RefreshToken = "ref" };
-            var response = Response<TokenDto>.Success(tokenDto, 200);
+            var loginResponseDto = new LoginResponseDto 
+            { 
+                AccessToken = "acc", 
+                RefreshToken = "ref",
+                User = new UserDto { Id = "1", Email = "test@test.com", FullName = "Test", UserType = "Student", Role = "Student", Roles = new List<string> { "Student" } }
+            };
+            var response = Response<LoginResponseDto>.Success(loginResponseDto, 200);
 
             _mockAuthService.Setup(x => x.LoginAsync(loginDto)).ReturnsAsync(response);
 
@@ -59,7 +65,7 @@ namespace SMARTCAMPUS.Tests.Controllers
         public async Task Login_ShouldReturnBadRequest_WhenFailed()
         {
             var loginDto = new LoginDto { Email = "test@test.com", Password = "Password" };
-            var response = Response<TokenDto>.Fail("Error", 400);
+            var response = Response<LoginResponseDto>.Fail("Error", 400);
 
             _mockAuthService.Setup(x => x.LoginAsync(loginDto)).ReturnsAsync(response);
 
