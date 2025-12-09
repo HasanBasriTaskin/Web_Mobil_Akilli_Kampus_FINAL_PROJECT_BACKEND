@@ -93,6 +93,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 Role = primaryRole,
                 IsEmailVerified = user.EmailConfirmed,
                 IsActive = user.IsActive,
+                PhoneNumber = user.PhoneNumber,
                 ProfilePictureUrl = user.ProfilePictureUrl,
                 CreatedAt = user.CreatedDate
             };

@@ -9,6 +9,7 @@ namespace SMARTCAMPUS.EntityLayer.DTOs.Auth
         public string Role { get; set; } = null!;
         public bool IsEmailVerified { get; set; }
         public bool IsActive { get; set; }
+        public string? PhoneNumber { get; set; }
         public string? ProfilePictureUrl { get; set; }
         public DateTime CreatedAt { get; set; }
         
