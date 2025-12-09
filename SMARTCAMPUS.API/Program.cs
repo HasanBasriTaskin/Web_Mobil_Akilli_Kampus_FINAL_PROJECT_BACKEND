@@ -178,6 +178,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Enable serving static files from wwwroot
+app.UseStaticFiles();
+
 app.UseCors("AllowClient");
 
 // Enable Serilog request logging
