@@ -6,7 +6,7 @@ namespace SMARTCAMPUS.BusinessLayer.Abstract
 {
     public interface IAuthService
     {
-        Task<Response<TokenDto>> LoginAsync(LoginDto loginDto);
+        Task<Response<LoginResponseDto>> LoginAsync(LoginDto loginDto);
         Task<Response<TokenDto>> RegisterAsync(RegisterUserDto registerDto);
         Task<Response<TokenDto>> CreateTokenByRefreshTokenAsync(string refreshToken); 
         Task<Response<NoDataDto>> RevokeRefreshTokenAsync(string refreshToken);
