@@ -56,7 +56,7 @@ namespace SMARTCAMPUS.Tests.Managers
             var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
 
             var user = new User { Id = "1", FullName = "Test" };
-            var dto = new UserProfileDto { IdString = "1", FullName = "Test" };
+            var dto = new UserProfileDto { Id = "1", FullName = "Test" };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
             _mockMapper.Setup(x => x.Map<UserProfileDto>(user)).Returns(dto);
