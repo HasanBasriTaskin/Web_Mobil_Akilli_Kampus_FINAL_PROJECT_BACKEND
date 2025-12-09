@@ -23,7 +23,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             _context = context;
         }
 
-        public async Task<PagedResponse<UserListDto>> GetUsersAsync(UserQueryParameters queryParams)
+        public async Task<Response<PagedResponse<UserListDto>>> GetUsersAsync(UserQueryParameters queryParams)
         {
             // Base query
             var usersQuery = _context.Users.AsQueryable();
@@ -93,7 +93,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 .Take(queryParams.Limit)
                 .ToListAsync();
 
-            return new PagedResponse<UserListDto>(userDtos, queryParams.Page, queryParams.Limit, totalRecords);
+            var pagedResponse = new PagedResponse<UserListDto>(userDtos, queryParams.Page, queryParams.Limit, totalRecords);
+            return Response<PagedResponse<UserListDto>>.Success(pagedResponse, 200);
         }
 
         public async Task<Response<UserProfileDto>> GetUserByIdAsync(string userId)
