@@ -1,8 +1,10 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
+using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.User;
 using SMARTCAMPUS.EntityLayer.Models;
