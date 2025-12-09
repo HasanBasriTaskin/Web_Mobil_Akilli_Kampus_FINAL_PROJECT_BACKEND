@@ -7,7 +7,7 @@ namespace SMARTCAMPUS.BusinessLayer.Abstract
     public interface IUserService
     {
         Task<Response<PagedResponse<UserListDto>>> GetUsersAsync(UserQueryParameters queryParams);
-        Task<Response<UserProfileDto>> GetUserByIdAsync(string userId);
+        Task<Response<UserDto>> GetUserByIdAsync(string userId);
         Task<Response<NoDataDto>> UpdateUserAsync(string userId, UserUpdateDto userUpdateDto);
         Task<Response<NoDataDto>> DeleteUserAsync(string userId);
         Task<Response<NoDataDto>> AssignRolesAsync(string userId,List<string> roles);

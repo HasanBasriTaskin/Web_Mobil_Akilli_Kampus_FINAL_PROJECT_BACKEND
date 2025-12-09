@@ -7,6 +7,7 @@ using SMARTCAMPUS.BusinessLayer.Common;
 using SMARTCAMPUS.BusinessLayer.Tools;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.EntityLayer.DTOs.Auth;
+using SMARTCAMPUS.EntityLayer.DTOs.User;
 using SMARTCAMPUS.EntityLayer.Models;
 
 using Microsoft.AspNetCore.Http;
@@ -84,7 +85,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             await _unitOfWork.CommitAsync();
 
             // Build user info based on role
-            var loginUserDto = new LoginUserDto
+            var userDto = new UserDto
             {
                 Id = user.Id,
                 Email = user.Email!,
@@ -95,7 +96,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 IsActive = user.IsActive,
                 PhoneNumber = user.PhoneNumber,
                 ProfilePictureUrl = user.ProfilePictureUrl,
-                CreatedAt = user.CreatedDate
+                CreatedAt = user.CreatedDate,
+                Roles = roles
             };
 
             // Fetch Student or Faculty info based on role
@@ -104,7 +106,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 var student = await _unitOfWork.Students.Where(s => s.UserId == user.Id).FirstOrDefaultAsync();
                 if (student != null)
                 {
-                    loginUserDto.Student = new StudentInfoDto
+                    userDto.Student = new StudentInfoDto
                     {
                         StudentNumber = student.StudentNumber,
                         DepartmentId = student.DepartmentId,
@@ -117,7 +119,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 var faculty = await _unitOfWork.Faculties.Where(f => f.UserId == user.Id).FirstOrDefaultAsync();
                 if (faculty != null)
                 {
-                    loginUserDto.Faculty = new FacultyInfoDto
+                    userDto.Faculty = new FacultyInfoDto
                     {
                         EmployeeNumber = faculty.EmployeeNumber,
                         Title = faculty.Title,
@@ -133,7 +135,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 RefreshToken = tokenDto.RefreshToken,
                 AccessTokenExpiration = tokenDto.AccessTokenExpiration,
                 RefreshTokenExpiration = tokenDto.RefreshTokenExpiration,
-                User = loginUserDto
+                User = userDto
             };
 
             return Response<LoginResponseDto>.Success(loginResponse, 200);

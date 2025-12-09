@@ -55,18 +55,19 @@ namespace SMARTCAMPUS.Tests.Managers
             using var context = new CampusContext(_dbContextOptions);
             var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
 
-            var user = new User { Id = "1", FullName = "Test" };
-            var dto = new UserProfileDto { Id = "1", FullName = "Test" };
+            var user = new User { Id = "1", FullName = "Test", Email = "test@test.com" };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
-            _mockMapper.Setup(x => x.Map<UserProfileDto>(user)).Returns(dto);
+            _mockUserManager.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(new List<string> { "Student" });
 
             // Act
             var result = await userService.GetUserByIdAsync("1");
 
             // Assert
             result.IsSuccessful.Should().BeTrue();
-            result.Data.Should().BeEquivalentTo(dto);
+            result.Data.Id.Should().Be("1");
+            result.Data.FullName.Should().Be("Test");
+            result.Data.Roles.Should().Contain("Student");
         }
 
         [Fact]

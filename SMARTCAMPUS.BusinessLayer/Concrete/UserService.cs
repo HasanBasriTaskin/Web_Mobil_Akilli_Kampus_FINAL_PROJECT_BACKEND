@@ -6,6 +6,7 @@ using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
 using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.DTOs;
+using SMARTCAMPUS.EntityLayer.DTOs.Auth;
 using SMARTCAMPUS.EntityLayer.DTOs.User;
 using SMARTCAMPUS.EntityLayer.Models;
 
@@ -99,13 +100,59 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             return Response<PagedResponse<UserListDto>>.Success(pagedResponse, 200);
         }
 
-        public async Task<Response<UserProfileDto>> GetUserByIdAsync(string userId)
+        public async Task<Response<UserDto>> GetUserByIdAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return Response<UserProfileDto>.Fail("Kullanıcı bulunamadı", 404);
+            if (user == null) return Response<UserDto>.Fail("Kullanıcı bulunamadı", 404);
 
-            var dto = _mapper.Map<UserProfileDto>(user);
-            return Response<UserProfileDto>.Success(dto, 200);
+            var roles = await _userManager.GetRolesAsync(user);
+            var primaryRole = roles.FirstOrDefault() ?? "User";
+
+            var userDto = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                FullName = user.FullName,
+                UserType = primaryRole,
+                Role = primaryRole,
+                IsEmailVerified = user.EmailConfirmed,
+                IsActive = user.IsActive,
+                PhoneNumber = user.PhoneNumber,
+                ProfilePictureUrl = user.ProfilePictureUrl,
+                CreatedAt = user.CreatedDate,
+                Roles = roles
+            };
+
+            // Fetch Student or Faculty info based on role
+            if (primaryRole == "Student")
+            {
+                var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == user.Id);
+                if (student != null)
+                {
+                    userDto.Student = new StudentInfoDto
+                    {
+                        StudentNumber = student.StudentNumber,
+                        DepartmentId = student.DepartmentId,
+                        EnrollmentDate = student.CreatedDate
+                    };
+                }
+            }
+            else if (primaryRole == "Faculty")
+            {
+                var faculty = await _context.Faculties.FirstOrDefaultAsync(f => f.UserId == user.Id);
+                if (faculty != null)
+                {
+                    userDto.Faculty = new FacultyInfoDto
+                    {
+                        EmployeeNumber = faculty.EmployeeNumber,
+                        Title = faculty.Title,
+                        DepartmentId = faculty.DepartmentId,
+                        OfficeLocation = faculty.OfficeLocation
+                    };
+                }
+            }
+
+            return Response<UserDto>.Success(userDto, 200);
         }
 
         public async Task<Response<NoDataDto>> UpdateUserAsync(string userId, UserUpdateDto userUpdateDto)
