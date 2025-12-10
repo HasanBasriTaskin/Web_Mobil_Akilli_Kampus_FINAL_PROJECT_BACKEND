@@ -24,9 +24,9 @@ jobs:
             
             cd ~/MehmetFinalProje/backend
             
-            # Clone or pull
+            # Clone or pull (using GitHub token for private repos)
             if [ ! -d ".git" ]; then
-              git clone https://github.com/HasanBasriTaskin/Web_Mobil_Akilli_Kampus_FINAL_PROJECT_BACKEND.git .
+              git clone https://${{ secrets.GH_TOKEN }}@github.com/HasanBasriTaskin/Web_Mobil_Akilli_Kampus_FINAL_PROJECT_BACKEND.git .
             else
               git fetch origin
               git reset --hard origin/main
@@ -38,5 +38,5 @@ jobs:
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             EOF
             
-            # Build and restart only backend
-            docker-compose -f docker-compose.prod.yml up -d --build backend
+            # Build and restart only backend (docker compose v2)
+            docker compose -f docker-compose.prod.yml up -d --build backend
