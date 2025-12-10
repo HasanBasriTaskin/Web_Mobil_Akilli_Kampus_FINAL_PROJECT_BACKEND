@@ -40,5 +40,10 @@ jobs:
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             EOF
             
+            # Copy appsettings.example.json to appsettings.json (if not exists)
+            if [ ! -f "SMARTCAMPUS.API/appsettings.json" ]; then
+              cp SMARTCAMPUS.API/appsettings.example.json SMARTCAMPUS.API/appsettings.json
+            fi
+            
             # Build and restart backend
             docker compose -f docker-compose.prod.yml up -d --build backend
