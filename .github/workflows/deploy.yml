@@ -1,0 +1,42 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            # Create directory if not exists
+            mkdir -p ~/MehmetFinalProje/backend
+            mkdir -p ~/MehmetFinalProje/frontend
+            
+            cd ~/MehmetFinalProje/backend
+            
+            # Clone or pull
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/HasanBasriTaskin/Web_Mobil_Akilli_Kampus_FINAL_PROJECT_BACKEND.git .
+            else
+              git fetch origin
+              git reset --hard origin/main
+            fi
+            
+            # Create .env file from secrets
+            cat > .env << EOF
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            EOF
+            
+            # Build and restart only backend
+            docker-compose -f docker-compose.prod.yml up -d --build backend
