@@ -159,12 +159,14 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // 6. CORS Configuration
+var clientUrl = builder.Configuration["ClientSettings:Url"] ?? "http://localhost:3000";
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClient",
-        b => b.WithOrigins("http://localhost:3000") // ClientSettings:Url
+        b => b.WithOrigins(clientUrl)
               .AllowAnyMethod()
-              .AllowAnyHeader());
+              .AllowAnyHeader()
+              .AllowCredentials());
 });
 
 var app = builder.Build();
