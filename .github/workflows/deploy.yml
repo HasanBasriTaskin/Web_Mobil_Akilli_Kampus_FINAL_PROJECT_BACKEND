@@ -38,6 +38,7 @@ jobs:
             cat > .env << EOF
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
+            ACME_EMAIL=${{ secrets.ACME_EMAIL }}
             EOF
             
             # Copy appsettings.example.json to appsettings.json (if not exists)
@@ -45,5 +46,5 @@ jobs:
               cp SMARTCAMPUS.API/appsettings.example.json SMARTCAMPUS.API/appsettings.json
             fi
             
-            # Build and restart backend
-            docker compose -f docker-compose.prod.yml up -d --build backend
+            # Build and restart all services (traefik, db, backend)
+            docker compose -f docker-compose.prod.yml up -d --build traefik db backend
