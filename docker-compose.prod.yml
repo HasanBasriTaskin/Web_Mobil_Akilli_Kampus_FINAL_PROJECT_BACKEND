@@ -53,7 +53,7 @@ services:
 
   frontend:
     build:
-      context: ../Web_Mobil_Akilli_Kampus_FINAL_PROJECT_FRONTEND
+      context: ../frontend
       dockerfile: Dockerfile
     container_name: smartcampus_frontend
     restart: always
