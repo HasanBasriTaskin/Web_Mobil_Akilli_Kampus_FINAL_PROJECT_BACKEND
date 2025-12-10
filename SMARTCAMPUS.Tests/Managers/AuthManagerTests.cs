@@ -157,9 +157,16 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             var loginDto = new LoginDto { Email = "user@test.com", Password = "CorrectPassword" };
-            var user = new User { Id = "u1", Email = loginDto.Email, IsActive = true };
-            var roles = new List<string> { "Student" };
-            var tokenDto = new TokenDto { AccessToken = "access_token", RefreshToken = "refresh_token" };
+            var user = new User { Id = "u1", Email = loginDto.Email, IsActive = true, FullName = "Test User" };
+            // Using "User" role to avoid Student/Faculty FirstOrDefaultAsync calls
+            var roles = new List<string> { "User" };
+            var tokenDto = new TokenDto 
+            { 
+                AccessToken = "access_token", 
+                RefreshToken = "refresh_token",
+                AccessTokenExpiration = DateTime.UtcNow.AddHours(1),
+                RefreshTokenExpiration = DateTime.UtcNow.AddDays(7)
+            };
 
             _mockUserManager.Setup(x => x.FindByEmailAsync(loginDto.Email))
                             .ReturnsAsync(user);
@@ -177,7 +184,11 @@ namespace SMARTCAMPUS.Tests.Managers
 
             // Assert
             result.IsSuccessful.Should().BeTrue();
-            result.Data.Should().BeEquivalentTo(tokenDto);
+            result.StatusCode.Should().Be(200);
+            result.Data.AccessToken.Should().Be(tokenDto.AccessToken);
+            result.Data.RefreshToken.Should().Be(tokenDto.RefreshToken);
+            result.Data.User.Should().NotBeNull();
+            result.Data.User.Email.Should().Be(user.Email);
 
             _mockRefreshTokenDal.Verify(x => x.AddAsync(It.Is<RefreshToken>(rt =>
                 rt.UserId == user.Id &&
@@ -663,5 +674,461 @@ namespace SMARTCAMPUS.Tests.Managers
 
         #endregion
 
+        #region ChangePasswordAsync Tests
+
+        [Fact]
+        public async Task ChangePasswordAsync_UserNotFound_ReturnsFail()
+        {
+            // Arrange
+            var changePasswordDto = new ChangePasswordDto 
+            { 
+                UserId = "u1", 
+                OldPassword = "oldPass", 
+                NewPassword = "newPass", 
+                ConfirmNewPassword = "newPass" 
+            };
+
+            _mockUserManager.Setup(x => x.FindByIdAsync("u1")).ReturnsAsync((User?)null);
+
+            // Act
+            var result = await _authManager.ChangePasswordAsync(changePasswordDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+            result.Errors.Should().Contain("Kullanıcı bulunamadı");
+        }
+
+        [Fact]
+        public async Task ChangePasswordAsync_PasswordMismatch_ReturnsFail()
+        {
+            // Arrange
+            var user = new User { Id = "u1" };
+            var changePasswordDto = new ChangePasswordDto 
+            { 
+                UserId = "u1", 
+                OldPassword = "oldPass", 
+                NewPassword = "newPass", 
+                ConfirmNewPassword = "differentPass" 
+            };
+
+            _mockUserManager.Setup(x => x.FindByIdAsync("u1")).ReturnsAsync(user);
+
+            // Act
+            var result = await _authManager.ChangePasswordAsync(changePasswordDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+            result.Errors.Should().Contain("Şifreler uyuşmuyor.");
+        }
+
+        [Fact]
+        public async Task ChangePasswordAsync_ChangePasswordFails_ReturnsFail()
+        {
+            // Arrange
+            var user = new User { Id = "u1" };
+            var changePasswordDto = new ChangePasswordDto 
+            { 
+                UserId = "u1", 
+                OldPassword = "oldPass", 
+                NewPassword = "newPass", 
+                ConfirmNewPassword = "newPass" 
+            };
+
+            _mockUserManager.Setup(x => x.FindByIdAsync("u1")).ReturnsAsync(user);
+            _mockUserManager.Setup(x => x.ChangePasswordAsync(user, "oldPass", "newPass"))
+                .ReturnsAsync(IdentityResult.Failed(new IdentityError { Description = "Old password incorrect" }));
+
+            // Act
+            var result = await _authManager.ChangePasswordAsync(changePasswordDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+            result.Errors.Should().Contain("Old password incorrect");
+        }
+
+        [Fact]
+        public async Task ChangePasswordAsync_Success_ReturnsSuccess()
+        {
+            // Arrange
+            var user = new User { Id = "u1" };
+            var changePasswordDto = new ChangePasswordDto 
+            { 
+                UserId = "u1", 
+                OldPassword = "oldPass", 
+                NewPassword = "newPass", 
+                ConfirmNewPassword = "newPass" 
+            };
+
+            _mockUserManager.Setup(x => x.FindByIdAsync("u1")).ReturnsAsync(user);
+            _mockUserManager.Setup(x => x.ChangePasswordAsync(user, "oldPass", "newPass"))
+                .ReturnsAsync(IdentityResult.Success);
+
+            // Act
+            var result = await _authManager.ChangePasswordAsync(changePasswordDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.StatusCode.Should().Be(200);
+        }
+
+        #endregion
+
+        #region LogoutAsync Tests
+
+        [Fact]
+        public async Task LogoutAsync_ShouldCallRevokeRefreshToken()
+        {
+            // Arrange
+            var refreshToken = new RefreshToken
+            {
+                Token = "logout_token",
+                Expires = DateTime.UtcNow.AddMinutes(10),
+                Revoked = null
+            };
+            var list = new List<RefreshToken> { refreshToken };
+            var asyncEnumerable = new TestAsyncEnumerable<RefreshToken>(list);
+
+            _mockRefreshTokenDal.Setup(x => x.Where(It.IsAny<System.Linq.Expressions.Expression<Func<RefreshToken, bool>>>()))
+                .Returns(asyncEnumerable);
+
+            // Act
+            var result = await _authManager.LogoutAsync("logout_token");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.StatusCode.Should().Be(200);
+            refreshToken.Revoked.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task LogoutAsync_TokenNotFound_ReturnsFail()
+        {
+            // Arrange
+            var emptyList = new List<RefreshToken>();
+            var asyncEnumerable = new TestAsyncEnumerable<RefreshToken>(emptyList);
+
+            _mockRefreshTokenDal.Setup(x => x.Where(It.IsAny<System.Linq.Expressions.Expression<Func<RefreshToken, bool>>>()))
+                .Returns(asyncEnumerable);
+
+            // Act
+            var result = await _authManager.LogoutAsync("invalid_token");
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+        }
+
+        #endregion
+
+        #region RegisterAsync - Invalid UserType Tests
+
+        [Fact]
+        public async Task RegisterAsync_InvalidUserType_ReturnsFail()
+        {
+            // Arrange
+            var registerDto = new RegisterUserDto 
+            { 
+                Email = "test@test.com", 
+                Password = "Pass123", 
+                UserType = "InvalidType" 
+            };
+
+            // Act
+            var result = await _authManager.RegisterAsync(registerDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+            result.Errors.Should().Contain("Geçersiz kullanıcı tipi");
+        }
+
+        #endregion
+
+        #region RegisterFacultyAsync Tests
+
+        [Fact]
+        public async Task RegisterAsync_Faculty_WithExistingEmail_ReturnsFail()
+        {
+            // Arrange
+            var registerDto = new RegisterUserDto 
+            { 
+                Email = "faculty@test.com", 
+                Password = "Pass123", 
+                UserType = "Faculty",
+                EmployeeNumber = "EMP001",
+                Title = "Dr."
+            };
+            var existingUser = new User { Email = registerDto.Email };
+
+            _mockUserManager.Setup(x => x.FindByEmailAsync(registerDto.Email))
+                .ReturnsAsync(existingUser);
+
+            // Act
+            var result = await _authManager.RegisterAsync(registerDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+            result.Errors.Should().Contain("Bu e-posta adresiyle kayıtlı kullanıcı zaten var");
+        }
+
+        [Fact]
+        public async Task RegisterAsync_Faculty_MissingEmployeeNumber_ReturnsFail()
+        {
+            // Arrange
+            var registerDto = new RegisterUserDto 
+            { 
+                Email = "faculty@test.com", 
+                Password = "Pass123", 
+                UserType = "Faculty",
+                EmployeeNumber = "",
+                Title = "Dr."
+            };
+
+            _mockUserManager.Setup(x => x.FindByEmailAsync(registerDto.Email))
+                .ReturnsAsync((User?)null);
+
+            // Mock Transaction
+            var mockTransaction = new Mock<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
+            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync())
+                .ReturnsAsync(mockTransaction.Object);
+
+            // Act
+            var result = await _authManager.RegisterAsync(registerDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+            result.Errors.Should().Contain("Sicil numarası ve Ünvan zorunludur");
+        }
+
+        [Fact]
+        public async Task RegisterAsync_Faculty_MissingTitle_ReturnsFail()
+        {
+            // Arrange
+            var registerDto = new RegisterUserDto 
+            { 
+                Email = "faculty@test.com", 
+                Password = "Pass123", 
+                UserType = "Faculty",
+                EmployeeNumber = "EMP001",
+                Title = ""
+            };
+
+            _mockUserManager.Setup(x => x.FindByEmailAsync(registerDto.Email))
+                .ReturnsAsync((User?)null);
+
+            // Mock Transaction
+            var mockTransaction = new Mock<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
+            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync())
+                .ReturnsAsync(mockTransaction.Object);
+
+            // Act
+            var result = await _authManager.RegisterAsync(registerDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+        }
+
+        [Fact]
+        public async Task RegisterAsync_Faculty_Success_ReturnsToken()
+        {
+            // Arrange
+            var registerDto = new RegisterUserDto 
+            {
+                Email = "faculty@test.com",
+                Password = "Pass123",
+                EmployeeNumber = "EMP001",
+                Title = "Dr.",
+                DepartmentId = 1,
+                UserType = "Faculty",
+                FullName = "Test Faculty",
+                OfficeLocation = "A101"
+            };
+            var user = new User { Id = "f1", Email = registerDto.Email };
+            var tokenDto = new TokenDto { AccessToken = "acc", RefreshToken = "ref" };
+
+            _mockUserManager.Setup(x => x.FindByEmailAsync(registerDto.Email))
+                .ReturnsAsync((User?)null);
+
+            // Mock Transaction
+            var mockTransaction = new Mock<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
+            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync())
+                .ReturnsAsync(mockTransaction.Object);
+
+            _mockMapper.Setup(x => x.Map<User>(registerDto)).Returns(user);
+
+            // Create Success
+            _mockUserManager.Setup(x => x.CreateAsync(user, registerDto.Password))
+                .ReturnsAsync(IdentityResult.Success);
+
+            _mockUserManager.Setup(x => x.AddToRoleAsync(user, "Faculty"))
+                .ReturnsAsync(IdentityResult.Success);
+
+            // Setup Faculty DAL
+            var mockFacultyDal = new Mock<IFacultyDal>();
+            mockFacultyDal.Setup(u => u.AddAsync(It.IsAny<Faculty>())).Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(u => u.Faculties).Returns(mockFacultyDal.Object);
+
+            // Mock Token Generator
+            _mockTokenGenerator.Setup(x => x.GenerateToken(user, It.Is<List<string>>(r => r.Contains("Faculty"))))
+                .Returns(tokenDto);
+
+            // Mock Email Generation
+            _mockUserManager.Setup(x => x.GenerateEmailConfirmationTokenAsync(user)).ReturnsAsync("email_token");
+
+            // Mock Configuration
+            _mockConfiguration.Setup(x => x["ClientSettings:Url"]).Returns("http://test.com");
+
+            // Act
+            var result = await _authManager.RegisterAsync(registerDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.StatusCode.Should().Be(201);
+            result.Data.Should().BeEquivalentTo(tokenDto);
+
+            // Verify Commit
+            mockTransaction.Verify(x => x.CommitAsync(default), Times.Once);
+        }
+
+        #endregion
+
+        #region RegisterStudentAsync - Missing StudentNumber Tests
+
+        [Fact]
+        public async Task RegisterAsync_Student_MissingStudentNumber_ReturnsFail()
+        {
+            // Arrange
+            var registerDto = new RegisterUserDto 
+            { 
+                Email = "student@test.com", 
+                Password = "Pass123", 
+                UserType = "Student",
+                StudentNumber = ""
+            };
+
+            _mockUserManager.Setup(x => x.FindByEmailAsync(registerDto.Email))
+                .ReturnsAsync((User?)null);
+
+            // Mock Transaction
+            var mockTransaction = new Mock<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>();
+            _mockUnitOfWork.Setup(x => x.BeginTransactionAsync())
+                .ReturnsAsync(mockTransaction.Object);
+
+            // Act
+            var result = await _authManager.RegisterAsync(registerDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+            result.Errors.Should().Contain("Öğrenci numarası zorunludur");
+        }
+
+        #endregion
+
+        #region LoginAsync - Student/Faculty Info Tests
+
+        [Fact]
+        public async Task LoginAsync_WithStudent_ReturnsStudentInfo()
+        {
+            // Arrange
+            var loginDto = new LoginDto { Email = "student@test.com", Password = "CorrectPassword" };
+            var user = new User { Id = "u1", Email = loginDto.Email, IsActive = true };
+            var roles = new List<string> { "Student" };
+            var tokenDto = new TokenDto { AccessToken = "access_token", RefreshToken = "refresh_token" };
+
+            _mockUserManager.Setup(x => x.FindByEmailAsync(loginDto.Email)).ReturnsAsync(user);
+            _mockSignInManager.Setup(x => x.CheckPasswordSignInAsync(user, loginDto.Password, false))
+                .ReturnsAsync(SignInResult.Success);
+            _mockUserManager.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(roles);
+            _mockTokenGenerator.Setup(x => x.GenerateToken(user, roles)).Returns(tokenDto);
+
+            // Mock Student data
+            var students = new List<Student> { new Student { UserId = "u1", StudentNumber = "STU001", DepartmentId = 1 } };
+            var asyncEnumerable = new TestAsyncEnumerable<Student>(students);
+            _mockStudentDal.Setup(x => x.Where(It.IsAny<System.Linq.Expressions.Expression<Func<Student, bool>>>()))
+                .Returns(asyncEnumerable);
+
+            // Act
+            var result = await _authManager.LoginAsync(loginDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.User.Should().NotBeNull();
+            result.Data.User.Student.Should().NotBeNull();
+            result.Data.User.Student.StudentNumber.Should().Be("STU001");
+        }
+
+        [Fact]
+        public async Task LoginAsync_WithFaculty_ReturnsFacultyInfo()
+        {
+            // Arrange
+            var loginDto = new LoginDto { Email = "faculty@test.com", Password = "CorrectPassword" };
+            var user = new User { Id = "u1", Email = loginDto.Email, IsActive = true };
+            var roles = new List<string> { "Faculty" };
+            var tokenDto = new TokenDto { AccessToken = "access_token", RefreshToken = "refresh_token" };
+
+            _mockUserManager.Setup(x => x.FindByEmailAsync(loginDto.Email)).ReturnsAsync(user);
+            _mockSignInManager.Setup(x => x.CheckPasswordSignInAsync(user, loginDto.Password, false))
+                .ReturnsAsync(SignInResult.Success);
+            _mockUserManager.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(roles);
+            _mockTokenGenerator.Setup(x => x.GenerateToken(user, roles)).Returns(tokenDto);
+
+            // Mock Faculty data
+            var mockFacultyDal = new Mock<IFacultyDal>();
+            var faculties = new List<Faculty> { new Faculty { UserId = "u1", EmployeeNumber = "FAC001", Title = "Dr.", DepartmentId = 1 } };
+            var asyncEnumerable = new TestAsyncEnumerable<Faculty>(faculties);
+            mockFacultyDal.Setup(x => x.Where(It.IsAny<System.Linq.Expressions.Expression<Func<Faculty, bool>>>()))
+                .Returns(asyncEnumerable);
+            _mockUnitOfWork.Setup(u => u.Faculties).Returns(mockFacultyDal.Object);
+
+            // Act
+            var result = await _authManager.LoginAsync(loginDto);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.User.Should().NotBeNull();
+            result.Data.User.Faculty.Should().NotBeNull();
+            result.Data.User.Faculty.EmployeeNumber.Should().Be("FAC001");
+        }
+
+        #endregion
+
+        #region RevokeRefreshToken - Already Revoked Tests
+
+        [Fact]
+        public async Task RevokeRefreshTokenAsync_AlreadyRevoked_ReturnsSuccess()
+        {
+            // Arrange - Token is already revoked (not valid)
+            var refreshToken = new RefreshToken
+            {
+                Token = "revoked_token",
+                Expires = DateTime.UtcNow.AddMinutes(10),
+                Revoked = DateTime.UtcNow.AddMinutes(-5) // Already revoked
+            };
+            var list = new List<RefreshToken> { refreshToken };
+            var asyncEnumerable = new TestAsyncEnumerable<RefreshToken>(list);
+
+            _mockRefreshTokenDal.Setup(x => x.Where(It.IsAny<System.Linq.Expressions.Expression<Func<RefreshToken, bool>>>()))
+                .Returns(asyncEnumerable);
+
+            // Act
+            var result = await _authManager.RevokeRefreshTokenAsync("revoked_token");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.StatusCode.Should().Be(200);
+            // Should not update already revoked token
+            _mockRefreshTokenDal.Verify(x => x.Update(It.IsAny<RefreshToken>()), Times.Never);
+        }
+
+        #endregion
+
     }
 }
+

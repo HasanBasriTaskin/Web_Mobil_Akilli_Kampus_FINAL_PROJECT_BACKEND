@@ -1,5 +1,6 @@
 using FluentAssertions;
 using SMARTCAMPUS.BusinessLayer.Common;
+using SMARTCAMPUS.EntityLayer.DTOs;
 using Xunit;
 
 namespace SMARTCAMPUS.Tests.Common
@@ -52,5 +53,54 @@ namespace SMARTCAMPUS.Tests.Common
             response.Errors.Should().BeEquivalentTo(messages);
             response.StatusCode.Should().Be(400);
         }
+
+        [Fact]
+        public void Response_Success_WithStatusCodeOnly_ShouldSetPropertiesCorrectly()
+        {
+            // Act
+            var response = Response<NoDataDto>.Success(200);
+
+            // Assert
+            response.IsSuccessful.Should().BeTrue();
+            response.StatusCode.Should().Be(200);
+            response.Data.Should().NotBeNull();
+            response.Data.Should().BeOfType<NoDataDto>();
+        }
+
+        [Fact]
+        public void Response_Success_WithStatusCodeOnly_NonNoDataDto_ShouldHaveNullData()
+        {
+            // Act
+            var response = Response<string>.Success(200);
+
+            // Assert
+            response.IsSuccessful.Should().BeTrue();
+            response.StatusCode.Should().Be(200);
+            response.Data.Should().BeNull();
+        }
+
+        [Fact]
+        public void Response_Fail_ShouldHandle404StatusCode()
+        {
+            // Act
+            var response = Response<string>.Fail("Not Found", 404);
+
+            // Assert
+            response.IsSuccessful.Should().BeFalse();
+            response.StatusCode.Should().Be(404);
+            response.Errors.Should().Contain("Not Found");
+        }
+
+        [Fact]
+        public void Response_Fail_ShouldHandle500StatusCode()
+        {
+            // Act
+            var response = Response<string>.Fail("Internal Server Error", 500);
+
+            // Assert
+            response.IsSuccessful.Should().BeFalse();
+            response.StatusCode.Should().Be(500);
+        }
     }
 }
+
