@@ -1,4 +1,17 @@
 services:
+  nginx:
+    image: nginx:alpine
+    container_name: smartcampus_nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+      - phpmyadmin
+
   db:
     image: mysql:8.0
     container_name: smartcampus_db
@@ -32,13 +45,27 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Server=db;Database=smart_campus_db;User=root;Password=${DB_PASSWORD};
+      - ClientSettings__Url=http://localhost
+
+  frontend:
+    build:
+      context: ../Web_Mobil_Akilli_Kampus_FINAL_PROJECT_FRONTEND
+      dockerfile: ../Web_Mobil_Akilli_Kampus_FINAL_PROJECT_BACKEND/docker/frontend.dev.Dockerfile
+    container_name: smartcampus_frontend
+    restart: on-failure
+    depends_on:
+      - backend
+    volumes:
+      - ../Web_Mobil_Akilli_Kampus_FINAL_PROJECT_FRONTEND:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
 
   phpmyadmin:
     image: phpmyadmin:latest
     container_name: smartcampus_phpmyadmin
     restart: always
-    ports:
-      - "8081:80"
     environment:
       PMA_HOST: db
       PMA_PORT: 3306
