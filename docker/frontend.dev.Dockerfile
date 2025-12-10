@@ -5,6 +5,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Install global dependencies
+RUN npm install -g concurrently
+
 # Install dependencies
 COPY package*.json ./
 RUN npm ci
@@ -19,3 +22,4 @@ EXPOSE 3000
 
 # Run development server
 CMD ["npm", "run", "dev"]
+
