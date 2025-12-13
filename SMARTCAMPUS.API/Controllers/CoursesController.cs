@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SMARTCAMPUS.BusinessLayer.Abstract;
+using SMARTCAMPUS.EntityLayer.DTOs.Academic;
 
 namespace SMARTCAMPUS.API.Controllers
 {
@@ -17,9 +18,9 @@ namespace SMARTCAMPUS.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetCourses()
+        public async Task<IActionResult> GetCourses([FromQuery] CourseQueryParameters queryParams)
         {
-            var result = await _courseService.GetCoursesAsync();
+            var result = await _courseService.GetCoursesAsync(queryParams);
             return StatusCode(result.StatusCode, result);
         }
 
@@ -55,6 +56,30 @@ namespace SMARTCAMPUS.API.Controllers
         public async Task<IActionResult> GetSection(int sectionId)
         {
             var result = await _courseService.GetSectionByIdAsync(sectionId);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateCourse([FromBody] CourseCreateDto courseCreateDto)
+        {
+            var result = await _courseService.CreateCourseAsync(courseCreateDto);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateCourse(int id, [FromBody] CourseUpdateDto courseUpdateDto)
+        {
+            var result = await _courseService.UpdateCourseAsync(id, courseUpdateDto);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteCourse(int id)
+        {
+            var result = await _courseService.DeleteCourseAsync(id);
             return StatusCode(result.StatusCode, result);
         }
     }
