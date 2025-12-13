@@ -29,6 +29,10 @@ namespace SMARTCAMPUS.DataAccessLayer
             await SeedCoursesAsync(context);
             await SeedCoursePrerequisitesAsync(context);
             await SeedCourseSectionsAsync(context, userManager);
+            await SeedEnrollmentsAsync(context);
+            await SeedAttendanceSessionsAsync(context, userManager);
+            await SeedAttendanceRecordsAsync(context);
+            await SeedExcuseRequestsAsync(context, userManager);
         }
 
         private static async Task SeedRolesAsync(RoleManager<Role> roleManager)
@@ -312,6 +316,276 @@ namespace SMARTCAMPUS.DataAccessLayer
                 if (sections.Any())
                 {
                     await context.CourseSections.AddRangeAsync(sections);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedEnrollmentsAsync(CampusContext context)
+        {
+            if (!await context.Enrollments.AnyAsync())
+            {
+                var students = await context.Students.Take(3).ToListAsync();
+                var sections = await context.CourseSections.Take(3).ToListAsync();
+
+                if (!students.Any() || !sections.Any())
+                    return;
+
+                var enrollments = new List<Enrollment>();
+
+                // Enroll first student to first 2 sections
+                if (students.Count > 0 && sections.Count > 0)
+                {
+                    enrollments.Add(new Enrollment
+                    {
+                        StudentId = students[0].Id,
+                        SectionId = sections[0].Id,
+                        Status = "Active",
+                        EnrollmentDate = DateTime.UtcNow.AddDays(-30)
+                    });
+
+                    if (sections.Count > 1)
+                    {
+                        enrollments.Add(new Enrollment
+                        {
+                            StudentId = students[0].Id,
+                            SectionId = sections[1].Id,
+                            Status = "Active",
+                            EnrollmentDate = DateTime.UtcNow.AddDays(-25)
+                        });
+                    }
+                }
+
+                // Enroll second student to first section
+                if (students.Count > 1 && sections.Count > 0)
+                {
+                    enrollments.Add(new Enrollment
+                    {
+                        StudentId = students[1].Id,
+                        SectionId = sections[0].Id,
+                        Status = "Active",
+                        EnrollmentDate = DateTime.UtcNow.AddDays(-28)
+                    });
+                }
+
+                // Enroll third student to second section with grades (completed course)
+                if (students.Count > 2 && sections.Count > 1)
+                {
+                    enrollments.Add(new Enrollment
+                    {
+                        StudentId = students[2].Id,
+                        SectionId = sections[1].Id,
+                        Status = "Completed",
+                        EnrollmentDate = DateTime.UtcNow.AddMonths(-6),
+                        MidtermGrade = 75,
+                        FinalGrade = 85,
+                        LetterGrade = "B",
+                        GradePoint = 3.0m
+                    });
+                }
+
+                if (enrollments.Any())
+                {
+                    await context.Enrollments.AddRangeAsync(enrollments);
+                    
+                    // Update enrolled counts
+                    foreach (var enrollment in enrollments.Where(e => e.Status == "Active"))
+                    {
+                        var section = sections.FirstOrDefault(s => s.Id == enrollment.SectionId);
+                        if (section != null)
+                        {
+                            section.EnrolledCount++;
+                        }
+                    }
+                    
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedAttendanceSessionsAsync(CampusContext context, UserManager<User> userManager)
+        {
+            if (!await context.AttendanceSessions.AnyAsync())
+            {
+                var sections = await context.CourseSections.Take(2).ToListAsync();
+                var facultyUsers = await userManager.GetUsersInRoleAsync("Faculty");
+                var instructor = facultyUsers.FirstOrDefault();
+
+                if (!sections.Any())
+                    return;
+
+                var sessions = new List<AttendanceSession>();
+                var today = DateTime.UtcNow.Date;
+
+                foreach (var section in sections)
+                {
+                    // Create sessions for the past week
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var sessionDate = today.AddDays(-(7 - i));
+                        sessions.Add(new AttendanceSession
+                        {
+                            SectionId = section.Id,
+                            InstructorId = instructor?.Id,
+                            Date = sessionDate,
+                            StartTime = new TimeSpan(9, 0, 0),
+                            EndTime = new TimeSpan(10, 30, 0),
+                            Latitude = 41.0082m, // Example coordinates (Istanbul)
+                            Longitude = 28.9784m,
+                            GeofenceRadius = 100m, // 100 meters
+                            QrCode = $"QR-{section.Id}-{sessionDate:yyyyMMdd}",
+                            Status = i < 2 ? "Completed" : "Scheduled"
+                        });
+                    }
+                }
+
+                if (sessions.Any())
+                {
+                    await context.AttendanceSessions.AddRangeAsync(sessions);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedAttendanceRecordsAsync(CampusContext context)
+        {
+            if (!await context.AttendanceRecords.AnyAsync())
+            {
+                var sessions = await context.AttendanceSessions
+                    .Where(s => s.Status == "Completed")
+                    .Take(3)
+                    .ToListAsync();
+                
+                var enrollments = await context.Enrollments
+                    .Where(e => e.Status == "Active")
+                    .Include(e => e.Student)
+                    .Take(5)
+                    .ToListAsync();
+
+                if (!sessions.Any() || !enrollments.Any())
+                    return;
+
+                var records = new List<AttendanceRecord>();
+
+                // Create attendance records for first session
+                if (sessions.Count > 0)
+                {
+                    var firstSession = sessions[0];
+                    var sessionEnrollments = enrollments
+                        .Where(e => e.SectionId == firstSession.SectionId)
+                        .Take(3)
+                        .ToList();
+
+                    foreach (var enrollment in sessionEnrollments)
+                    {
+                        var checkInTime = firstSession.Date.Add(firstSession.StartTime).AddMinutes(new Random().Next(0, 15));
+                        records.Add(new AttendanceRecord
+                        {
+                            SessionId = firstSession.Id,
+                            StudentId = enrollment.StudentId,
+                            CheckInTime = checkInTime,
+                            Latitude = firstSession.Latitude,
+                            Longitude = firstSession.Longitude,
+                            DistanceFromCenter = new Random().Next(0, 50), // Within geofence
+                            IsFlagged = false
+                        });
+                    }
+                }
+
+                // Create attendance records for second session with some flagged
+                if (sessions.Count > 1)
+                {
+                    var secondSession = sessions[1];
+                    var sessionEnrollments = enrollments
+                        .Where(e => e.SectionId == secondSession.SectionId)
+                        .Take(2)
+                        .ToList();
+
+                    foreach (var enrollment in sessionEnrollments)
+                    {
+                        var isLate = new Random().Next(0, 2) == 1;
+                        var checkInTime = isLate 
+                            ? secondSession.Date.Add(secondSession.StartTime).AddMinutes(new Random().Next(20, 45))
+                            : secondSession.Date.Add(secondSession.StartTime).AddMinutes(new Random().Next(0, 10));
+
+                        records.Add(new AttendanceRecord
+                        {
+                            SessionId = secondSession.Id,
+                            StudentId = enrollment.StudentId,
+                            CheckInTime = checkInTime,
+                            Latitude = secondSession.Latitude,
+                            Longitude = secondSession.Longitude,
+                            DistanceFromCenter = isLate ? new Random().Next(100, 200) : new Random().Next(0, 50),
+                            IsFlagged = isLate,
+                            FlagReason = isLate ? "Late check-in" : null
+                        });
+                    }
+                }
+
+                if (records.Any())
+                {
+                    await context.AttendanceRecords.AddRangeAsync(records);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedExcuseRequestsAsync(CampusContext context, UserManager<User> userManager)
+        {
+            if (!await context.ExcuseRequests.AnyAsync())
+            {
+                var records = await context.AttendanceRecords
+                    .Where(r => r.IsFlagged)
+                    .Include(r => r.Student)
+                    .Take(2)
+                    .ToListAsync();
+
+                var facultyUsers = await userManager.GetUsersInRoleAsync("Faculty");
+                var reviewer = facultyUsers.FirstOrDefault();
+
+                if (!records.Any())
+                    return;
+
+                var excuseRequests = new List<ExcuseRequest>();
+
+                foreach (var record in records)
+                {
+                    excuseRequests.Add(new ExcuseRequest
+                    {
+                        StudentId = record.StudentId,
+                        SessionId = record.SessionId,
+                        Reason = "Medical appointment - doctor's note attached",
+                        DocumentUrl = "/uploads/excuses/medical-note-sample.pdf",
+                        Status = "Pending"
+                    });
+                }
+
+                // Add one approved request
+                if (records.Count > 0)
+                {
+                    var firstRecord = records[0];
+                    var session = await context.AttendanceSessions
+                        .FirstOrDefaultAsync(s => s.Id == firstRecord.SessionId);
+
+                    if (session != null)
+                    {
+                        excuseRequests.Add(new ExcuseRequest
+                        {
+                            StudentId = firstRecord.StudentId,
+                            SessionId = firstRecord.SessionId,
+                            Reason = "Family emergency - approved by instructor",
+                            DocumentUrl = "/uploads/excuses/emergency-note.pdf",
+                            Status = "Approved",
+                            ReviewedBy = reviewer?.Id,
+                            ReviewedAt = DateTime.UtcNow.AddDays(-1),
+                            Notes = "Approved - valid excuse"
+                        });
+                    }
+                }
+
+                if (excuseRequests.Any())
+                {
+                    await context.ExcuseRequests.AddRangeAsync(excuseRequests);
                     await context.SaveChangesAsync();
                 }
             }

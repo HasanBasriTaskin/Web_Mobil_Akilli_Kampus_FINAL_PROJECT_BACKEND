@@ -12,3 +12,5 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
     }
 }
 
+
+

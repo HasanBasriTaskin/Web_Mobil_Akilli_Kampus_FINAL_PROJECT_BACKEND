@@ -22,3 +22,5 @@ namespace SMARTCAMPUS.EntityLayer.Models
     }
 }
 
+
+

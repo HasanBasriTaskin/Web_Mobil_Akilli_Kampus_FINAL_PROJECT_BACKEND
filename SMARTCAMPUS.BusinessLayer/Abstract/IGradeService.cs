@@ -15,3 +15,5 @@ namespace SMARTCAMPUS.BusinessLayer.Abstract
     }
 }
 
+
+

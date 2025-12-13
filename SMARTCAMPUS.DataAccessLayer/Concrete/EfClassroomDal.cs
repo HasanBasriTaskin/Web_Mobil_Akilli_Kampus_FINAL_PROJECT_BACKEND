@@ -34,3 +34,5 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
     }
 }
 
+
+
