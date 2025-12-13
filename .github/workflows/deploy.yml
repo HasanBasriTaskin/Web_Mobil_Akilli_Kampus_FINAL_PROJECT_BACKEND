@@ -1,0 +1,53 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            # Create directories
+            mkdir -p ~/MehmetFinalProje
+            
+            cd ~/MehmetFinalProje
+            
+            # Backend: Clone or pull
+            if [ -d "backend/.git" ]; then
+              cd backend
+              git fetch origin
+              git reset --hard origin/main
+            else
+              rm -rf backend
+              git clone https://${{ secrets.GH_TOKEN }}@github.com/HasanBasriTaskin/Web_Mobil_Akilli_Kampus_FINAL_PROJECT_BACKEND.git backend
+              cd backend
+            fi
+            
+            # Create nginx certs directory
+            mkdir -p nginx/certs
+            
+            # Create .env file
+            cat > .env << EOF
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            EOF
+            
+            # Copy appsettings.example.json to appsettings.json (if not exists)
+            if [ ! -f "SMARTCAMPUS.API/appsettings.json" ]; then
+              cp SMARTCAMPUS.API/appsettings.example.json SMARTCAMPUS.API/appsettings.json
+            fi
+            
+            # Build and restart all services
+            docker compose -f docker-compose.prod.yml up -d --build nginx db backend phpmyadmin
