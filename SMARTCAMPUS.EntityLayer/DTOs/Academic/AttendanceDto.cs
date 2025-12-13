@@ -15,6 +15,8 @@ namespace SMARTCAMPUS.EntityLayer.DTOs.Academic
         public decimal? Longitude { get; set; }
         public decimal? GeofenceRadius { get; set; }
         public string? QrCode { get; set; }
+        public DateTime? QrCodeGeneratedAt { get; set; }
+        public DateTime? QrCodeExpiresAt { get; set; }
         public string Status { get; set; } = null!;
         public int TotalStudents { get; set; }
         public int PresentCount { get; set; }
@@ -32,6 +34,11 @@ namespace SMARTCAMPUS.EntityLayer.DTOs.Academic
         public decimal? Latitude { get; set; }
         public decimal? Longitude { get; set; }
         public decimal? DistanceFromCenter { get; set; }
+        public string? IpAddress { get; set; }
+        public bool IsMockLocation { get; set; }
+        public decimal? Velocity { get; set; }
+        public string? DeviceInfo { get; set; }
+        public int FraudScore { get; set; }
         public bool IsFlagged { get; set; }
         public string? FlagReason { get; set; }
     }
@@ -41,7 +48,15 @@ namespace SMARTCAMPUS.EntityLayer.DTOs.Academic
         public decimal? Latitude { get; set; }
         public decimal? Longitude { get; set; }
         public decimal? Accuracy { get; set; } // GPS accuracy in meters
+        public bool IsMockLocation { get; set; } = false;
+        public string? DeviceInfo { get; set; } // JSON: {"sensors": {...}, "browser": "..."}
         public string? QrCode { get; set; }
+    }
+
+    public class QrCodeRefreshDto
+    {
+        public string QrCode { get; set; } = null!;
+        public DateTime ExpiresAt { get; set; }
     }
 }
 

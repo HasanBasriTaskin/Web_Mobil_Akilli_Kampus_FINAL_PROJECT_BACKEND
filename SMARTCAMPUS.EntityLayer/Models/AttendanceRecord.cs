@@ -17,8 +17,15 @@ namespace SMARTCAMPUS.EntityLayer.Models
         public decimal? Longitude { get; set; }
         public decimal? DistanceFromCenter { get; set; } // in meters
         
+        // GPS Spoofing Detection
+        public string? IpAddress { get; set; }
+        public bool IsMockLocation { get; set; } = false;
+        public decimal? Velocity { get; set; } // km/h - calculated from previous location
+        public string? DeviceInfo { get; set; } // JSON: {"sensors": {...}, "browser": "..."}
+        public int FraudScore { get; set; } = 0; // 0-100, higher = more suspicious
+        
         public bool IsFlagged { get; set; } = false;
-        public string? FlagReason { get; set; } // "Outside geofence", "Late check-in", etc.
+        public string? FlagReason { get; set; } // "Outside geofence", "Late check-in", "GPS spoofing", etc.
     }
 }
 
