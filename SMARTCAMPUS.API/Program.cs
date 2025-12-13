@@ -116,6 +116,7 @@ builder.Services.AddScoped<INotificationService, EmailService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<IGradeService, GradeService>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 
 
 builder.Services.AddFluentValidationAutoValidation();
