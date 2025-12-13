@@ -15,6 +15,7 @@ namespace SMARTCAMPUS.BusinessLayer.Abstract
         Task<Response<IEnumerable<AttendanceSessionDto>>> GetMySessionsAsync(string instructorId);
         Task<Response<AttendanceReportDto>> GetSectionAttendanceReportAsync(int sectionId);
         Task<Response<QrCodeRefreshDto>> RefreshQrCodeAsync(int sessionId);
+        Task<Response<MyAttendanceDto>> GetMyAttendanceAsync(int studentId);
     }
 }
 
