@@ -145,7 +145,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 decimal totalGrade = 0;
                 if (midtermGrade.HasValue)
                 {
-                    totalGrade = (midtermGrade.Value * 0.4m) + (finalGrade.Value * 0.6m);
+                    totalGrade = (midtermGrade.Value * Constants.GradeConstants.MidtermWeight) + (finalGrade.Value * Constants.GradeConstants.FinalWeight);
                 }
                 else
                 {
@@ -154,15 +154,15 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
                 string letterGrade = totalGrade switch
                 {
-                    >= 90 => "A",
-                    >= 85 => "A-",
-                    >= 80 => "B+",
-                    >= 75 => "B",
-                    >= 70 => "B-",
-                    >= 65 => "C+",
-                    >= 60 => "C",
-                    >= 55 => "C-",
-                    >= 50 => "D",
+                    >= Constants.GradeConstants.GradeA => "A",
+                    >= Constants.GradeConstants.GradeAMinus => "A-",
+                    >= Constants.GradeConstants.GradeBPlus => "B+",
+                    >= Constants.GradeConstants.GradeB => "B",
+                    >= Constants.GradeConstants.GradeBMinus => "B-",
+                    >= Constants.GradeConstants.GradeCPlus => "C+",
+                    >= Constants.GradeConstants.GradeC => "C",
+                    >= Constants.GradeConstants.GradeCMinus => "C-",
+                    >= Constants.GradeConstants.GradeD => "D",
                     _ => "F"
                 };
 
@@ -183,17 +183,17 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
                 decimal gradePoint = letterGrade.ToUpper() switch
                 {
-                    "A" => 4.0m,
-                    "A-" => 3.7m,
-                    "B+" => 3.3m,
-                    "B" => 3.0m,
-                    "B-" => 2.7m,
-                    "C+" => 2.3m,
-                    "C" => 2.0m,
-                    "C-" => 1.7m,
-                    "D" => 1.0m,
-                    "F" => 0.0m,
-                    _ => 0.0m
+                    "A" => Constants.GradePoints.A,
+                    "A-" => Constants.GradePoints.AMinus,
+                    "B+" => Constants.GradePoints.BPlus,
+                    "B" => Constants.GradePoints.B,
+                    "B-" => Constants.GradePoints.BMinus,
+                    "C+" => Constants.GradePoints.CPlus,
+                    "C" => Constants.GradePoints.C,
+                    "C-" => Constants.GradePoints.CMinus,
+                    "D" => Constants.GradePoints.D,
+                    "F" => Constants.GradePoints.F,
+                    _ => Constants.GradePoints.F
                 };
 
                 return Response<decimal>.Success(gradePoint, 200);
