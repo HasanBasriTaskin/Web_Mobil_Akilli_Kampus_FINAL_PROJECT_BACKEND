@@ -1,7 +1,10 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
+using SMARTCAMPUS.BusinessLayer.Constants;
+using SMARTCAMPUS.BusinessLayer.Tools;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.Constants;
@@ -17,14 +20,17 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly CampusContext _context;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         private const decimal DefaultGeofenceRadius = 15; // meters
         private const int QrCodeExpiryMinutes = 30;
+        private const int QrCodeRefreshSeconds = 5; // QR code refreshes every 5 seconds
 
-        public AttendanceService(IUnitOfWork unitOfWork, IMapper mapper, CampusContext context)
+        public AttendanceService(IUnitOfWork unitOfWork, IMapper mapper, CampusContext context, IHttpContextAccessor httpContextAccessor)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _context = context;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<Response<AttendanceSessionDto>> CreateSessionAsync(AttendanceSessionCreateDto sessionCreateDto)
@@ -67,8 +73,10 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 // Set default geofence radius if not provided
                 var geofenceRadius = sessionCreateDto.GeofenceRadius ?? DefaultGeofenceRadius;
 
-                // Generate unique QR code
+                // Generate unique QR code with expiry
                 var qrCode = GenerateQrCode(sessionCreateDto.SectionId, sessionCreateDto.Date);
+                var qrCodeGeneratedAt = DateTime.UtcNow;
+                var qrCodeExpiresAt = qrCodeGeneratedAt.AddMinutes(QrCodeExpiryMinutes);
 
                 // Get instructor ID from section if not provided in DTO
                 var instructorId = section.InstructorId;
@@ -86,6 +94,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     Longitude = longitude,
                     GeofenceRadius = geofenceRadius,
                     QrCode = qrCode,
+                    QrCodeGeneratedAt = qrCodeGeneratedAt,
+                    QrCodeExpiresAt = qrCodeExpiresAt,
                     Status = AttendanceSessionStatus.Scheduled
                 };
 
@@ -142,13 +152,27 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 if (existingRecord != null)
                     return Response<NoDataDto>.Fail("Already checked in", 400);
 
-                // Verify QR code if provided
-                if (!string.IsNullOrEmpty(checkInDto.QrCode) && 
-                    !string.IsNullOrEmpty(session.QrCode) &&
-                    checkInDto.QrCode != session.QrCode)
+                // Verify QR code if provided (with expiry check)
+                if (!string.IsNullOrEmpty(checkInDto.QrCode))
                 {
-                    return Response<NoDataDto>.Fail("Invalid QR code", 400);
+                    if (string.IsNullOrEmpty(session.QrCode))
+                        return Response<NoDataDto>.Fail("QR code not available for this session", 400);
+
+                    if (checkInDto.QrCode != session.QrCode)
+                        return Response<NoDataDto>.Fail("Invalid QR code", 400);
+
+                    // Check QR code expiry
+                    if (session.QrCodeExpiresAt.HasValue && DateTime.UtcNow > session.QrCodeExpiresAt.Value)
+                        return Response<NoDataDto>.Fail("QR code has expired", 400);
                 }
+
+                // Get client IP address
+                var clientIpAddress = IpAddressHelper.GetClientIpAddress(_httpContextAccessor.HttpContext);
+
+                // IP Address Validation - Check if student is on campus network
+                var isCampusIp = IpAddressHelper.IsCampusIpAddress(clientIpAddress);
+                if (!isCampusIp)
+                    return Response<NoDataDto>.Fail("You must be connected to the campus network to check in", 403);
 
                 var checkInTime = DateTime.UtcNow;
                 var sessionDateTime = session.Date.Add(session.StartTime);
@@ -157,6 +181,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 decimal? distanceFromCenter = null;
                 bool isFlagged = false;
                 string? flagReason = null;
+                int fraudScore = 0;
 
                 // Geofencing check
                 if (session.Latitude.HasValue && session.Longitude.HasValue &&
@@ -173,6 +198,83 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     {
                         isFlagged = true;
                         flagReason = "Outside geofence";
+                        fraudScore += 20;
+                    }
+                }
+
+                // GPS Spoofing Detection
+                // 1. Mock location flag
+                if (checkInDto.IsMockLocation)
+                {
+                    isFlagged = true;
+                    flagReason = string.IsNullOrEmpty(flagReason) 
+                        ? "Mock location detected" 
+                        : $"{flagReason}, Mock location detected";
+                    fraudScore += 50;
+                }
+
+                // 2. Velocity check (impossible travel detection)
+                decimal? velocity = null;
+                if (checkInDto.Latitude.HasValue && checkInDto.Longitude.HasValue)
+                {
+                    var previousRecord = await _context.AttendanceRecords
+                        .Where(r => r.StudentId == studentId && r.CheckInTime.HasValue)
+                        .OrderByDescending(r => r.CheckInTime)
+                        .FirstOrDefaultAsync();
+
+                    if (previousRecord != null && 
+                        previousRecord.Latitude.HasValue && 
+                        previousRecord.Longitude.HasValue &&
+                        previousRecord.CheckInTime.HasValue)
+                    {
+                        var timeDifference = (checkInTime - previousRecord.CheckInTime.Value).TotalHours;
+                        
+                        if (timeDifference > 0 && timeDifference <= CampusNetworkConstants.MaxTimeDifferenceForVelocityCheck)
+                        {
+                            var distance = CalculateDistance(
+                                previousRecord.Latitude.Value,
+                                previousRecord.Longitude.Value,
+                                checkInDto.Latitude.Value,
+                                checkInDto.Longitude.Value);
+
+                            velocity = (decimal)(distance / 1000.0 / timeDifference); // km/h
+
+                            if (velocity > CampusNetworkConstants.MaxRealisticVelocity)
+                            {
+                                isFlagged = true;
+                                flagReason = string.IsNullOrEmpty(flagReason) 
+                                    ? "Impossible travel velocity detected" 
+                                    : $"{flagReason}, Impossible travel velocity";
+                                fraudScore += 40;
+                            }
+                        }
+                    }
+                }
+
+                // 3. Device sensor consistency check (if device info provided)
+                if (!string.IsNullOrEmpty(checkInDto.DeviceInfo))
+                {
+                    try
+                    {
+                        var deviceInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(checkInDto.DeviceInfo);
+                        if (deviceInfo != null)
+                        {
+                            // Check for sensor inconsistencies
+                            if (deviceInfo.ContainsKey("sensors"))
+                            {
+                                var sensors = deviceInfo["sensors"]?.ToString();
+                                // Basic check - if sensors are disabled or inconsistent, flag
+                                if (sensors != null && sensors.Contains("disabled", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    fraudScore += 15;
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // If device info parsing fails, add small fraud score
+                        fraudScore += 5;
                     }
                 }
 
@@ -183,6 +285,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     flagReason = string.IsNullOrEmpty(flagReason) 
                         ? "Late check-in" 
                         : $"{flagReason}, Late check-in";
+                    fraudScore += 10;
                 }
 
                 // Create attendance record
@@ -194,7 +297,12 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     Latitude = checkInDto.Latitude,
                     Longitude = checkInDto.Longitude,
                     DistanceFromCenter = distanceFromCenter,
-                    IsFlagged = isFlagged,
+                    IpAddress = clientIpAddress,
+                    IsMockLocation = checkInDto.IsMockLocation,
+                    Velocity = velocity,
+                    DeviceInfo = checkInDto.DeviceInfo,
+                    FraudScore = fraudScore,
+                    IsFlagged = isFlagged || fraudScore >= CampusNetworkConstants.FraudScoreMedium,
                     FlagReason = flagReason
                 };
 
@@ -426,6 +534,53 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             catch (Exception ex)
             {
                 return Response<AttendanceReportDto>.Fail($"Error generating attendance report: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<Response<QrCodeRefreshDto>> RefreshQrCodeAsync(int sessionId)
+        {
+            try
+            {
+                var session = await _unitOfWork.AttendanceSessions.GetByIdAsync(sessionId);
+                if (session == null)
+                    return Response<QrCodeRefreshDto>.Fail("Session not found", 404);
+
+                // Check if QR code needs refresh (every 5 seconds)
+                var shouldRefresh = !session.QrCodeExpiresAt.HasValue || 
+                                   DateTime.UtcNow >= session.QrCodeExpiresAt.Value.AddSeconds(-QrCodeRefreshSeconds);
+
+                if (shouldRefresh)
+                {
+                    // Generate new QR code
+                    var newQrCode = GenerateQrCode(session.SectionId, session.Date);
+                    var qrCodeGeneratedAt = DateTime.UtcNow;
+                    var qrCodeExpiresAt = qrCodeGeneratedAt.AddMinutes(QrCodeExpiryMinutes);
+
+                    session.QrCode = newQrCode;
+                    session.QrCodeGeneratedAt = qrCodeGeneratedAt;
+                    session.QrCodeExpiresAt = qrCodeExpiresAt;
+                    session.UpdatedDate = DateTime.UtcNow;
+
+                    _unitOfWork.AttendanceSessions.Update(session);
+                    await _unitOfWork.CommitAsync();
+
+                    return Response<QrCodeRefreshDto>.Success(new QrCodeRefreshDto
+                    {
+                        QrCode = newQrCode,
+                        ExpiresAt = qrCodeExpiresAt
+                    }, 200);
+                }
+
+                // Return existing QR code
+                return Response<QrCodeRefreshDto>.Success(new QrCodeRefreshDto
+                {
+                    QrCode = session.QrCode ?? "",
+                    ExpiresAt = session.QrCodeExpiresAt ?? DateTime.UtcNow.AddMinutes(QrCodeExpiryMinutes)
+                }, 200);
+            }
+            catch (Exception ex)
+            {
+                return Response<QrCodeRefreshDto>.Fail($"Error refreshing QR code: {ex.Message}", 500);
             }
         }
     }

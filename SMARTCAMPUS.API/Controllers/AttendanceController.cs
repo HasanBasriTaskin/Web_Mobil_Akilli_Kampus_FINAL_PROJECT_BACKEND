@@ -92,6 +92,13 @@ namespace SMARTCAMPUS.API.Controllers
             var result = await _attendanceService.GetSectionAttendanceReportAsync(sectionId);
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpGet("sessions/{id}/qr-code")]
+        public async Task<IActionResult> RefreshQrCode(int id)
+        {
+            var result = await _attendanceService.RefreshQrCodeAsync(id);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }
 

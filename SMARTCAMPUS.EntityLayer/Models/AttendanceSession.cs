@@ -22,6 +22,8 @@ namespace SMARTCAMPUS.EntityLayer.Models
         public decimal? GeofenceRadius { get; set; } // in meters
         
         public string? QrCode { get; set; }
+        public DateTime? QrCodeGeneratedAt { get; set; }
+        public DateTime? QrCodeExpiresAt { get; set; }
         public string Status { get; set; } = "Scheduled"; // "Scheduled", "Active", "Completed", "Cancelled"
         
         // Navigation Properties
