@@ -61,6 +61,11 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
             CreateMap<CourseUpdateDto, Course>()
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null))
                 .ForMember(dest => dest.Prerequisites, opt => opt.Ignore());
+
+            // Course Section Create/Update Mappings
+            CreateMap<CourseSectionCreateDto, CourseSection>();
+            CreateMap<CourseSectionUpdateDto, CourseSection>()
+                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
         }
     }
 }
