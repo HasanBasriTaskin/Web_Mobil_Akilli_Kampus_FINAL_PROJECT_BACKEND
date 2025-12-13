@@ -14,6 +14,15 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
         public IRefreshTokenDal RefreshTokens { get; }
         public IPasswordResetTokenDal PasswordResetTokens { get; }
         public IEmailVerificationTokenDal EmailVerificationTokens { get; }
+        
+        // Academic Management
+        public ICourseDal Courses { get; }
+        public ICourseSectionDal CourseSections { get; }
+        public IEnrollmentDal Enrollments { get; }
+        public IAttendanceSessionDal AttendanceSessions { get; }
+        public IAttendanceRecordDal AttendanceRecords { get; }
+        public IExcuseRequestDal ExcuseRequests { get; }
+        public IClassroomDal Classrooms { get; }
 
         public UnitOfWork(CampusContext context)
         {
@@ -27,6 +36,15 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
             RefreshTokens = new EfRefreshTokenDal(_context);
             PasswordResetTokens = new EfPasswordResetTokenDal(_context);
             EmailVerificationTokens = new EfEmailVerificationTokenDal(_context);
+            
+            // Academic Management Repositories
+            Courses = new EfCourseDal(_context);
+            CourseSections = new EfCourseSectionDal(_context);
+            Enrollments = new EfEnrollmentDal(_context);
+            AttendanceSessions = new EfAttendanceSessionDal(_context);
+            AttendanceRecords = new EfAttendanceRecordDal(_context);
+            ExcuseRequests = new EfExcuseRequestDal(_context);
+            Classrooms = new EfClassroomDal(_context);
         }
 
         public void Commit()

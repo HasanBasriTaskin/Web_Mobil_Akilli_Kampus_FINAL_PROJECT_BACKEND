@@ -25,6 +25,10 @@ namespace SMARTCAMPUS.DataAccessLayer
             await SeedAdminAsync(userManager, configuration);
             await SeedStudentsAsync(userManager, context, configuration);
             await SeedFacultyAsync(userManager, context, configuration);
+            await SeedClassroomsAsync(context);
+            await SeedCoursesAsync(context);
+            await SeedCoursePrerequisitesAsync(context);
+            await SeedCourseSectionsAsync(context, userManager);
         }
 
         private static async Task SeedRolesAsync(RoleManager<Role> roleManager)
@@ -181,6 +185,133 @@ namespace SMARTCAMPUS.DataAccessLayer
                 if (departments.Any())
                 {
                     await context.Departments.AddRangeAsync(departments);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedClassroomsAsync(CampusContext context)
+        {
+            if (!await context.Classrooms.AnyAsync())
+            {
+                var classrooms = new List<Classroom>
+                {
+                    new Classroom { Building = "A", RoomNumber = "101", Capacity = 50, FeaturesJson = "{\"projector\": true, \"computer\": true, \"whiteboard\": true}" },
+                    new Classroom { Building = "A", RoomNumber = "102", Capacity = 80, FeaturesJson = "{\"projector\": true, \"computer\": true, \"whiteboard\": true}" },
+                    new Classroom { Building = "A", RoomNumber = "201", Capacity = 100, FeaturesJson = "{\"projector\": true, \"computer\": true, \"whiteboard\": true, \"sound\": true}" },
+                    new Classroom { Building = "B", RoomNumber = "101", Capacity = 60, FeaturesJson = "{\"projector\": true, \"whiteboard\": true}" },
+                    new Classroom { Building = "B", RoomNumber = "205", Capacity = 40, FeaturesJson = "{\"projector\": true, \"computer\": true}" },
+                    new Classroom { Building = "Engineering", RoomNumber = "Lab-1", Capacity = 30, FeaturesJson = "{\"projector\": true, \"computer\": true, \"lab\": true}" },
+                    new Classroom { Building = "Engineering", RoomNumber = "Lab-2", Capacity = 30, FeaturesJson = "{\"projector\": true, \"computer\": true, \"lab\": true}" }
+                };
+
+                await context.Classrooms.AddRangeAsync(classrooms);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        private static async Task SeedCoursesAsync(CampusContext context)
+        {
+            if (!await context.Courses.AnyAsync())
+            {
+                var departments = await context.Departments.ToListAsync();
+                var csDept = departments.FirstOrDefault(d => d.Code == "CS") ?? departments.FirstOrDefault();
+                var seDept = departments.FirstOrDefault(d => d.Code == "SE") ?? departments.FirstOrDefault();
+                var ceDept = departments.FirstOrDefault(d => d.Code == "CE") ?? departments.FirstOrDefault();
+
+                var courses = new List<Course>
+                {
+                    new Course { Code = "CS101", Name = "Introduction to Computer Science", Description = "Fundamentals of computer science", Credits = 3, ECTS = 5, DepartmentId = csDept?.Id ?? 1 },
+                    new Course { Code = "CS102", Name = "Data Structures", Description = "Introduction to data structures and algorithms", Credits = 4, ECTS = 6, DepartmentId = csDept?.Id ?? 1 },
+                    new Course { Code = "CS201", Name = "Object-Oriented Programming", Description = "OOP concepts and design patterns", Credits = 4, ECTS = 6, DepartmentId = csDept?.Id ?? 1 },
+                    new Course { Code = "CS301", Name = "Database Systems", Description = "Relational database design and SQL", Credits = 3, ECTS = 5, DepartmentId = csDept?.Id ?? 1 },
+                    new Course { Code = "SE101", Name = "Software Engineering Fundamentals", Description = "Introduction to software engineering", Credits = 3, ECTS = 5, DepartmentId = seDept?.Id ?? 1 },
+                    new Course { Code = "SE201", Name = "Software Design Patterns", Description = "Design patterns in software development", Credits = 4, ECTS = 6, DepartmentId = seDept?.Id ?? 1 },
+                    new Course { Code = "CE101", Name = "Introduction to Civil Engineering", Description = "Fundamentals of civil engineering", Credits = 3, ECTS = 5, DepartmentId = ceDept?.Id ?? 1 },
+                    new Course { Code = "MATH101", Name = "Calculus I", Description = "Differential and integral calculus", Credits = 4, ECTS = 6, DepartmentId = csDept?.Id ?? 1 },
+                    new Course { Code = "MATH102", Name = "Calculus II", Description = "Advanced calculus topics", Credits = 4, ECTS = 6, DepartmentId = csDept?.Id ?? 1 }
+                };
+
+                await context.Courses.AddRangeAsync(courses);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        private static async Task SeedCoursePrerequisitesAsync(CampusContext context)
+        {
+            if (!await context.CoursePrerequisites.AnyAsync())
+            {
+                var courses = await context.Courses.ToListAsync();
+                var cs101 = courses.FirstOrDefault(c => c.Code == "CS101");
+                var cs102 = courses.FirstOrDefault(c => c.Code == "CS102");
+                var cs201 = courses.FirstOrDefault(c => c.Code == "CS201");
+                var cs301 = courses.FirstOrDefault(c => c.Code == "CS301");
+                var math101 = courses.FirstOrDefault(c => c.Code == "MATH101");
+                var math102 = courses.FirstOrDefault(c => c.Code == "MATH102");
+                var se101 = courses.FirstOrDefault(c => c.Code == "SE101");
+                var se201 = courses.FirstOrDefault(c => c.Code == "SE201");
+
+                var prerequisites = new List<CoursePrerequisite>();
+
+                if (cs102 != null && cs101 != null)
+                    prerequisites.Add(new CoursePrerequisite { CourseId = cs102.Id, PrerequisiteCourseId = cs101.Id });
+
+                if (cs201 != null && cs102 != null)
+                    prerequisites.Add(new CoursePrerequisite { CourseId = cs201.Id, PrerequisiteCourseId = cs102.Id });
+
+                if (cs301 != null && cs201 != null)
+                    prerequisites.Add(new CoursePrerequisite { CourseId = cs301.Id, PrerequisiteCourseId = cs201.Id });
+
+                if (math102 != null && math101 != null)
+                    prerequisites.Add(new CoursePrerequisite { CourseId = math102.Id, PrerequisiteCourseId = math101.Id });
+
+                if (se201 != null && se101 != null)
+                    prerequisites.Add(new CoursePrerequisite { CourseId = se201.Id, PrerequisiteCourseId = se101.Id });
+
+                if (prerequisites.Any())
+                {
+                    await context.CoursePrerequisites.AddRangeAsync(prerequisites);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedCourseSectionsAsync(CampusContext context, UserManager<User> userManager)
+        {
+            if (!await context.CourseSections.AnyAsync())
+            {
+                var courses = await context.Courses.ToListAsync();
+                var classrooms = await context.Classrooms.ToListAsync();
+                var facultyUsers = await userManager.GetUsersInRoleAsync("Faculty");
+                var faculty = facultyUsers.FirstOrDefault();
+
+                var currentYear = DateTime.Now.Year;
+                var currentSemester = DateTime.Now.Month >= 9 ? "Fall" : "Spring";
+
+                var sections = new List<CourseSection>();
+
+                foreach (var course in courses.Take(5)) // Seed sections for first 5 courses
+                {
+                    var classroom = classrooms.FirstOrDefault();
+                    var scheduleJson = "[{\"day\": \"Monday\", \"startTime\": \"09:00\", \"endTime\": \"10:30\"}, {\"day\": \"Wednesday\", \"startTime\": \"09:00\", \"endTime\": \"10:30\"}]";
+
+                    sections.Add(new CourseSection
+                    {
+                        CourseId = course.Id,
+                        SectionNumber = "A",
+                        Semester = currentSemester,
+                        Year = currentYear,
+                        InstructorId = faculty?.Id,
+                        Capacity = 50,
+                        EnrolledCount = 0,
+                        ScheduleJson = scheduleJson,
+                        ClassroomId = classroom?.Id
+                    });
+                }
+
+                if (sections.Any())
+                {
+                    await context.CourseSections.AddRangeAsync(sections);
                     await context.SaveChangesAsync();
                 }
             }
