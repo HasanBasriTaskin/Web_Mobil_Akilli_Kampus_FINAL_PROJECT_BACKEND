@@ -11,6 +11,7 @@ namespace SMARTCAMPUS.BusinessLayer.Abstract
         Task<Response<IEnumerable<EnrollmentDto>>> GetSectionEnrollmentsAsync(int sectionId);
         Task<Response<bool>> CheckPrerequisitesAsync(int courseId, int studentId);
         Task<Response<bool>> CheckScheduleConflictAsync(int studentId, int sectionId);
+        Task<Response<PersonalScheduleDto>> GetPersonalScheduleAsync(int studentId, string? semester = null, int? year = null);
     }
 }
 

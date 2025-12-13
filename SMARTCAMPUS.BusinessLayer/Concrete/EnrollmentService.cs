@@ -226,6 +226,121 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
+        public async Task<Response<PersonalScheduleDto>> GetPersonalScheduleAsync(int studentId, string? semester = null, int? year = null)
+        {
+            try
+            {
+                var enrollments = await _context.Enrollments
+                    .Where(e => e.StudentId == studentId && e.IsActive && e.Status == EnrollmentStatus.Active)
+                    .Include(e => e.Section)
+                        .ThenInclude(s => s.Course)
+                    .Include(e => e.Section)
+                        .ThenInclude(s => s.Instructor)
+                    .Include(e => e.Section)
+                        .ThenInclude(s => s.Classroom)
+                    .ToListAsync();
+
+                var activeEnrollments = enrollments.ToList();
+
+                if (!activeEnrollments.Any())
+                    return Response<PersonalScheduleDto>.Fail("No active enrollments found", 404);
+
+                // Filter by semester and year if provided
+                if (!string.IsNullOrEmpty(semester))
+                {
+                    activeEnrollments = activeEnrollments
+                        .Where(e => e.Section.Semester == semester)
+                        .ToList();
+                }
+
+                if (year.HasValue)
+                {
+                    activeEnrollments = activeEnrollments
+                        .Where(e => e.Section.Year == year.Value)
+                        .ToList();
+                }
+
+                if (!activeEnrollments.Any())
+                    return Response<PersonalScheduleDto>.Fail("No enrollments found for the specified semester/year", 404);
+
+                // Get first enrollment's semester and year for response
+                var firstEnrollment = activeEnrollments.First();
+                var schedule = new PersonalScheduleDto
+                {
+                    Semester = firstEnrollment.Section.Semester,
+                    Year = firstEnrollment.Section.Year
+                };
+
+                // Parse ScheduleJson from each section
+                foreach (var enrollment in activeEnrollments)
+                {
+                    if (string.IsNullOrEmpty(enrollment.Section.ScheduleJson))
+                        continue;
+
+                    try
+                    {
+                        var scheduleItems = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(enrollment.Section.ScheduleJson);
+                        if (scheduleItems == null)
+                            continue;
+
+                        foreach (var item in scheduleItems)
+                        {
+                            var scheduleItem = new ScheduleItemDto
+                            {
+                                SectionId = enrollment.SectionId,
+                                CourseCode = enrollment.Section.Course?.Code,
+                                CourseName = enrollment.Section.Course?.Name,
+                                SectionNumber = enrollment.Section.SectionNumber,
+                                InstructorName = enrollment.Section.Instructor?.FullName,
+                                ClassroomInfo = enrollment.Section.Classroom != null
+                                    ? $"{enrollment.Section.Classroom.Building}-{enrollment.Section.Classroom.RoomNumber}"
+                                    : null
+                            };
+
+                            if (item.ContainsKey("day"))
+                                scheduleItem.Day = item["day"]?.ToString() ?? "";
+
+                            if (item.ContainsKey("startTime"))
+                                scheduleItem.StartTime = item["startTime"]?.ToString() ?? "";
+
+                            if (item.ContainsKey("endTime"))
+                                scheduleItem.EndTime = item["endTime"]?.ToString() ?? "";
+
+                            schedule.ScheduleItems.Add(scheduleItem);
+                        }
+                    }
+                    catch
+                    {
+                        // Skip invalid JSON
+                        continue;
+                    }
+                }
+
+                // Sort by day and time
+                var dayOrder = new Dictionary<string, int>
+                {
+                    { "Monday", 1 },
+                    { "Tuesday", 2 },
+                    { "Wednesday", 3 },
+                    { "Thursday", 4 },
+                    { "Friday", 5 },
+                    { "Saturday", 6 },
+                    { "Sunday", 7 }
+                };
+
+                schedule.ScheduleItems = schedule.ScheduleItems
+                    .OrderBy(s => dayOrder.GetValueOrDefault(s.Day, 99))
+                    .ThenBy(s => s.StartTime)
+                    .ToList();
+
+                return Response<PersonalScheduleDto>.Success(schedule, 200);
+            }
+            catch (Exception ex)
+            {
+                return Response<PersonalScheduleDto>.Fail($"Error retrieving personal schedule: {ex.Message}", 500);
+            }
+        }
+
         private async Task<List<string>> GetMissingPrerequisitesRecursiveAsync(int courseId, int studentId, HashSet<int> visited)
         {
             var missingPrereqs = new List<string>();

@@ -104,6 +104,8 @@ builder.Services.AddScoped<IAttendanceSessionDal, EfAttendanceSessionDal>();
 builder.Services.AddScoped<IAttendanceRecordDal, EfAttendanceRecordDal>();
 builder.Services.AddScoped<IExcuseRequestDal, EfExcuseRequestDal>();
 builder.Services.AddScoped<IClassroomDal, EfClassroomDal>();
+builder.Services.AddScoped<IAcademicCalendarDal, EfAcademicCalendarDal>();
+builder.Services.AddScoped<IAnnouncementDal, EfAnnouncementDal>();
 
 // 5. Business Layer Services (AutoMapper & FluentValidation & Tools)
 builder.Services.AddAutoMapper(typeof(MappingProfile));
@@ -121,6 +123,8 @@ builder.Services.AddScoped<IGradeService, GradeService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IExcuseRequestService, ExcuseRequestService>();
 builder.Services.AddScoped<ITranscriptService, TranscriptService>();
+builder.Services.AddScoped<IAcademicCalendarService, AcademicCalendarService>();
+builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
 
 // Background Jobs
 builder.Services.AddHostedService<SMARTCAMPUS.BusinessLayer.Jobs.AbsenceWarningJob>();

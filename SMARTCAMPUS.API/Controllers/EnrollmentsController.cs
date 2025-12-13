@@ -74,6 +74,17 @@ namespace SMARTCAMPUS.API.Controllers
             var result = await _enrollmentService.CheckScheduleConflictAsync(studentId, sectionId);
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpGet("my-schedule")]
+        public async Task<IActionResult> GetPersonalSchedule([FromQuery] string? semester, [FromQuery] int? year)
+        {
+            var studentId = await _userClaimsHelper.GetStudentIdAsync();
+            if (!studentId.HasValue)
+                return Unauthorized("Student not found or user is not a student");
+
+            var result = await _enrollmentService.GetPersonalScheduleAsync(studentId.Value, semester, year);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }
 

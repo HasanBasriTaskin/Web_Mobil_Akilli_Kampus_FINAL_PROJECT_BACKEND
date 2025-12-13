@@ -28,6 +28,8 @@ namespace SMARTCAMPUS.DataAccessLayer
             await SeedClassroomsAsync(context);
             await SeedCoursesAsync(context);
             await SeedCoursePrerequisitesAsync(context);
+            await SeedAcademicCalendarsAsync(context);
+            await SeedAnnouncementsAsync(context);
             await SeedCourseSectionsAsync(context, userManager);
             await SeedEnrollmentsAsync(context);
             await SeedAttendanceSessionsAsync(context, userManager);
@@ -586,6 +588,184 @@ namespace SMARTCAMPUS.DataAccessLayer
                 if (excuseRequests.Any())
                 {
                     await context.ExcuseRequests.AddRangeAsync(excuseRequests);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedAcademicCalendarsAsync(CampusContext context)
+        {
+            if (!await context.AcademicCalendars.AnyAsync())
+            {
+                var currentYear = DateTime.UtcNow.Year;
+                var calendars = new List<AcademicCalendar>
+                {
+                    // Fall Semester 2024
+                    new AcademicCalendar
+                    {
+                        Title = "Fall Semester Start",
+                        Description = "Fall semester classes begin",
+                        StartDate = new DateTime(currentYear, 9, 15),
+                        EndDate = new DateTime(currentYear, 9, 15),
+                        EventType = "Semester Start",
+                        IsHoliday = false,
+                        Year = currentYear,
+                        Semester = "Fall"
+                    },
+                    new AcademicCalendar
+                    {
+                        Title = "Midterm Exams",
+                        Description = "Midterm examination period",
+                        StartDate = new DateTime(currentYear, 10, 28),
+                        EndDate = new DateTime(currentYear, 11, 1),
+                        EventType = "Exam",
+                        IsHoliday = false,
+                        Year = currentYear,
+                        Semester = "Fall"
+                    },
+                    new AcademicCalendar
+                    {
+                        Title = "Republic Day",
+                        Description = "National holiday",
+                        StartDate = new DateTime(currentYear, 10, 29),
+                        EndDate = new DateTime(currentYear, 10, 29),
+                        EventType = "Holiday",
+                        IsHoliday = true,
+                        Year = currentYear,
+                        Semester = "Fall"
+                    },
+                    new AcademicCalendar
+                    {
+                        Title = "Final Exams",
+                        Description = "Final examination period",
+                        StartDate = new DateTime(currentYear, 12, 23),
+                        EndDate = new DateTime(currentYear, 12, 30),
+                        EventType = "Exam",
+                        IsHoliday = false,
+                        Year = currentYear,
+                        Semester = "Fall"
+                    },
+                    // Spring Semester 2025
+                    new AcademicCalendar
+                    {
+                        Title = "Spring Semester Start",
+                        Description = "Spring semester classes begin",
+                        StartDate = new DateTime(currentYear + 1, 2, 10),
+                        EndDate = new DateTime(currentYear + 1, 2, 10),
+                        EventType = "Semester Start",
+                        IsHoliday = false,
+                        Year = currentYear + 1,
+                        Semester = "Spring"
+                    },
+                    new AcademicCalendar
+                    {
+                        Title = "National Sovereignty Day",
+                        Description = "National holiday",
+                        StartDate = new DateTime(currentYear + 1, 4, 23),
+                        EndDate = new DateTime(currentYear + 1, 4, 23),
+                        EventType = "Holiday",
+                        IsHoliday = true,
+                        Year = currentYear + 1,
+                        Semester = "Spring"
+                    },
+                    new AcademicCalendar
+                    {
+                        Title = "Course Registration Period",
+                        Description = "Course registration for next semester",
+                        StartDate = new DateTime(currentYear + 1, 5, 1),
+                        EndDate = new DateTime(currentYear + 1, 5, 15),
+                        EventType = "Registration",
+                        IsHoliday = false,
+                        Year = currentYear + 1,
+                        Semester = "Spring"
+                    }
+                };
+
+                await context.AcademicCalendars.AddRangeAsync(calendars);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        private static async Task SeedAnnouncementsAsync(CampusContext context)
+        {
+            if (!await context.Announcements.AnyAsync())
+            {
+                var users = await context.Users.Where(u => u.IsActive).ToListAsync();
+                var departments = await context.Departments.Where(d => d.IsActive).ToListAsync();
+                
+                if (users.Any() && departments.Any())
+                {
+                    var admin = users.FirstOrDefault(u => u.Email.Contains("admin"));
+                    var announcements = new List<Announcement>
+                    {
+                        new Announcement
+                        {
+                            Title = "Welcome to New Academic Year",
+                            Content = "We are pleased to welcome all students and faculty to the new academic year. Please check your course schedules and attend orientation sessions.",
+                            TargetAudience = "All",
+                            DepartmentId = null,
+                            CreatedById = admin?.Id,
+                            PublishDate = DateTime.UtcNow.AddDays(-30),
+                            ExpiryDate = DateTime.UtcNow.AddDays(60),
+                            IsImportant = true,
+                            ViewCount = 0
+                        },
+                        new Announcement
+                        {
+                            Title = "Course Registration Deadline",
+                            Content = "The course registration period will end on May 15, 2025. Please complete your course selections before the deadline.",
+                            TargetAudience = "Students",
+                            DepartmentId = null,
+                            CreatedById = admin?.Id,
+                            PublishDate = DateTime.UtcNow.AddDays(-10),
+                            ExpiryDate = DateTime.UtcNow.AddDays(20),
+                            IsImportant = true,
+                            ViewCount = 0
+                        },
+                        new Announcement
+                        {
+                            Title = "Library Hours Extended",
+                            Content = "The library will be open until 22:00 during the exam period. Study rooms are available for group study sessions.",
+                            TargetAudience = "Students",
+                            DepartmentId = null,
+                            CreatedById = admin?.Id,
+                            PublishDate = DateTime.UtcNow.AddDays(-5),
+                            ExpiryDate = DateTime.UtcNow.AddDays(30),
+                            IsImportant = false,
+                            ViewCount = 0
+                        },
+                        new Announcement
+                        {
+                            Title = "Faculty Meeting Scheduled",
+                            Content = "All faculty members are invited to attend the monthly faculty meeting on the first Friday of each month at 14:00.",
+                            TargetAudience = "Faculty",
+                            DepartmentId = null,
+                            CreatedById = admin?.Id,
+                            PublishDate = DateTime.UtcNow.AddDays(-20),
+                            ExpiryDate = null,
+                            IsImportant = false,
+                            ViewCount = 0
+                        }
+                    };
+
+                    // Add department-specific announcements
+                    if (departments.Count >= 2)
+                    {
+                        announcements.Add(new Announcement
+                        {
+                            Title = "Computer Science Department Seminar",
+                            Content = "Join us for a seminar on 'Latest Trends in AI' on Friday at 15:00 in Room A-101.",
+                            TargetAudience = "Students",
+                            DepartmentId = departments[0].Id,
+                            CreatedById = admin?.Id,
+                            PublishDate = DateTime.UtcNow.AddDays(-3),
+                            ExpiryDate = DateTime.UtcNow.AddDays(7),
+                            IsImportant = false,
+                            ViewCount = 0
+                        });
+                    }
+
+                    await context.Announcements.AddRangeAsync(announcements);
                     await context.SaveChangesAsync();
                 }
             }
