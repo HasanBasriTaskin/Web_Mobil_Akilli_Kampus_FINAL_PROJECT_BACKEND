@@ -99,6 +99,17 @@ namespace SMARTCAMPUS.API.Controllers
             var result = await _attendanceService.RefreshQrCodeAsync(id);
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpGet("my-attendance")]
+        public async Task<IActionResult> GetMyAttendance()
+        {
+            var studentId = await _userClaimsHelper.GetStudentIdAsync();
+            if (!studentId.HasValue)
+                return Unauthorized("Student not found or user is not a student");
+
+            var result = await _attendanceService.GetMyAttendanceAsync(studentId.Value);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }
 

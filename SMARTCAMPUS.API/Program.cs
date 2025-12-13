@@ -119,8 +119,11 @@ builder.Services.AddScoped<ICourseSectionService, CourseSectionService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<IGradeService, GradeService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IExcuseRequestService, ExcuseRequestService>();
 builder.Services.AddScoped<ITranscriptService, TranscriptService>();
 
+// Background Jobs
+builder.Services.AddHostedService<SMARTCAMPUS.BusinessLayer.Jobs.AbsenceWarningJob>();
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>(); // Scans assembly for all AbstractValidator<T>

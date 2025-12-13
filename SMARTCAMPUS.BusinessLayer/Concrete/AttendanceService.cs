@@ -193,8 +193,13 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                         checkInDto.Latitude.Value,
                         checkInDto.Longitude.Value);
 
-                    if (session.GeofenceRadius.HasValue && 
-                        distanceFromCenter > session.GeofenceRadius.Value)
+                    // Validate distance <= radius + accuracy buffer (e.g., radius + 5m)
+                    var accuracyBuffer = checkInDto.Accuracy ?? 5; // Default 5m buffer
+                    var effectiveRadius = session.GeofenceRadius.HasValue 
+                        ? session.GeofenceRadius.Value + accuracyBuffer 
+                        : DefaultGeofenceRadius + accuracyBuffer;
+
+                    if (distanceFromCenter > effectiveRadius)
                     {
                         isFlagged = true;
                         flagReason = "Outside geofence";
@@ -308,6 +313,13 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
                 await _unitOfWork.AttendanceRecords.AddAsync(record);
                 await _unitOfWork.CommitAsync();
+
+                // If flagged, notify instructor
+                if (isFlagged || fraudScore >= CampusNetworkConstants.FraudScoreMedium)
+                {
+                    // TODO: Send notification to instructor
+                    // await _notificationService.SendFlaggedAttendanceNotificationAsync(session.InstructorId, record);
+                }
 
                 return Response<NoDataDto>.Success(200);
             }
@@ -581,6 +593,83 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             catch (Exception ex)
             {
                 return Response<QrCodeRefreshDto>.Fail($"Error refreshing QR code: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<Response<MyAttendanceDto>> GetMyAttendanceAsync(int studentId)
+        {
+            try
+            {
+                var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(studentId);
+                var activeEnrollments = enrollments
+                    .Where(e => e.Status == EnrollmentStatus.Active)
+                    .ToList();
+
+                var myAttendance = new MyAttendanceDto();
+                int totalSessions = 0;
+                int totalPresent = 0;
+                int totalAbsent = 0;
+
+                foreach (var enrollment in activeEnrollments)
+                {
+                    var sessions = await _context.AttendanceSessions
+                        .Where(s => s.SectionId == enrollment.SectionId && s.IsActive)
+                        .Include(s => s.AttendanceRecords)
+                        .ToListAsync();
+
+                    var sectionSessions = sessions.Count;
+                    totalSessions += sectionSessions;
+
+                    var records = sessions
+                        .SelectMany(s => s.AttendanceRecords ?? new List<AttendanceRecord>())
+                        .Where(r => r.StudentId == studentId)
+                        .ToList();
+
+                    var presentCount = records.Count(r => r.CheckInTime.HasValue);
+                    var lateCount = records.Count(r => r.IsFlagged && r.FlagReason != null && r.FlagReason.Contains("Late"));
+                    var absentCount = sectionSessions - presentCount;
+
+                    totalPresent += presentCount;
+                    totalAbsent += absentCount;
+
+                    var attendancePercentage = sectionSessions > 0
+                        ? (decimal)presentCount / sectionSessions * 100
+                        : 0;
+
+                    string status = "Normal";
+                    if (attendancePercentage < 70) // 30% absence = critical
+                        status = "Critical";
+                    else if (attendancePercentage < 80) // 20% absence = warning
+                        status = "Warning";
+
+                    myAttendance.Courses.Add(new CourseAttendanceDto
+                    {
+                        SectionId = enrollment.SectionId,
+                        CourseCode = enrollment.Section?.Course?.Code,
+                        CourseName = enrollment.Section?.Course?.Name,
+                        Semester = enrollment.Section?.Semester ?? "",
+                        Year = enrollment.Section?.Year ?? 0,
+                        TotalSessions = sectionSessions,
+                        PresentCount = presentCount,
+                        AbsentCount = absentCount,
+                        LateCount = lateCount,
+                        AttendancePercentage = attendancePercentage,
+                        Status = status
+                    });
+                }
+
+                myAttendance.TotalSessions = totalSessions;
+                myAttendance.TotalPresent = totalPresent;
+                myAttendance.TotalAbsent = totalAbsent;
+                myAttendance.OverallAttendancePercentage = totalSessions > 0
+                    ? (decimal)totalPresent / totalSessions * 100
+                    : 0;
+
+                return Response<MyAttendanceDto>.Success(myAttendance, 200);
+            }
+            catch (Exception ex)
+            {
+                return Response<MyAttendanceDto>.Fail($"Error retrieving attendance: {ex.Message}", 500);
             }
         }
     }
