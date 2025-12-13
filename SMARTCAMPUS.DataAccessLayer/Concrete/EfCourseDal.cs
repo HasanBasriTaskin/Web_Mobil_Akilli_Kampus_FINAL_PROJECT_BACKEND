@@ -43,7 +43,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
 
             var studentEnrollments = await _context.Enrollments
                 .Where(e => e.StudentId == studentId 
-                    && (e.Status == "Completed" || e.LetterGrade != "F")
+                    && (e.Status == SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Completed || e.LetterGrade != "F")
                     && e.IsActive)
                 .Include(e => e.Section)
                     .ThenInclude(s => s.Course)
@@ -54,8 +54,35 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
                 .Distinct()
                 .ToList();
 
-            return course.Prerequisites
-                .All(p => completedCourseIds.Contains(p.PrerequisiteCourseId));
+            // Recursive prerequisite checking
+            var visited = new HashSet<int>();
+            return await CheckPrerequisitesRecursiveAsync(courseId, completedCourseIds, visited);
+        }
+
+        private async Task<bool> CheckPrerequisitesRecursiveAsync(int courseId, List<int> completedCourseIds, HashSet<int> visited)
+        {
+            // Prevent infinite loops
+            if (visited.Contains(courseId))
+                return true;
+
+            visited.Add(courseId);
+
+            var course = await GetCourseWithPrerequisitesAsync(courseId);
+            if (course == null || !course.Prerequisites.Any())
+                return true;
+
+            foreach (var prereq in course.Prerequisites)
+            {
+                // Check if prerequisite is completed
+                if (!completedCourseIds.Contains(prereq.PrerequisiteCourseId))
+                    return false;
+
+                // Recursive check for prerequisite's prerequisites
+                if (!await CheckPrerequisitesRecursiveAsync(prereq.PrerequisiteCourseId, completedCourseIds, visited))
+                    return false;
+            }
+
+            return true;
         }
     }
 }
