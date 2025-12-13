@@ -1,10 +1,14 @@
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
+using SMARTCAMPUS.DataAccessLayer.Context;
+using SMARTCAMPUS.EntityLayer.Constants;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Academic;
 using SMARTCAMPUS.EntityLayer.Models;
+using System.Text.Json;
 
 namespace SMARTCAMPUS.BusinessLayer.Concrete
 {
@@ -12,46 +16,95 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly CampusContext _context;
+        private const decimal DefaultGeofenceRadius = 15; // meters
+        private const int QrCodeExpiryMinutes = 30;
 
-        public AttendanceService(IUnitOfWork unitOfWork, IMapper mapper)
+        public AttendanceService(IUnitOfWork unitOfWork, IMapper mapper, CampusContext context)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _context = context;
         }
 
-        public async Task<Response<AttendanceSessionDto>> CreateSessionAsync(AttendanceSessionDto sessionDto)
+        public async Task<Response<AttendanceSessionDto>> CreateSessionAsync(AttendanceSessionCreateDto sessionCreateDto)
         {
             try
             {
                 // Verify section exists
-                var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(sessionDto.SectionId);
+                var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(sessionCreateDto.SectionId);
                 if (section == null)
                     return Response<AttendanceSessionDto>.Fail("Section not found", 404);
 
-                // Generate QR code if not provided
-                var qrCode = sessionDto.QrCode ?? GenerateQrCode(sessionDto.SectionId, sessionDto.Date);
+                // Get classroom GPS coordinates if not provided
+                decimal? latitude = sessionCreateDto.Latitude;
+                decimal? longitude = sessionCreateDto.Longitude;
+
+                if (!latitude.HasValue || !longitude.HasValue)
+                {
+                    if (section.ClassroomId.HasValue)
+                    {
+                        var classroom = await _unitOfWork.Classrooms.GetByIdAsync(section.ClassroomId.Value);
+                        if (classroom != null && !string.IsNullOrEmpty(classroom.FeaturesJson))
+                        {
+                            try
+                            {
+                                var features = JsonSerializer.Deserialize<Dictionary<string, object>>(classroom.FeaturesJson);
+                                if (features != null && features.ContainsKey("latitude") && features.ContainsKey("longitude"))
+                                {
+                                    latitude = Convert.ToDecimal(features["latitude"]);
+                                    longitude = Convert.ToDecimal(features["longitude"]);
+                                }
+                            }
+                            catch
+                            {
+                                // If parsing fails, use provided or null values
+                            }
+                        }
+                    }
+                }
+
+                // Set default geofence radius if not provided
+                var geofenceRadius = sessionCreateDto.GeofenceRadius ?? DefaultGeofenceRadius;
+
+                // Generate unique QR code
+                var qrCode = GenerateQrCode(sessionCreateDto.SectionId, sessionCreateDto.Date);
+
+                // Get instructor ID from section if not provided in DTO
+                var instructorId = section.InstructorId;
+                if (string.IsNullOrEmpty(instructorId))
+                    return Response<AttendanceSessionDto>.Fail("Section does not have an assigned instructor", 400);
 
                 var session = new AttendanceSession
                 {
-                    SectionId = sessionDto.SectionId,
-                    InstructorId = sessionDto.InstructorId,
-                    Date = sessionDto.Date,
-                    StartTime = sessionDto.StartTime,
-                    EndTime = sessionDto.EndTime,
-                    Latitude = sessionDto.Latitude,
-                    Longitude = sessionDto.Longitude,
-                    GeofenceRadius = sessionDto.GeofenceRadius,
+                    SectionId = sessionCreateDto.SectionId,
+                    InstructorId = instructorId,
+                    Date = sessionCreateDto.Date,
+                    StartTime = sessionCreateDto.StartTime,
+                    EndTime = sessionCreateDto.EndTime,
+                    Latitude = latitude,
+                    Longitude = longitude,
+                    GeofenceRadius = geofenceRadius,
                     QrCode = qrCode,
-                    Status = SMARTCAMPUS.EntityLayer.Constants.AttendanceSessionStatus.Scheduled
+                    Status = AttendanceSessionStatus.Scheduled
                 };
 
                 await _unitOfWork.AttendanceSessions.AddAsync(session);
                 await _unitOfWork.CommitAsync();
 
+                // TODO: Send push notification to enrolled students
+                // await _notificationService.SendAttendanceSessionNotificationAsync(session.SectionId, session);
+
                 var resultDto = _mapper.Map<AttendanceSessionDto>(session);
                 resultDto.CourseCode = section.Course?.Code;
                 resultDto.CourseName = section.Course?.Name;
                 resultDto.InstructorName = section.Instructor?.FullName;
+
+                // Calculate statistics
+                var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsBySectionAsync(session.SectionId);
+                resultDto.TotalStudents = enrollments.Count(e => e.Status == EnrollmentStatus.Active);
+                resultDto.PresentCount = 0;
+                resultDto.AbsentCount = resultDto.TotalStudents;
 
                 return Response<AttendanceSessionDto>.Success(resultDto, 201);
             }
@@ -61,12 +114,12 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
-        public async Task<Response<NoDataDto>> CheckInAsync(int studentId, AttendanceCheckInDto checkInDto)
+        public async Task<Response<NoDataDto>> CheckInAsync(int studentId, int sessionId, AttendanceCheckInDto checkInDto)
         {
             try
             {
                 // Get session with details
-                var session = await _unitOfWork.AttendanceSessions.GetSessionWithRecordsAsync(checkInDto.SessionId);
+                var session = await _unitOfWork.AttendanceSessions.GetSessionWithRecordsAsync(sessionId);
                 if (session == null)
                     return Response<NoDataDto>.Fail("Attendance session not found", 404);
 
@@ -79,12 +132,12 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 var enrollment = await _unitOfWork.Enrollments
                     .GetEnrollmentByStudentAndSectionAsync(studentId, session.SectionId);
                 
-                if (enrollment == null || enrollment.Status != "Active")
+                if (enrollment == null || enrollment.Status != EnrollmentStatus.Active)
                     return Response<NoDataDto>.Fail("Student is not enrolled in this section", 403);
 
                 // Check if already checked in
                 var existingRecord = await _unitOfWork.AttendanceRecords
-                    .GetRecordBySessionAndStudentAsync(checkInDto.SessionId, studentId);
+                    .GetRecordBySessionAndStudentAsync(sessionId, studentId);
                 
                 if (existingRecord != null)
                     return Response<NoDataDto>.Fail("Already checked in", 400);
@@ -135,7 +188,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 // Create attendance record
                 var record = new AttendanceRecord
                 {
-                    SessionId = checkInDto.SessionId,
+                    SessionId = sessionId,
                     StudentId = studentId,
                     CheckInTime = checkInTime,
                     Latitude = checkInDto.Latitude,
@@ -201,7 +254,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 if (session.AttendanceRecords != null)
                 {
                     var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsBySectionAsync(session.SectionId);
-                    var enrolledCount = enrollments.Count(e => e.Status == "Active");
+                    var enrolledCount = enrollments.Count(e => e.Status == EnrollmentStatus.Active);
                     
                     sessionDto.TotalStudents = enrolledCount;
                     sessionDto.PresentCount = session.AttendanceRecords.Count(r => r.CheckInTime.HasValue);
@@ -245,6 +298,135 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
         private double ToRadians(double degrees)
         {
             return degrees * Math.PI / 180.0;
+        }
+
+        public async Task<Response<NoDataDto>> CloseSessionAsync(int sessionId, string instructorId)
+        {
+            try
+            {
+                var session = await _unitOfWork.AttendanceSessions.GetSessionWithRecordsAsync(sessionId);
+                if (session == null)
+                    return Response<NoDataDto>.Fail("Session not found", 404);
+
+                // Verify instructor owns the session
+                if (session.InstructorId != instructorId)
+                    return Response<NoDataDto>.Fail("You are not authorized to close this session", 403);
+
+                if (session.Status == AttendanceSessionStatus.Completed || session.Status == AttendanceSessionStatus.Cancelled)
+                    return Response<NoDataDto>.Fail("Session is already closed", 400);
+
+                session.Status = AttendanceSessionStatus.Completed;
+                _unitOfWork.AttendanceSessions.Update(session);
+                await _unitOfWork.CommitAsync();
+
+                return Response<NoDataDto>.Success(200);
+            }
+            catch (Exception ex)
+            {
+                return Response<NoDataDto>.Fail($"Error closing session: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<Response<IEnumerable<AttendanceSessionDto>>> GetMySessionsAsync(string instructorId)
+        {
+            try
+            {
+                var sessions = await _context.AttendanceSessions
+                    .Where(s => s.InstructorId == instructorId && s.IsActive)
+                    .Include(s => s.Section)
+                        .ThenInclude(sec => sec.Course)
+                    .Include(s => s.Instructor)
+                    .OrderByDescending(s => s.Date)
+                    .ThenByDescending(s => s.StartTime)
+                    .ToListAsync();
+
+                var sessionDtos = new List<AttendanceSessionDto>();
+                foreach (var session in sessions)
+                {
+                    var dto = _mapper.Map<AttendanceSessionDto>(session);
+                    dto.CourseCode = session.Section?.Course?.Code;
+                    dto.CourseName = session.Section?.Course?.Name;
+                    dto.InstructorName = session.Instructor?.FullName;
+
+                    // Calculate statistics
+                    var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsBySectionAsync(session.SectionId);
+                    dto.TotalStudents = enrollments.Count(e => e.Status == EnrollmentStatus.Active);
+                    
+                    var records = await _unitOfWork.AttendanceRecords.GetRecordsBySessionAsync(session.Id);
+                    dto.PresentCount = records.Count(r => r.CheckInTime.HasValue);
+                    dto.AbsentCount = dto.TotalStudents - dto.PresentCount;
+
+                    sessionDtos.Add(dto);
+                }
+
+                return Response<IEnumerable<AttendanceSessionDto>>.Success(sessionDtos, 200);
+            }
+            catch (Exception ex)
+            {
+                return Response<IEnumerable<AttendanceSessionDto>>.Fail($"Error retrieving sessions: {ex.Message}", 500);
+            }
+        }
+
+        public async Task<Response<AttendanceReportDto>> GetSectionAttendanceReportAsync(int sectionId)
+        {
+            try
+            {
+                var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(sectionId);
+                if (section == null)
+                    return Response<AttendanceReportDto>.Fail("Section not found", 404);
+
+                var sessions = await _context.AttendanceSessions
+                    .Where(s => s.SectionId == sectionId && s.IsActive)
+                    .Include(s => s.AttendanceRecords)
+                    .ToListAsync();
+
+                var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsBySectionAsync(sectionId);
+                var activeEnrollments = enrollments.Where(e => e.Status == EnrollmentStatus.Active).ToList();
+
+                var report = new AttendanceReportDto
+                {
+                    SectionId = sectionId,
+                    CourseCode = section.Course?.Code,
+                    CourseName = section.Course?.Name,
+                    Semester = section.Semester,
+                    Year = section.Year,
+                    TotalSessions = sessions.Count,
+                    TotalStudents = activeEnrollments.Count
+                };
+
+                foreach (var enrollment in activeEnrollments)
+                {
+                    var studentRecords = sessions
+                        .SelectMany(s => s.AttendanceRecords ?? new List<AttendanceRecord>())
+                        .Where(r => r.StudentId == enrollment.StudentId)
+                        .ToList();
+
+                    var presentCount = studentRecords.Count(r => r.CheckInTime.HasValue);
+                    var lateCount = studentRecords.Count(r => r.IsFlagged && r.FlagReason != null && r.FlagReason.Contains("Late"));
+                    var absentCount = report.TotalSessions - presentCount;
+
+                    var attendancePercentage = report.TotalSessions > 0
+                        ? (decimal)presentCount / report.TotalSessions * 100
+                        : 0;
+
+                    report.StudentSummaries.Add(new StudentAttendanceSummaryDto
+                    {
+                        StudentId = enrollment.StudentId,
+                        StudentNumber = enrollment.Student?.StudentNumber,
+                        StudentName = enrollment.Student?.User?.FullName,
+                        PresentCount = presentCount,
+                        AbsentCount = absentCount,
+                        LateCount = lateCount,
+                        AttendancePercentage = attendancePercentage
+                    });
+                }
+
+                return Response<AttendanceReportDto>.Success(report, 200);
+            }
+            catch (Exception ex)
+            {
+                return Response<AttendanceReportDto>.Fail($"Error generating attendance report: {ex.Message}", 500);
+            }
         }
     }
 }

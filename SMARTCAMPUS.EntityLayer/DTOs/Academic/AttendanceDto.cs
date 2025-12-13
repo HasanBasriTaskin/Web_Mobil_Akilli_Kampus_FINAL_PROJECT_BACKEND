@@ -38,9 +38,9 @@ namespace SMARTCAMPUS.EntityLayer.DTOs.Academic
 
     public class AttendanceCheckInDto
     {
-        public int SessionId { get; set; }
         public decimal? Latitude { get; set; }
         public decimal? Longitude { get; set; }
+        public decimal? Accuracy { get; set; } // GPS accuracy in meters
         public string? QrCode { get; set; }
     }
 }
