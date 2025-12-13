@@ -20,7 +20,7 @@ namespace SMARTCAMPUS.API.Controllers
             _userClaimsHelper = userClaimsHelper;
         }
 
-        [HttpPost("enroll")]
+        [HttpPost]
         public async Task<IActionResult> Enroll([FromBody] EnrollmentRequestDto request)
         {
             var studentId = await _userClaimsHelper.GetStudentIdAsync();
@@ -31,25 +31,29 @@ namespace SMARTCAMPUS.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpPost("drop/{enrollmentId}")]
-        public async Task<IActionResult> DropCourse(int enrollmentId)
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DropCourse(int id)
         {
             var studentId = await _userClaimsHelper.GetStudentIdAsync();
             if (!studentId.HasValue)
                 return Unauthorized("Student not found or user is not a student");
 
-            var result = await _enrollmentService.DropCourseAsync(studentId.Value, enrollmentId);
+            var result = await _enrollmentService.DropCourseAsync(studentId.Value, id);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("student/{studentId}")]
-        public async Task<IActionResult> GetStudentEnrollments(int studentId)
+        [HttpGet("my-courses")]
+        public async Task<IActionResult> GetMyCourses()
         {
-            var result = await _enrollmentService.GetStudentEnrollmentsAsync(studentId);
+            var studentId = await _userClaimsHelper.GetStudentIdAsync();
+            if (!studentId.HasValue)
+                return Unauthorized("Student not found or user is not a student");
+
+            var result = await _enrollmentService.GetStudentEnrollmentsAsync(studentId.Value);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("section/{sectionId}")]
+        [HttpGet("students/{sectionId}")]
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> GetSectionEnrollments(int sectionId)
         {

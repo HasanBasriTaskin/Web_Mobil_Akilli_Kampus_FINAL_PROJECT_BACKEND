@@ -1,8 +1,11 @@
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
+using SMARTCAMPUS.DataAccessLayer.Context;
+using SMARTCAMPUS.EntityLayer.Constants;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Academic;
 using SMARTCAMPUS.EntityLayer.Models;
@@ -13,11 +16,14 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly CampusContext _context;
+        private const int DropPeriodWeeks = 4;
 
-        public EnrollmentService(IUnitOfWork unitOfWork, IMapper mapper)
+        public EnrollmentService(IUnitOfWork unitOfWork, IMapper mapper, CampusContext context)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _context = context;
         }
 
         public async Task<Response<EnrollmentResponseDto>> EnrollAsync(int studentId, EnrollmentRequestDto request)
@@ -45,24 +51,40 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     return Response<EnrollmentResponseDto>.Success(response, 404);
                 }
 
-                // Check capacity (atomic operation)
-                if (section.EnrolledCount >= section.Capacity)
+                // Atomic capacity check and update using SQL
+                var affectedRows = await _context.Database.ExecuteSqlRawAsync(
+                    $"UPDATE CourseSections SET EnrolledCount = EnrolledCount + 1 WHERE Id = {request.SectionId} AND EnrolledCount < Capacity AND IsActive = 1");
+
+                if (affectedRows == 0)
                 {
-                    response.Message = "Section is full";
+                    response.Message = "Section is full or not available";
                     return Response<EnrollmentResponseDto>.Success(response, 400);
                 }
 
-                // Check prerequisites
+                // Refresh section data after atomic update
+                section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(request.SectionId);
+                if (section == null)
+                {
+                    await transaction.RollbackAsync();
+                    response.Message = "Section not found after capacity update";
+                    return Response<EnrollmentResponseDto>.Success(response, 404);
+                }
+
+                // Check prerequisites (recursive)
                 var prerequisitesMet = await _unitOfWork.Courses
                     .CheckPrerequisiteAsync(section.CourseId, studentId);
                 
                 if (!prerequisitesMet)
                 {
-                    var course = await _unitOfWork.Courses.GetCourseWithPrerequisitesAsync(section.CourseId);
-                    response.MissingPrerequisites = course?.Prerequisites
-                        .Select(p => p.PrerequisiteCourse.Code)
-                        .ToList() ?? new List<string>();
+                    // Get all missing prerequisites recursively
+                    var missingPrereqs = await GetMissingPrerequisitesRecursiveAsync(section.CourseId, studentId, new HashSet<int>());
+                    response.MissingPrerequisites = missingPrereqs;
                     response.Message = "Prerequisites not met";
+                    
+                    // Rollback capacity increment
+                    await _context.Database.ExecuteSqlRawAsync(
+                        $"UPDATE CourseSections SET EnrolledCount = EnrolledCount - 1 WHERE Id = {request.SectionId}");
+                    await transaction.RollbackAsync();
                     return Response<EnrollmentResponseDto>.Success(response, 400);
                 }
 
@@ -87,11 +109,6 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 };
 
                 await _unitOfWork.Enrollments.AddAsync(enrollment);
-
-                // Atomic increment of enrolled count
-                section.EnrolledCount++;
-                _unitOfWork.CourseSections.Update(section);
-
                 await _unitOfWork.CommitAsync();
                 await transaction.CommitAsync();
 
@@ -118,19 +135,24 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 if (enrollment == null || enrollment.StudentId != studentId)
                     return Response<NoDataDto>.Fail("Enrollment not found", 404);
 
-                if (enrollment.Status != SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Active)
+                if (enrollment.Status != EnrollmentStatus.Active)
                     return Response<NoDataDto>.Fail("Cannot drop non-active enrollment", 400);
 
-                enrollment.Status = SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Dropped;
+                // Check drop period (first 4 weeks)
+                var enrollmentDate = enrollment.EnrollmentDate;
+                var weeksSinceEnrollment = (DateTime.UtcNow - enrollmentDate).TotalDays / 7;
+                
+                if (weeksSinceEnrollment > DropPeriodWeeks)
+                {
+                    return Response<NoDataDto>.Fail($"Drop period has expired. You can only drop courses within the first {DropPeriodWeeks} weeks.", 400);
+                }
+
+                enrollment.Status = EnrollmentStatus.Dropped;
                 _unitOfWork.Enrollments.Update(enrollment);
 
-                // Decrement enrolled count
-                var section = await _unitOfWork.CourseSections.GetByIdAsync(enrollment.SectionId);
-                if (section != null)
-                {
-                    section.EnrolledCount = Math.Max(0, section.EnrolledCount - 1);
-                    _unitOfWork.CourseSections.Update(section);
-                }
+                // Atomic decrement of enrolled count
+                await _context.Database.ExecuteSqlRawAsync(
+                    $"UPDATE CourseSections SET EnrolledCount = CASE WHEN EnrolledCount > 0 THEN EnrolledCount - 1 ELSE 0 END WHERE Id = {enrollment.SectionId}");
 
                 await _unitOfWork.CommitAsync();
                 await transaction.CommitAsync();
@@ -202,6 +224,47 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             {
                 return Response<bool>.Fail($"Error checking schedule conflict: {ex.Message}", 500);
             }
+        }
+
+        private async Task<List<string>> GetMissingPrerequisitesRecursiveAsync(int courseId, int studentId, HashSet<int> visited)
+        {
+            var missingPrereqs = new List<string>();
+
+            if (visited.Contains(courseId))
+                return missingPrereqs;
+
+            visited.Add(courseId);
+
+            var course = await _unitOfWork.Courses.GetCourseWithPrerequisitesAsync(courseId);
+            if (course == null || !course.Prerequisites.Any())
+                return missingPrereqs;
+
+            var studentEnrollments = await _context.Enrollments
+                .Where(e => e.StudentId == studentId
+                    && (e.Status == EnrollmentStatus.Completed || e.LetterGrade != "F")
+                    && e.IsActive)
+                .Include(e => e.Section)
+                    .ThenInclude(s => s.Course)
+                .ToListAsync();
+
+            var completedCourseIds = studentEnrollments
+                .Select(e => e.Section.CourseId)
+                .Distinct()
+                .ToList();
+
+            foreach (var prereq in course.Prerequisites)
+            {
+                if (!completedCourseIds.Contains(prereq.PrerequisiteCourseId))
+                {
+                    missingPrereqs.Add(prereq.PrerequisiteCourse.Code);
+                }
+
+                // Recursive check
+                var nestedMissing = await GetMissingPrerequisitesRecursiveAsync(prereq.PrerequisiteCourseId, studentId, visited);
+                missingPrereqs.AddRange(nestedMissing);
+            }
+
+            return missingPrereqs.Distinct().ToList();
         }
     }
 }
