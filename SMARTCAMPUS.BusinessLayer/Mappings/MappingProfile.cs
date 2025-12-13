@@ -66,6 +66,12 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
             CreateMap<CourseSectionCreateDto, CourseSection>();
             CreateMap<CourseSectionUpdateDto, CourseSection>()
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+
+            // Academic Calendar Mappings
+            CreateMap<AcademicCalendar, AcademicCalendarDto>();
+
+            // Announcement Mappings
+            CreateMap<Announcement, AnnouncementDto>();
         }
     }
 }

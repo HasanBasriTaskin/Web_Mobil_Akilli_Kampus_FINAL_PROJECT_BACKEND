@@ -83,6 +83,14 @@ namespace SMARTCAMPUS.BusinessLayer.Tools
         {
             return _httpContextAccessor.HttpContext?.User?.FindAll(ClaimTypes.Role)?.Select(c => c.Value) ?? Enumerable.Empty<string>();
         }
+
+        /// <summary>
+        /// Gets student with details (User and Department) by student ID
+        /// </summary>
+        public async Task<EntityLayer.Models.Student?> GetStudentWithDetailsAsync(int studentId)
+        {
+            return await _unitOfWork.Students.GetStudentWithDetailsAsync(studentId);
+        }
     }
 }
 
