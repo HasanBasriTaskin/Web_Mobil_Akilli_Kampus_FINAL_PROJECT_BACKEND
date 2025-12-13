@@ -42,7 +42,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     Longitude = sessionDto.Longitude,
                     GeofenceRadius = sessionDto.GeofenceRadius,
                     QrCode = qrCode,
-                    Status = "Scheduled"
+                    Status = SMARTCAMPUS.EntityLayer.Constants.AttendanceSessionStatus.Scheduled
                 };
 
                 await _unitOfWork.AttendanceSessions.AddAsync(session);
@@ -71,7 +71,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     return Response<NoDataDto>.Fail("Attendance session not found", 404);
 
                 // Check if session is active
-                if (session.Status != "Active" && session.Status != "Scheduled")
+                if (session.Status != SMARTCAMPUS.EntityLayer.Constants.AttendanceSessionStatus.Active && 
+                    session.Status != SMARTCAMPUS.EntityLayer.Constants.AttendanceSessionStatus.Scheduled)
                     return Response<NoDataDto>.Fail("Session is not available for check-in", 400);
 
                 // Check if student is enrolled in the section
@@ -98,7 +99,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
                 var checkInTime = DateTime.UtcNow;
                 var sessionDateTime = session.Date.Add(session.StartTime);
-                var isLate = checkInTime > sessionDateTime.AddMinutes(15); // 15 minutes grace period
+                var isLate = checkInTime > sessionDateTime.AddMinutes(Constants.GradeConstants.LateCheckInGracePeriodMinutes);
 
                 decimal? distanceFromCenter = null;
                 bool isFlagged = false;

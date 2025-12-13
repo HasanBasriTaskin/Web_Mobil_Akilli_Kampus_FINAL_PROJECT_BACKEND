@@ -28,6 +28,8 @@ namespace SMARTCAMPUS.DataAccessLayer.Context
         public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
         public DbSet<ExcuseRequest> ExcuseRequests { get; set; }
         public DbSet<Classroom> Classrooms { get; set; }
+        public DbSet<AcademicCalendar> AcademicCalendars { get; set; }
+        public DbSet<Announcement> Announcements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SMARTCAMPUS.BusinessLayer.Abstract;
+using SMARTCAMPUS.BusinessLayer.Tools;
 using SMARTCAMPUS.EntityLayer.DTOs.Academic;
 
 namespace SMARTCAMPUS.API.Controllers
@@ -11,27 +12,33 @@ namespace SMARTCAMPUS.API.Controllers
     public class EnrollmentsController : ControllerBase
     {
         private readonly IEnrollmentService _enrollmentService;
+        private readonly UserClaimsHelper _userClaimsHelper;
 
-        public EnrollmentsController(IEnrollmentService enrollmentService)
+        public EnrollmentsController(IEnrollmentService enrollmentService, UserClaimsHelper userClaimsHelper)
         {
             _enrollmentService = enrollmentService;
+            _userClaimsHelper = userClaimsHelper;
         }
 
         [HttpPost("enroll")]
         public async Task<IActionResult> Enroll([FromBody] EnrollmentRequestDto request)
         {
-            // TODO: Get studentId from JWT token claims
-            var studentId = 1; // Placeholder - should come from authenticated user
-            var result = await _enrollmentService.EnrollAsync(studentId, request);
+            var studentId = await _userClaimsHelper.GetStudentIdAsync();
+            if (!studentId.HasValue)
+                return Unauthorized("Student not found or user is not a student");
+
+            var result = await _enrollmentService.EnrollAsync(studentId.Value, request);
             return StatusCode(result.StatusCode, result);
         }
 
         [HttpPost("drop/{enrollmentId}")]
         public async Task<IActionResult> DropCourse(int enrollmentId)
         {
-            // TODO: Get studentId from JWT token claims
-            var studentId = 1; // Placeholder
-            var result = await _enrollmentService.DropCourseAsync(studentId, enrollmentId);
+            var studentId = await _userClaimsHelper.GetStudentIdAsync();
+            if (!studentId.HasValue)
+                return Unauthorized("Student not found or user is not a student");
+
+            var result = await _enrollmentService.DropCourseAsync(studentId.Value, enrollmentId);
             return StatusCode(result.StatusCode, result);
         }
 

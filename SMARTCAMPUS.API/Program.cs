@@ -38,6 +38,7 @@ try
         configuration.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<SMARTCAMPUS.BusinessLayer.Tools.UserClaimsHelper>();
 
 // Add services to the container.
 
@@ -117,6 +118,7 @@ builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<IGradeService, GradeService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<ITranscriptService, TranscriptService>();
 
 
 builder.Services.AddFluentValidationAutoValidation();

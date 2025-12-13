@@ -31,7 +31,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 var existingEnrollment = await _unitOfWork.Enrollments
                     .GetEnrollmentByStudentAndSectionAsync(studentId, request.SectionId);
                 
-                if (existingEnrollment != null && existingEnrollment.Status == "Active")
+                if (existingEnrollment != null && existingEnrollment.Status == SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Active)
                 {
                     response.Message = "Already enrolled in this section";
                     return Response<EnrollmentResponseDto>.Success(response, 400);
@@ -82,7 +82,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 {
                     StudentId = studentId,
                     SectionId = request.SectionId,
-                    Status = "Active",
+                    Status = SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Active,
                     EnrollmentDate = DateTime.UtcNow
                 };
 
@@ -118,10 +118,10 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 if (enrollment == null || enrollment.StudentId != studentId)
                     return Response<NoDataDto>.Fail("Enrollment not found", 404);
 
-                if (enrollment.Status != "Active")
+                if (enrollment.Status != SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Active)
                     return Response<NoDataDto>.Fail("Cannot drop non-active enrollment", 400);
 
-                enrollment.Status = "Dropped";
+                enrollment.Status = SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Dropped;
                 _unitOfWork.Enrollments.Update(enrollment);
 
                 // Decrement enrolled count
