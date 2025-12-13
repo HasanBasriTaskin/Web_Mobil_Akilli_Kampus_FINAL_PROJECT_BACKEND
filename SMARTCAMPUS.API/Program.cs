@@ -95,6 +95,15 @@ builder.Services.AddScoped<IRefreshTokenDal, EfRefreshTokenDal>();
 builder.Services.AddScoped<IPasswordResetTokenDal, EfPasswordResetTokenDal>();
 builder.Services.AddScoped<IEmailVerificationTokenDal, EfEmailVerificationTokenDal>();
 
+// Academic Management DALs
+builder.Services.AddScoped<ICourseDal, EfCourseDal>();
+builder.Services.AddScoped<ICourseSectionDal, EfCourseSectionDal>();
+builder.Services.AddScoped<IEnrollmentDal, EfEnrollmentDal>();
+builder.Services.AddScoped<IAttendanceSessionDal, EfAttendanceSessionDal>();
+builder.Services.AddScoped<IAttendanceRecordDal, EfAttendanceRecordDal>();
+builder.Services.AddScoped<IExcuseRequestDal, EfExcuseRequestDal>();
+builder.Services.AddScoped<IClassroomDal, EfClassroomDal>();
+
 // 5. Business Layer Services (AutoMapper & FluentValidation & Tools)
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddScoped<JwtTokenGenerator>();
@@ -102,6 +111,11 @@ builder.Services.AddScoped<IAuthService, AuthManager>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentManager>();
 builder.Services.AddScoped<INotificationService, EmailService>();
+
+// Academic Management Services
+builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+builder.Services.AddScoped<IGradeService, GradeService>();
 
 
 builder.Services.AddFluentValidationAutoValidation();

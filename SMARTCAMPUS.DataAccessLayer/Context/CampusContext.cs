@@ -18,6 +18,16 @@ namespace SMARTCAMPUS.DataAccessLayer.Context
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
         public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }
+        
+        // Academic Management
+        public DbSet<Course> Courses { get; set; }
+        public DbSet<CourseSection> CourseSections { get; set; }
+        public DbSet<CoursePrerequisite> CoursePrerequisites { get; set; }
+        public DbSet<Enrollment> Enrollments { get; set; }
+        public DbSet<AttendanceSession> AttendanceSessions { get; set; }
+        public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
+        public DbSet<ExcuseRequest> ExcuseRequests { get; set; }
+        public DbSet<Classroom> Classrooms { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
