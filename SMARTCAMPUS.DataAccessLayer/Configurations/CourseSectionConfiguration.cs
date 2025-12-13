@@ -39,3 +39,5 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
     }
 }
 
+
+
