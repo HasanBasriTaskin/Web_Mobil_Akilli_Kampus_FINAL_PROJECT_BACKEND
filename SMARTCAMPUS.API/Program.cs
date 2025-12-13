@@ -115,6 +115,7 @@ builder.Services.AddScoped<INotificationService, EmailService>();
 
 // Academic Management Services
 builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<ICourseSectionService, CourseSectionService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<IGradeService, GradeService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
