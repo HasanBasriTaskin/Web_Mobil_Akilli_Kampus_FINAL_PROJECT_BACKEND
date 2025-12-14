@@ -33,15 +33,18 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             {
                 var response = new EnrollmentResponseDto { Success = false };
 
-                // Check if already enrolled
-                var existingEnrollment = await _unitOfWork.Enrollments
-                    .GetEnrollmentByStudentAndSectionAsync(studentId, request.SectionId);
+                // Check if already enrolled (including dropped enrollments for reenrollment)
+                var existingEnrollment = await _context.Enrollments
+                    .FirstOrDefaultAsync(e => e.StudentId == studentId && e.SectionId == request.SectionId);
                 
                 if (existingEnrollment != null && existingEnrollment.Status == SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Active)
                 {
                     response.Message = "Already enrolled in this section";
                     return Response<EnrollmentResponseDto>.Success(response, 400);
                 }
+
+                // If dropped enrollment exists, we'll reactivate it instead of creating new one
+                bool isReenrollment = existingEnrollment != null && existingEnrollment.Status == EnrollmentStatus.Dropped;
 
                 // Get section details
                 var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(request.SectionId);
@@ -51,14 +54,25 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     return Response<EnrollmentResponseDto>.Success(response, 404);
                 }
 
-                // Atomic capacity check and update using SQL
-                var affectedRows = await _context.Database.ExecuteSqlRawAsync(
-                    $"UPDATE CourseSections SET EnrolledCount = EnrolledCount + 1 WHERE Id = {request.SectionId} AND EnrolledCount < Capacity AND IsActive = 1");
-
-                if (affectedRows == 0)
+                // For reenrollment, we don't need to check capacity (student was already counted before)
+                // For new enrollment, check capacity
+                if (!isReenrollment)
                 {
-                    response.Message = "Section is full or not available";
-                    return Response<EnrollmentResponseDto>.Success(response, 400);
+                    // Atomic capacity check and update using SQL
+                    var affectedRows = await _context.Database.ExecuteSqlRawAsync(
+                        $"UPDATE CourseSections SET EnrolledCount = EnrolledCount + 1 WHERE Id = {request.SectionId} AND EnrolledCount < Capacity AND IsActive = 1");
+
+                    if (affectedRows == 0)
+                    {
+                        response.Message = "Section is full or not available";
+                        return Response<EnrollmentResponseDto>.Success(response, 400);
+                    }
+                }
+                else
+                {
+                    // For reenrollment, just increment capacity (it was decremented when dropped)
+                    await _context.Database.ExecuteSqlRawAsync(
+                        $"UPDATE CourseSections SET EnrolledCount = EnrolledCount + 1 WHERE Id = {request.SectionId} AND IsActive = 1");
                 }
 
                 // Refresh section data after atomic update
@@ -81,9 +95,9 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     response.MissingPrerequisites = missingPrereqs;
                     response.Message = "Prerequisites not met";
                     
-                    // Rollback capacity increment
+                    // Rollback capacity increment (only if not reenrollment, or rollback for reenrollment too)
                     await _context.Database.ExecuteSqlRawAsync(
-                        $"UPDATE CourseSections SET EnrolledCount = EnrolledCount - 1 WHERE Id = {request.SectionId}");
+                        $"UPDATE CourseSections SET EnrolledCount = CASE WHEN EnrolledCount > 0 THEN EnrolledCount - 1 ELSE 0 END WHERE Id = {request.SectionId}");
                     await transaction.RollbackAsync();
                     return Response<EnrollmentResponseDto>.Success(response, 400);
                 }
@@ -96,19 +110,39 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 {
                     response.Message = "Schedule conflict detected";
                     response.Conflicts = new List<string> { section.Course?.Code ?? "Unknown" };
+                    // Rollback capacity increment
+                    await _context.Database.ExecuteSqlRawAsync(
+                        $"UPDATE CourseSections SET EnrolledCount = CASE WHEN EnrolledCount > 0 THEN EnrolledCount - 1 ELSE 0 END WHERE Id = {request.SectionId}");
+                    await transaction.RollbackAsync();
                     return Response<EnrollmentResponseDto>.Success(response, 400);
                 }
 
-                // Create enrollment
-                var enrollment = new Enrollment
+                Enrollment enrollment;
+                
+                if (isReenrollment)
                 {
-                    StudentId = studentId,
-                    SectionId = request.SectionId,
-                    Status = SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Active,
-                    EnrollmentDate = DateTime.UtcNow
-                };
+                    // Reactivate existing dropped enrollment
+                    enrollment = existingEnrollment!;
+                    enrollment.Status = EnrollmentStatus.Active;
+                    enrollment.IsActive = true; // Ensure it's active
+                    enrollment.EnrollmentDate = DateTime.UtcNow; // Update enrollment date
+                    enrollment.UpdatedDate = DateTime.UtcNow;
+                    _unitOfWork.Enrollments.Update(enrollment);
+                }
+                else
+                {
+                    // Create new enrollment
+                    enrollment = new Enrollment
+                    {
+                        StudentId = studentId,
+                        SectionId = request.SectionId,
+                        Status = SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Active,
+                        EnrollmentDate = DateTime.UtcNow
+                    };
 
-                await _unitOfWork.Enrollments.AddAsync(enrollment);
+                    await _unitOfWork.Enrollments.AddAsync(enrollment);
+                }
+
                 await _unitOfWork.CommitAsync();
                 await transaction.CommitAsync();
 
