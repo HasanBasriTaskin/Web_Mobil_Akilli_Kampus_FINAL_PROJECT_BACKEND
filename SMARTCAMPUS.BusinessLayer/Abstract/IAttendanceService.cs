@@ -8,12 +8,12 @@ namespace SMARTCAMPUS.BusinessLayer.Abstract
     {
         Task<Response<AttendanceSessionDto>> CreateSessionAsync(AttendanceSessionCreateDto sessionCreateDto);
         Task<Response<NoDataDto>> CheckInAsync(int studentId, int sessionId, AttendanceCheckInDto checkInDto);
-        Task<Response<IEnumerable<AttendanceRecordDto>>> GetSessionRecordsAsync(int sessionId);
+        Task<Response<IEnumerable<AttendanceRecordDto>>> GetSessionRecordsAsync(int sessionId, string? instructorId = null, bool isAdmin = false);
         Task<Response<IEnumerable<AttendanceRecordDto>>> GetStudentAttendanceAsync(int studentId);
         Task<Response<AttendanceSessionDto>> GetSessionByIdAsync(int sessionId);
         Task<Response<NoDataDto>> CloseSessionAsync(int sessionId, string instructorId);
         Task<Response<IEnumerable<AttendanceSessionDto>>> GetMySessionsAsync(string instructorId);
-        Task<Response<AttendanceReportDto>> GetSectionAttendanceReportAsync(int sectionId);
+        Task<Response<AttendanceReportDto>> GetSectionAttendanceReportAsync(int sectionId, string? instructorId = null, bool isAdmin = false);
         Task<Response<QrCodeRefreshDto>> RefreshQrCodeAsync(int sessionId);
         Task<Response<MyAttendanceDto>> GetMyAttendanceAsync(int studentId);
     }

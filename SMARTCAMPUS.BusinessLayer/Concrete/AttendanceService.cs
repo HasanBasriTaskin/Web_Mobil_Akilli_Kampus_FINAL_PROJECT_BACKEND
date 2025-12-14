@@ -329,10 +329,22 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
-        public async Task<Response<IEnumerable<AttendanceRecordDto>>> GetSessionRecordsAsync(int sessionId)
+        public async Task<Response<IEnumerable<AttendanceRecordDto>>> GetSessionRecordsAsync(int sessionId, string? instructorId = null, bool isAdmin = false)
         {
             try
             {
+                // Get session to check ownership
+                var session = await _unitOfWork.AttendanceSessions.GetByIdAsync(sessionId);
+                if (session == null)
+                    return Response<IEnumerable<AttendanceRecordDto>>.Fail("Session not found", 404);
+
+                // Authorization check: Admin can view all, Faculty can only view their own sessions
+                if (!isAdmin && !string.IsNullOrEmpty(instructorId))
+                {
+                    if (session.InstructorId != instructorId)
+                        return Response<IEnumerable<AttendanceRecordDto>>.Fail("You are not authorized to view this session's records", 403);
+                }
+
                 var records = await _unitOfWork.AttendanceRecords.GetRecordsBySessionAsync(sessionId);
                 var recordDtos = _mapper.Map<IEnumerable<AttendanceRecordDto>>(records);
                 return Response<IEnumerable<AttendanceRecordDto>>.Success(recordDtos, 200);
@@ -487,13 +499,20 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
-        public async Task<Response<AttendanceReportDto>> GetSectionAttendanceReportAsync(int sectionId)
+        public async Task<Response<AttendanceReportDto>> GetSectionAttendanceReportAsync(int sectionId, string? instructorId = null, bool isAdmin = false)
         {
             try
             {
                 var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(sectionId);
                 if (section == null)
                     return Response<AttendanceReportDto>.Fail("Section not found", 404);
+
+                // Authorization check: Admin can view all, Faculty can only view their own sections
+                if (!isAdmin && !string.IsNullOrEmpty(instructorId))
+                {
+                    if (section.InstructorId != instructorId)
+                        return Response<AttendanceReportDto>.Fail("You are not authorized to view this section's attendance report", 403);
+                }
 
                 var sessions = await _context.AttendanceSessions
                     .Where(s => s.SectionId == sectionId && s.IsActive)
