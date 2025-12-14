@@ -42,7 +42,11 @@ namespace SMARTCAMPUS.API.Controllers
         [HttpGet("sessions/{sessionId}")]
         public async Task<IActionResult> GetSession(int sessionId)
         {
-            var result = await _attendanceService.GetSessionByIdAsync(sessionId);
+            var studentId = await _userClaimsHelper.GetStudentIdAsync();
+            var instructorId = User.IsInRole("Faculty") ? _userClaimsHelper.GetUserId() : null;
+            var isAdmin = User.IsInRole("Admin");
+            
+            var result = await _attendanceService.GetSessionByIdAsync(sessionId, studentId, instructorId, isAdmin);
             return StatusCode(result.StatusCode, result);
         }
 
@@ -60,7 +64,11 @@ namespace SMARTCAMPUS.API.Controllers
         [HttpGet("students/{studentId}")]
         public async Task<IActionResult> GetStudentAttendance(int studentId)
         {
-            var result = await _attendanceService.GetStudentAttendanceAsync(studentId);
+            var requestingStudentId = await _userClaimsHelper.GetStudentIdAsync();
+            var instructorId = User.IsInRole("Faculty") ? _userClaimsHelper.GetUserId() : null;
+            var isAdmin = User.IsInRole("Admin");
+            
+            var result = await _attendanceService.GetStudentAttendanceAsync(studentId, requestingStudentId, isAdmin, instructorId);
             return StatusCode(result.StatusCode, result);
         }
 
@@ -100,9 +108,13 @@ namespace SMARTCAMPUS.API.Controllers
         }
 
         [HttpGet("sessions/{id}/qr-code")]
+        [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> RefreshQrCode(int id)
         {
-            var result = await _attendanceService.RefreshQrCodeAsync(id);
+            var instructorId = _userClaimsHelper.GetUserId();
+            var isAdmin = User.IsInRole("Admin");
+            
+            var result = await _attendanceService.RefreshQrCodeAsync(id, instructorId, isAdmin);
             return StatusCode(result.StatusCode, result);
         }
 
