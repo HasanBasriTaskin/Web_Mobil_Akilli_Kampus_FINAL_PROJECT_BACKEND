@@ -24,10 +24,22 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             _context = context;
         }
 
-        public async Task<Response<IEnumerable<GradeDto>>> GetSectionGradesAsync(int sectionId)
+        public async Task<Response<IEnumerable<GradeDto>>> GetSectionGradesAsync(int sectionId, string? instructorId = null, bool isAdmin = false)
         {
             try
             {
+                // Get section to check ownership
+                var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(sectionId);
+                if (section == null)
+                    return Response<IEnumerable<GradeDto>>.Fail("Section not found", 404);
+
+                // Authorization check: Admin can view all, Faculty can only view their own sections
+                if (!isAdmin && !string.IsNullOrEmpty(instructorId))
+                {
+                    if (section.InstructorId != instructorId)
+                        return Response<IEnumerable<GradeDto>>.Fail("You are not authorized to view this section's grades", 403);
+                }
+
                 var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsBySectionAsync(sectionId);
                 var gradeDtos = _mapper.Map<IEnumerable<GradeDto>>(enrollments);
                 return Response<IEnumerable<GradeDto>>.Success(gradeDtos, 200);
@@ -38,13 +50,34 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
-        public async Task<Response<GradeDto>> GetStudentGradeAsync(int enrollmentId)
+        public async Task<Response<GradeDto>> GetStudentGradeAsync(int enrollmentId, int? requestingStudentId = null, bool isAdmin = false, string? instructorId = null)
         {
             try
             {
                 var enrollment = await _unitOfWork.Enrollments.GetEnrollmentWithDetailsAsync(enrollmentId);
                 if (enrollment == null)
                     return Response<GradeDto>.Fail("Enrollment not found", 404);
+
+                // Authorization: Students can only view their own grades
+                // Faculty can view grades of students in their sections
+                // Admin can view all grades
+                if (!isAdmin)
+                {
+                    if (requestingStudentId.HasValue && requestingStudentId.Value != enrollment.StudentId)
+                    {
+                        // Check if instructor is authorized (student is in instructor's section)
+                        if (string.IsNullOrEmpty(instructorId))
+                        {
+                            return Response<GradeDto>.Fail("You are not authorized to view this grade", 403);
+                        }
+                        
+                        var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(enrollment.SectionId);
+                        if (section == null || section.InstructorId != instructorId)
+                        {
+                            return Response<GradeDto>.Fail("You are not authorized to view this grade", 403);
+                        }
+                    }
+                }
 
                 var gradeDto = _mapper.Map<GradeDto>(enrollment);
                 return Response<GradeDto>.Success(gradeDto, 200);
@@ -55,13 +88,24 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
-        public async Task<Response<NoDataDto>> UpdateGradeAsync(int enrollmentId, GradeUpdateDto gradeUpdate)
+        public async Task<Response<NoDataDto>> UpdateGradeAsync(int enrollmentId, GradeUpdateDto gradeUpdate, string? instructorId = null, bool isAdmin = false)
         {
             try
             {
-                var enrollment = await _unitOfWork.Enrollments.GetByIdAsync(enrollmentId);
+                var enrollment = await _unitOfWork.Enrollments.GetEnrollmentWithDetailsAsync(enrollmentId);
                 if (enrollment == null)
                     return Response<NoDataDto>.Fail("Enrollment not found", 404);
+
+                // Authorization check: Admin can update all, Faculty can only update their own sections
+                if (!isAdmin && !string.IsNullOrEmpty(instructorId))
+                {
+                    var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(enrollment.SectionId);
+                    if (section == null)
+                        return Response<NoDataDto>.Fail("Section not found", 404);
+
+                    if (section.InstructorId != instructorId)
+                        return Response<NoDataDto>.Fail("You are not authorized to update grades for this section", 403);
+                }
 
                 enrollment.MidtermGrade = gradeUpdate.MidtermGrade;
                 enrollment.FinalGrade = gradeUpdate.FinalGrade;
@@ -102,10 +146,22 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
-        public async Task<Response<NoDataDto>> BulkUpdateGradesAsync(int sectionId, GradeBulkUpdateDto grades)
+        public async Task<Response<NoDataDto>> BulkUpdateGradesAsync(int sectionId, GradeBulkUpdateDto grades, string? instructorId = null, bool isAdmin = false)
         {
             try
             {
+                // Get section to check ownership
+                var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(sectionId);
+                if (section == null)
+                    return Response<NoDataDto>.Fail("Section not found", 404);
+
+                // Authorization check: Admin can update all, Faculty can only update their own sections
+                if (!isAdmin && !string.IsNullOrEmpty(instructorId))
+                {
+                    if (section.InstructorId != instructorId)
+                        return Response<NoDataDto>.Fail("You are not authorized to update grades for this section", 403);
+                }
+
                 foreach (var gradeUpdate in grades.Grades)
                 {
                     var enrollment = await _unitOfWork.Enrollments.GetByIdAsync(gradeUpdate.EnrollmentId);

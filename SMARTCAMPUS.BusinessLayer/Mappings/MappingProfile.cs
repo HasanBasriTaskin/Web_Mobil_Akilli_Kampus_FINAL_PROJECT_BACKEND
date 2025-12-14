@@ -30,7 +30,12 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
                 .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student.User.FullName))
                 .ForMember(dest => dest.CourseCode, opt => opt.MapFrom(src => src.Section.Course.Code))
                 .ForMember(dest => dest.CourseName, opt => opt.MapFrom(src => src.Section.Course.Name))
-                .ForMember(dest => dest.SectionNumber, opt => opt.MapFrom(src => src.Section.SectionNumber));
+                .ForMember(dest => dest.SectionNumber, opt => opt.MapFrom(src => src.Section.SectionNumber))
+                .ForMember(dest => dest.InstructorName, opt => opt.MapFrom(src => src.Section.Instructor != null ? src.Section.Instructor.FullName : null))
+                .ForMember(dest => dest.ScheduleJson, opt => opt.MapFrom(src => src.Section.ScheduleJson))
+                .ForMember(dest => dest.CanDrop, opt => opt.Ignore())
+                .ForMember(dest => dest.DropReason, opt => opt.Ignore())
+                .ForMember(dest => dest.AttendancePercentage, opt => opt.Ignore());
 
             CreateMap<AttendanceSession, AttendanceSessionDto>()
                 .ForMember(dest => dest.CourseCode, opt => opt.MapFrom(src => src.Section.Course.Code))
@@ -72,6 +77,9 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
 
             // Announcement Mappings
             CreateMap<Announcement, AnnouncementDto>();
+
+            // Department Mappings
+            CreateMap<Department, DepartmentDto>();
         }
     }
 }

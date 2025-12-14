@@ -8,7 +8,7 @@ namespace SMARTCAMPUS.BusinessLayer.Abstract
     {
         Task<Response<EnrollmentResponseDto>> EnrollAsync(int studentId, EnrollmentRequestDto request);
         Task<Response<NoDataDto>> DropCourseAsync(int studentId, int enrollmentId);
-        Task<Response<IEnumerable<EnrollmentDto>>> GetStudentEnrollmentsAsync(int studentId);
+        Task<Response<IEnumerable<EnrollmentDto>>> GetStudentEnrollmentsAsync(int studentId, int? requestingStudentId = null, bool isAdmin = false, string? instructorId = null);
         Task<Response<IEnumerable<EnrollmentDto>>> GetSectionEnrollmentsAsync(int sectionId, string? instructorId = null, bool isAdmin = false);
         Task<Response<bool>> CheckPrerequisitesAsync(int courseId, int studentId);
         Task<Response<bool>> CheckScheduleConflictAsync(int studentId, int sectionId);
