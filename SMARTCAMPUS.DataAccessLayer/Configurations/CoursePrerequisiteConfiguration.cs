@@ -26,7 +26,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
 
             // Prevent self-referencing prerequisites
             builder.HasCheckConstraint("CK_CoursePrerequisite_NoSelfReference", 
-                "[CourseId] != [PrerequisiteCourseId]");
+                "CourseId != PrerequisiteCourseId");
         }
     }
 }

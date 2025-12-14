@@ -7,9 +7,6 @@ namespace SMARTCAMPUS.BusinessLayer.ValidationRules.Academic
     {
         public AttendanceCheckInValidator()
         {
-            RuleFor(x => x.SessionId)
-                .GreaterThan(0)
-                .WithMessage("Session ID must be greater than 0");
 
             RuleFor(x => x.Latitude)
                 .InclusiveBetween(-90, 90)
