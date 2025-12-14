@@ -57,7 +57,10 @@ namespace SMARTCAMPUS.API.Controllers
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> GetSectionEnrollments(int sectionId)
         {
-            var result = await _enrollmentService.GetSectionEnrollmentsAsync(sectionId);
+            var instructorId = _userClaimsHelper.GetUserId();
+            var isAdmin = User.IsInRole("Admin");
+            
+            var result = await _enrollmentService.GetSectionEnrollmentsAsync(sectionId, instructorId, isAdmin);
             return StatusCode(result.StatusCode, result);
         }
 
