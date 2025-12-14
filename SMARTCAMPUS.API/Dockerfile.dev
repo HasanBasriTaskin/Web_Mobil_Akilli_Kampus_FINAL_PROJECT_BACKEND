@@ -1,0 +1,23 @@
+# Development Dockerfile for .NET Core API with Hot Reload
+# Uses dotnet watch for automatic recompilation on file changes
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+WORKDIR /src
+
+# Copy solution and project files for restore (cache layer)
+COPY SMARTCAMPUS.sln ./
+COPY SMARTCAMPUS.API/SMARTCAMPUS.API.csproj ./SMARTCAMPUS.API/
+COPY SMARTCAMPUS.BusinessLayer/SMARTCAMPUS.BusinessLayer.csproj ./SMARTCAMPUS.BusinessLayer/
+COPY SMARTCAMPUS.DataAccessLayer/SMARTCAMPUS.DataAccessLayer.csproj ./SMARTCAMPUS.DataAccessLayer/
+COPY SMARTCAMPUS.EntityLayer/SMARTCAMPUS.EntityLayer.csproj ./SMARTCAMPUS.EntityLayer/
+COPY SMARTCAMPUS.Tests/SMARTCAMPUS.Tests.csproj ./SMARTCAMPUS.Tests/
+
+# Restore dependencies
+RUN dotnet restore
+
+EXPOSE 8080
+
+# Use dotnet watch for hot reload
+# --no-hot-reload flag can be removed to enable .NET Hot Reload
+ENTRYPOINT ["dotnet", "watch", "run", "--project", "SMARTCAMPUS.API/SMARTCAMPUS.API.csproj", "--urls", "http://+:8080"]
