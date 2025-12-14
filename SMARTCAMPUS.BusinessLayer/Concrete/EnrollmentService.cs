@@ -230,10 +230,22 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
-        public async Task<Response<IEnumerable<EnrollmentDto>>> GetSectionEnrollmentsAsync(int sectionId)
+        public async Task<Response<IEnumerable<EnrollmentDto>>> GetSectionEnrollmentsAsync(int sectionId, string? instructorId = null, bool isAdmin = false)
         {
             try
             {
+                // Get section to check ownership
+                var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(sectionId);
+                if (section == null)
+                    return Response<IEnumerable<EnrollmentDto>>.Fail("Section not found", 404);
+
+                // Authorization check: Admin can view all, Faculty can only view their own sections
+                if (!isAdmin && !string.IsNullOrEmpty(instructorId))
+                {
+                    if (section.InstructorId != instructorId)
+                        return Response<IEnumerable<EnrollmentDto>>.Fail("You are not authorized to view this section's enrollments", 403);
+                }
+
                 var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsBySectionAsync(sectionId);
                 var enrollmentDtos = _mapper.Map<IEnumerable<EnrollmentDto>>(enrollments);
                 return Response<IEnumerable<EnrollmentDto>>.Success(enrollmentDtos, 200);
