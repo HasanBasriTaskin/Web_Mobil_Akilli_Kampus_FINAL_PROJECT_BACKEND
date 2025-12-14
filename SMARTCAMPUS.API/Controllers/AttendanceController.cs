@@ -50,7 +50,10 @@ namespace SMARTCAMPUS.API.Controllers
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> GetSessionRecords(int sessionId)
         {
-            var result = await _attendanceService.GetSessionRecordsAsync(sessionId);
+            var instructorId = _userClaimsHelper.GetUserId();
+            var isAdmin = User.IsInRole("Admin");
+            
+            var result = await _attendanceService.GetSessionRecordsAsync(sessionId, instructorId, isAdmin);
             return StatusCode(result.StatusCode, result);
         }
 
@@ -89,7 +92,10 @@ namespace SMARTCAMPUS.API.Controllers
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> GetAttendanceReport(int sectionId)
         {
-            var result = await _attendanceService.GetSectionAttendanceReportAsync(sectionId);
+            var instructorId = _userClaimsHelper.GetUserId();
+            var isAdmin = User.IsInRole("Admin");
+            
+            var result = await _attendanceService.GetSectionAttendanceReportAsync(sectionId, instructorId, isAdmin);
             return StatusCode(result.StatusCode, result);
         }
 
