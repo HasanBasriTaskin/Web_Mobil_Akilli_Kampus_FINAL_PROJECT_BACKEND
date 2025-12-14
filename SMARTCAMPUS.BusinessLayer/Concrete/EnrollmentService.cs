@@ -31,34 +31,43 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
-                var response = new EnrollmentResponseDto { Success = false };
-
-                // Check if already enrolled
-                var existingEnrollment = await _unitOfWork.Enrollments
-                    .GetEnrollmentByStudentAndSectionAsync(studentId, request.SectionId);
+                // Check if already enrolled (including dropped enrollments for reenrollment)
+                var existingEnrollment = await _context.Enrollments
+                    .FirstOrDefaultAsync(e => e.StudentId == studentId && e.SectionId == request.SectionId);
                 
                 if (existingEnrollment != null && existingEnrollment.Status == SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Active)
                 {
-                    response.Message = "Already enrolled in this section";
-                    return Response<EnrollmentResponseDto>.Success(response, 400);
+                    return Response<EnrollmentResponseDto>.Fail("Already enrolled in this section", 400);
                 }
+
+                // If dropped enrollment exists, we'll reactivate it instead of creating new one
+                bool isReenrollment = existingEnrollment != null && existingEnrollment.Status == EnrollmentStatus.Dropped;
 
                 // Get section details
                 var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(request.SectionId);
                 if (section == null)
                 {
-                    response.Message = "Section not found";
-                    return Response<EnrollmentResponseDto>.Success(response, 404);
+                    return Response<EnrollmentResponseDto>.Fail("Section not found", 404);
                 }
 
-                // Atomic capacity check and update using SQL
-                var affectedRows = await _context.Database.ExecuteSqlRawAsync(
-                    $"UPDATE CourseSections SET EnrolledCount = EnrolledCount + 1 WHERE Id = {request.SectionId} AND EnrolledCount < Capacity AND IsActive = 1");
-
-                if (affectedRows == 0)
+                // For reenrollment, we don't need to check capacity (student was already counted before)
+                // For new enrollment, check capacity
+                if (!isReenrollment)
                 {
-                    response.Message = "Section is full or not available";
-                    return Response<EnrollmentResponseDto>.Success(response, 400);
+                    // Atomic capacity check and update using SQL
+                    var affectedRows = await _context.Database.ExecuteSqlRawAsync(
+                        $"UPDATE CourseSections SET EnrolledCount = EnrolledCount + 1 WHERE Id = {request.SectionId} AND EnrolledCount < Capacity AND IsActive = 1");
+
+                    if (affectedRows == 0)
+                    {
+                        return Response<EnrollmentResponseDto>.Fail("Section is full or not available", 400);
+                    }
+                }
+                else
+                {
+                    // For reenrollment, just increment capacity (it was decremented when dropped)
+                    await _context.Database.ExecuteSqlRawAsync(
+                        $"UPDATE CourseSections SET EnrolledCount = EnrolledCount + 1 WHERE Id = {request.SectionId} AND IsActive = 1");
                 }
 
                 // Refresh section data after atomic update
@@ -66,8 +75,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 if (section == null)
                 {
                     await transaction.RollbackAsync();
-                    response.Message = "Section not found after capacity update";
-                    return Response<EnrollmentResponseDto>.Success(response, 404);
+                    return Response<EnrollmentResponseDto>.Fail("Section not found after capacity update", 404);
                 }
 
                 // Check prerequisites (recursive)
@@ -78,14 +86,20 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 {
                     // Get all missing prerequisites recursively
                     var missingPrereqs = await GetMissingPrerequisitesRecursiveAsync(section.CourseId, studentId, new HashSet<int>());
-                    response.MissingPrerequisites = missingPrereqs;
-                    response.Message = "Prerequisites not met";
                     
-                    // Rollback capacity increment
+                    // Rollback capacity increment (only if not reenrollment, or rollback for reenrollment too)
                     await _context.Database.ExecuteSqlRawAsync(
-                        $"UPDATE CourseSections SET EnrolledCount = EnrolledCount - 1 WHERE Id = {request.SectionId}");
+                        $"UPDATE CourseSections SET EnrolledCount = CASE WHEN EnrolledCount > 0 THEN EnrolledCount - 1 ELSE 0 END WHERE Id = {request.SectionId}");
                     await transaction.RollbackAsync();
-                    return Response<EnrollmentResponseDto>.Success(response, 400);
+                    
+                    // Return error with missing prerequisites details
+                    var errorResponse = new EnrollmentResponseDto
+                    {
+                        Success = false,
+                        Message = "Prerequisites not met",
+                        MissingPrerequisites = missingPrereqs
+                    };
+                    return Response<EnrollmentResponseDto>.Fail("Prerequisites not met", 400, errorResponse);
                 }
 
                 // Check schedule conflict
@@ -94,28 +108,57 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 
                 if (hasConflict)
                 {
-                    response.Message = "Schedule conflict detected";
-                    response.Conflicts = new List<string> { section.Course?.Code ?? "Unknown" };
-                    return Response<EnrollmentResponseDto>.Success(response, 400);
+                    // Rollback capacity increment
+                    await _context.Database.ExecuteSqlRawAsync(
+                        $"UPDATE CourseSections SET EnrolledCount = CASE WHEN EnrolledCount > 0 THEN EnrolledCount - 1 ELSE 0 END WHERE Id = {request.SectionId}");
+                    await transaction.RollbackAsync();
+                    
+                    // Return error with conflict details
+                    var errorResponse = new EnrollmentResponseDto
+                    {
+                        Success = false,
+                        Message = "Schedule conflict detected",
+                        Conflicts = new List<string> { section.Course?.Code ?? "Unknown" }
+                    };
+                    return Response<EnrollmentResponseDto>.Fail("Schedule conflict detected", 400, errorResponse);
                 }
 
-                // Create enrollment
-                var enrollment = new Enrollment
+                Enrollment enrollment;
+                
+                if (isReenrollment)
                 {
-                    StudentId = studentId,
-                    SectionId = request.SectionId,
-                    Status = SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Active,
-                    EnrollmentDate = DateTime.UtcNow
-                };
+                    // Reactivate existing dropped enrollment
+                    enrollment = existingEnrollment!;
+                    enrollment.Status = EnrollmentStatus.Active;
+                    enrollment.IsActive = true; // Ensure it's active
+                    enrollment.EnrollmentDate = DateTime.UtcNow; // Update enrollment date
+                    enrollment.UpdatedDate = DateTime.UtcNow;
+                    _unitOfWork.Enrollments.Update(enrollment);
+                }
+                else
+                {
+                    // Create new enrollment
+                    enrollment = new Enrollment
+                    {
+                        StudentId = studentId,
+                        SectionId = request.SectionId,
+                        Status = SMARTCAMPUS.EntityLayer.Constants.EnrollmentStatus.Active,
+                        EnrollmentDate = DateTime.UtcNow
+                    };
 
-                await _unitOfWork.Enrollments.AddAsync(enrollment);
+                    await _unitOfWork.Enrollments.AddAsync(enrollment);
+                }
+
                 await _unitOfWork.CommitAsync();
                 await transaction.CommitAsync();
 
                 var enrollmentDto = _mapper.Map<EnrollmentDto>(enrollment);
-                response.Success = true;
-                response.Message = "Successfully enrolled";
-                response.Enrollment = enrollmentDto;
+                var response = new EnrollmentResponseDto
+                {
+                    Success = true,
+                    Message = "Successfully enrolled",
+                    Enrollment = enrollmentDto
+                };
 
                 return Response<EnrollmentResponseDto>.Success(response, 201);
             }
@@ -132,8 +175,12 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             try
             {
                 var enrollment = await _unitOfWork.Enrollments.GetEnrollmentWithDetailsAsync(enrollmentId);
-                if (enrollment == null || enrollment.StudentId != studentId)
+                if (enrollment == null)
                     return Response<NoDataDto>.Fail("Enrollment not found", 404);
+                
+                // Authorization: Students can only drop their own enrollments
+                if (enrollment.StudentId != studentId)
+                    return Response<NoDataDto>.Fail("You are not authorized to drop this enrollment", 403);
 
                 if (enrollment.Status != EnrollmentStatus.Active)
                     return Response<NoDataDto>.Fail("Cannot drop non-active enrollment", 400);
@@ -166,12 +213,54 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
-        public async Task<Response<IEnumerable<EnrollmentDto>>> GetStudentEnrollmentsAsync(int studentId)
+        public async Task<Response<IEnumerable<EnrollmentDto>>> GetStudentEnrollmentsAsync(int studentId, int? requestingStudentId = null, bool isAdmin = false, string? instructorId = null)
         {
             try
             {
+                // Authorization: Students can only view their own enrollments
+                // Faculty can view enrollments of students in their sections
+                // Admin can view all enrollments
+                if (!isAdmin)
+                {
+                    if (requestingStudentId.HasValue && requestingStudentId.Value != studentId)
+                    {
+                        // Check if instructor is authorized (student is in instructor's section)
+                        if (string.IsNullOrEmpty(instructorId))
+                        {
+                            return Response<IEnumerable<EnrollmentDto>>.Fail("You are not authorized to view this student's enrollments", 403);
+                        }
+                        
+                        var hasAccess = await _context.Enrollments
+                            .AnyAsync(e => e.StudentId == studentId 
+                                && e.Status == EnrollmentStatus.Active 
+                                && e.IsActive
+                                && e.Section.InstructorId == instructorId);
+                        
+                        if (!hasAccess)
+                        {
+                            return Response<IEnumerable<EnrollmentDto>>.Fail("You are not authorized to view this student's enrollments", 403);
+                        }
+                    }
+                }
+
                 var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(studentId);
                 var enrollmentDtos = _mapper.Map<IEnumerable<EnrollmentDto>>(enrollments);
+                
+                // Calculate CanDrop, DropReason, and AttendancePercentage for each enrollment
+                foreach (var dto in enrollmentDtos)
+                {
+                    var enrollment = enrollments.FirstOrDefault(e => e.Id == dto.Id);
+                    if (enrollment != null)
+                    {
+                        var (canDrop, dropReason) = CheckCanDropEnrollment(enrollment);
+                        dto.CanDrop = canDrop;
+                        dto.DropReason = dropReason;
+                        
+                        // Calculate attendance percentage
+                        dto.AttendancePercentage = await CalculateAttendancePercentageAsync(studentId, enrollment.SectionId);
+                    }
+                }
+                
                 return Response<IEnumerable<EnrollmentDto>>.Success(enrollmentDtos, 200);
             }
             catch (Exception ex)
@@ -392,6 +481,55 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
 
             return missingPrereqs.Distinct().ToList();
+        }
+
+        private (bool canDrop, string? dropReason) CheckCanDropEnrollment(Enrollment enrollment)
+        {
+            // Check if enrollment is active
+            if (enrollment.Status != EnrollmentStatus.Active)
+            {
+                return (false, "Cannot drop non-active enrollment");
+            }
+
+            // Check drop period (first 4 weeks)
+            var enrollmentDate = enrollment.EnrollmentDate;
+            var weeksSinceEnrollment = (DateTime.UtcNow - enrollmentDate).TotalDays / 7;
+            
+            if (weeksSinceEnrollment > DropPeriodWeeks)
+            {
+                return (false, $"Drop period has expired. You can only drop courses within the first {DropPeriodWeeks} weeks.");
+            }
+
+            return (true, null);
+        }
+
+        private async Task<decimal?> CalculateAttendancePercentageAsync(int studentId, int sectionId)
+        {
+            try
+            {
+                var sessions = await _context.AttendanceSessions
+                    .Where(s => s.SectionId == sectionId && s.IsActive)
+                    .Include(s => s.AttendanceRecords)
+                    .ToListAsync();
+
+                var totalSessions = sessions.Count;
+                if (totalSessions == 0)
+                    return null;
+
+                var records = sessions
+                    .SelectMany(s => s.AttendanceRecords ?? new List<SMARTCAMPUS.EntityLayer.Models.AttendanceRecord>())
+                    .Where(r => r.StudentId == studentId && r.CheckInTime.HasValue)
+                    .ToList();
+
+                var presentCount = records.Count;
+                var attendancePercentage = (decimal)presentCount / totalSessions * 100;
+
+                return attendancePercentage;
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

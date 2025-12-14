@@ -26,14 +26,21 @@ namespace SMARTCAMPUS.API.Controllers
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> GetSectionGrades(int sectionId)
         {
-            var result = await _gradeService.GetSectionGradesAsync(sectionId);
+            var instructorId = _userClaimsHelper.GetUserId();
+            var isAdmin = User.IsInRole("Admin");
+            
+            var result = await _gradeService.GetSectionGradesAsync(sectionId, instructorId, isAdmin);
             return StatusCode(result.StatusCode, result);
         }
 
         [HttpGet("enrollment/{enrollmentId}")]
         public async Task<IActionResult> GetStudentGrade(int enrollmentId)
         {
-            var result = await _gradeService.GetStudentGradeAsync(enrollmentId);
+            var studentId = await _userClaimsHelper.GetStudentIdAsync();
+            var instructorId = User.IsInRole("Faculty") ? _userClaimsHelper.GetUserId() : null;
+            var isAdmin = User.IsInRole("Admin");
+            
+            var result = await _gradeService.GetStudentGradeAsync(enrollmentId, studentId, isAdmin, instructorId);
             return StatusCode(result.StatusCode, result);
         }
 
@@ -41,7 +48,10 @@ namespace SMARTCAMPUS.API.Controllers
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> UpdateGrade(int enrollmentId, [FromBody] GradeUpdateDto gradeUpdate)
         {
-            var result = await _gradeService.UpdateGradeAsync(enrollmentId, gradeUpdate);
+            var instructorId = _userClaimsHelper.GetUserId();
+            var isAdmin = User.IsInRole("Admin");
+            
+            var result = await _gradeService.UpdateGradeAsync(enrollmentId, gradeUpdate, instructorId, isAdmin);
             return StatusCode(result.StatusCode, result);
         }
 
@@ -49,7 +59,10 @@ namespace SMARTCAMPUS.API.Controllers
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> BulkUpdateGrades(int sectionId, [FromBody] GradeBulkUpdateDto grades)
         {
-            var result = await _gradeService.BulkUpdateGradesAsync(sectionId, grades);
+            var instructorId = _userClaimsHelper.GetUserId();
+            var isAdmin = User.IsInRole("Admin");
+            
+            var result = await _gradeService.BulkUpdateGradesAsync(sectionId, grades, instructorId, isAdmin);
             return StatusCode(result.StatusCode, result);
         }
 
