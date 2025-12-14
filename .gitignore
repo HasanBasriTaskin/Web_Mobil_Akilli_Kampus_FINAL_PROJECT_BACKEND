@@ -409,3 +409,14 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Development settings (contains sensitive data)
+**/appsettings.Development.json
+
+# Coverage reports
+coverage-report/
