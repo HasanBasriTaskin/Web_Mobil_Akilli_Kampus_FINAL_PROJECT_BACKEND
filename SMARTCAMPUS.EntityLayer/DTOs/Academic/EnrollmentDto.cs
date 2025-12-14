@@ -16,6 +16,8 @@ namespace SMARTCAMPUS.EntityLayer.DTOs.Academic
         public decimal? FinalGrade { get; set; }
         public string? LetterGrade { get; set; }
         public decimal? GradePoint { get; set; }
+        public bool CanDrop { get; set; }
+        public string? DropReason { get; set; }
     }
 
     public class EnrollmentCreateDto

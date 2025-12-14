@@ -30,7 +30,9 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
                 .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student.User.FullName))
                 .ForMember(dest => dest.CourseCode, opt => opt.MapFrom(src => src.Section.Course.Code))
                 .ForMember(dest => dest.CourseName, opt => opt.MapFrom(src => src.Section.Course.Name))
-                .ForMember(dest => dest.SectionNumber, opt => opt.MapFrom(src => src.Section.SectionNumber));
+                .ForMember(dest => dest.SectionNumber, opt => opt.MapFrom(src => src.Section.SectionNumber))
+                .ForMember(dest => dest.CanDrop, opt => opt.Ignore())
+                .ForMember(dest => dest.DropReason, opt => opt.Ignore());
 
             CreateMap<AttendanceSession, AttendanceSessionDto>()
                 .ForMember(dest => dest.CourseCode, opt => opt.MapFrom(src => src.Section.Course.Code))
@@ -59,8 +61,8 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
             CreateMap<CourseCreateDto, Course>()
                 .ForMember(dest => dest.Prerequisites, opt => opt.Ignore());
             CreateMap<CourseUpdateDto, Course>()
-                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null))
-                .ForMember(dest => dest.Prerequisites, opt => opt.Ignore());
+                .ForMember(dest => dest.Prerequisites, opt => opt.Ignore())
+                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
             // Course Section Create/Update Mappings
             CreateMap<CourseSectionCreateDto, CourseSection>();

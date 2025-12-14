@@ -172,6 +172,19 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             {
                 var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(studentId);
                 var enrollmentDtos = _mapper.Map<IEnumerable<EnrollmentDto>>(enrollments);
+                
+                // Calculate CanDrop and DropReason for each enrollment
+                foreach (var dto in enrollmentDtos)
+                {
+                    var enrollment = enrollments.FirstOrDefault(e => e.Id == dto.Id);
+                    if (enrollment != null)
+                    {
+                        var (canDrop, dropReason) = CheckCanDropEnrollment(enrollment);
+                        dto.CanDrop = canDrop;
+                        dto.DropReason = dropReason;
+                    }
+                }
+                
                 return Response<IEnumerable<EnrollmentDto>>.Success(enrollmentDtos, 200);
             }
             catch (Exception ex)
@@ -380,6 +393,26 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
 
             return missingPrereqs.Distinct().ToList();
+        }
+
+        private (bool canDrop, string? dropReason) CheckCanDropEnrollment(Enrollment enrollment)
+        {
+            // Check if enrollment is active
+            if (enrollment.Status != EnrollmentStatus.Active)
+            {
+                return (false, "Cannot drop non-active enrollment");
+            }
+
+            // Check drop period (first 4 weeks)
+            var enrollmentDate = enrollment.EnrollmentDate;
+            var weeksSinceEnrollment = (DateTime.UtcNow - enrollmentDate).TotalDays / 7;
+            
+            if (weeksSinceEnrollment > DropPeriodWeeks)
+            {
+                return (false, $"Drop period has expired. You can only drop courses within the first {DropPeriodWeeks} weeks.");
+            }
+
+            return (true, null);
         }
     }
 }
