@@ -27,6 +27,8 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
         {
             return await _context.Enrollments
                 .Where(e => e.StudentId == studentId && e.IsActive)
+                .Include(e => e.Student)
+                    .ThenInclude(s => s.User)
                 .Include(e => e.Section)
                     .ThenInclude(s => s.Course)
                 .Include(e => e.Section)

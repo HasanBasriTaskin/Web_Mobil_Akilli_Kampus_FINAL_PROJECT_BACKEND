@@ -242,7 +242,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                                 checkInDto.Latitude.Value,
                                 checkInDto.Longitude.Value);
 
-                            velocity = (decimal)(distance / 1000.0 / timeDifference); // km/h
+                            velocity = (decimal)((double)distance / 1000.0 / timeDifference); // km/h
 
                             if (velocity > CampusNetworkConstants.MaxRealisticVelocity)
                             {

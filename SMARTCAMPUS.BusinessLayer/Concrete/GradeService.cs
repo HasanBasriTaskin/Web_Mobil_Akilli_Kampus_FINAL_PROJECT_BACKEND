@@ -369,8 +369,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 var student = await _unitOfWork.Students.GetByIdAsync(studentId);
                 if (student != null)
                 {
-                    student.GPA = gpaResponse.Data;
-                    student.CGPA = gpaResponse.Data; // CGPA = GPA for all courses
+                    student.GPA = (double)gpaResponse.Data;
+                    student.CGPA = (double)gpaResponse.Data; // CGPA = GPA for all courses
                     _unitOfWork.Students.Update(student);
                     await _unitOfWork.CommitAsync();
                 }
