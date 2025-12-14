@@ -173,7 +173,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(studentId);
                 var enrollmentDtos = _mapper.Map<IEnumerable<EnrollmentDto>>(enrollments);
                 
-                // Calculate CanDrop and DropReason for each enrollment
+                // Calculate CanDrop, DropReason, and AttendancePercentage for each enrollment
                 foreach (var dto in enrollmentDtos)
                 {
                     var enrollment = enrollments.FirstOrDefault(e => e.Id == dto.Id);
@@ -182,6 +182,9 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                         var (canDrop, dropReason) = CheckCanDropEnrollment(enrollment);
                         dto.CanDrop = canDrop;
                         dto.DropReason = dropReason;
+                        
+                        // Calculate attendance percentage
+                        dto.AttendancePercentage = await CalculateAttendancePercentageAsync(studentId, enrollment.SectionId);
                     }
                 }
                 
@@ -413,6 +416,35 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
 
             return (true, null);
+        }
+
+        private async Task<decimal?> CalculateAttendancePercentageAsync(int studentId, int sectionId)
+        {
+            try
+            {
+                var sessions = await _context.AttendanceSessions
+                    .Where(s => s.SectionId == sectionId && s.IsActive)
+                    .Include(s => s.AttendanceRecords)
+                    .ToListAsync();
+
+                var totalSessions = sessions.Count;
+                if (totalSessions == 0)
+                    return null;
+
+                var records = sessions
+                    .SelectMany(s => s.AttendanceRecords ?? new List<SMARTCAMPUS.EntityLayer.Models.AttendanceRecord>())
+                    .Where(r => r.StudentId == studentId && r.CheckInTime.HasValue)
+                    .ToList();
+
+                var presentCount = records.Count;
+                var attendancePercentage = (decimal)presentCount / totalSessions * 100;
+
+                return attendancePercentage;
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }
