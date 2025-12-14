@@ -38,6 +38,7 @@ try
         configuration.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<SMARTCAMPUS.BusinessLayer.Tools.UserClaimsHelper>();
 
 // Add services to the container.
 
@@ -95,6 +96,17 @@ builder.Services.AddScoped<IRefreshTokenDal, EfRefreshTokenDal>();
 builder.Services.AddScoped<IPasswordResetTokenDal, EfPasswordResetTokenDal>();
 builder.Services.AddScoped<IEmailVerificationTokenDal, EfEmailVerificationTokenDal>();
 
+// Academic Management DALs
+builder.Services.AddScoped<ICourseDal, EfCourseDal>();
+builder.Services.AddScoped<ICourseSectionDal, EfCourseSectionDal>();
+builder.Services.AddScoped<IEnrollmentDal, EfEnrollmentDal>();
+builder.Services.AddScoped<IAttendanceSessionDal, EfAttendanceSessionDal>();
+builder.Services.AddScoped<IAttendanceRecordDal, EfAttendanceRecordDal>();
+builder.Services.AddScoped<IExcuseRequestDal, EfExcuseRequestDal>();
+builder.Services.AddScoped<IClassroomDal, EfClassroomDal>();
+builder.Services.AddScoped<IAcademicCalendarDal, EfAcademicCalendarDal>();
+builder.Services.AddScoped<IAnnouncementDal, EfAnnouncementDal>();
+
 // 5. Business Layer Services (AutoMapper & FluentValidation & Tools)
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddScoped<JwtTokenGenerator>();
@@ -103,6 +115,19 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentManager>();
 builder.Services.AddScoped<INotificationService, EmailService>();
 
+// Academic Management Services
+builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<ICourseSectionService, CourseSectionService>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+builder.Services.AddScoped<IGradeService, GradeService>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IExcuseRequestService, ExcuseRequestService>();
+builder.Services.AddScoped<ITranscriptService, TranscriptService>();
+builder.Services.AddScoped<IAcademicCalendarService, AcademicCalendarService>();
+builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
+
+// Background Jobs
+builder.Services.AddHostedService<SMARTCAMPUS.BusinessLayer.Jobs.AbsenceWarningJob>();
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>(); // Scans assembly for all AbstractValidator<T>

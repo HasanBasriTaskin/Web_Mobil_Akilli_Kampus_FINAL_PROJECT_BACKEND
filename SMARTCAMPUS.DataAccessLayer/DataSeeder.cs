@@ -25,6 +25,16 @@ namespace SMARTCAMPUS.DataAccessLayer
             await SeedAdminAsync(userManager, configuration);
             await SeedStudentsAsync(userManager, context, configuration);
             await SeedFacultyAsync(userManager, context, configuration);
+            await SeedClassroomsAsync(context);
+            await SeedCoursesAsync(context);
+            await SeedCoursePrerequisitesAsync(context);
+            await SeedAcademicCalendarsAsync(context);
+            await SeedAnnouncementsAsync(context);
+            await SeedCourseSectionsAsync(context, userManager);
+            await SeedEnrollmentsAsync(context);
+            await SeedAttendanceSessionsAsync(context, userManager);
+            await SeedAttendanceRecordsAsync(context);
+            await SeedExcuseRequestsAsync(context, userManager);
         }
 
         private static async Task SeedRolesAsync(RoleManager<Role> roleManager)
@@ -181,6 +191,581 @@ namespace SMARTCAMPUS.DataAccessLayer
                 if (departments.Any())
                 {
                     await context.Departments.AddRangeAsync(departments);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedClassroomsAsync(CampusContext context)
+        {
+            if (!await context.Classrooms.AnyAsync())
+            {
+                var classrooms = new List<Classroom>
+                {
+                    new Classroom { Building = "A", RoomNumber = "101", Capacity = 50, FeaturesJson = "{\"projector\": true, \"computer\": true, \"whiteboard\": true}" },
+                    new Classroom { Building = "A", RoomNumber = "102", Capacity = 80, FeaturesJson = "{\"projector\": true, \"computer\": true, \"whiteboard\": true}" },
+                    new Classroom { Building = "A", RoomNumber = "201", Capacity = 100, FeaturesJson = "{\"projector\": true, \"computer\": true, \"whiteboard\": true, \"sound\": true}" },
+                    new Classroom { Building = "B", RoomNumber = "101", Capacity = 60, FeaturesJson = "{\"projector\": true, \"whiteboard\": true}" },
+                    new Classroom { Building = "B", RoomNumber = "205", Capacity = 40, FeaturesJson = "{\"projector\": true, \"computer\": true}" },
+                    new Classroom { Building = "Engineering", RoomNumber = "Lab-1", Capacity = 30, FeaturesJson = "{\"projector\": true, \"computer\": true, \"lab\": true}" },
+                    new Classroom { Building = "Engineering", RoomNumber = "Lab-2", Capacity = 30, FeaturesJson = "{\"projector\": true, \"computer\": true, \"lab\": true}" }
+                };
+
+                await context.Classrooms.AddRangeAsync(classrooms);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        private static async Task SeedCoursesAsync(CampusContext context)
+        {
+            if (!await context.Courses.AnyAsync())
+            {
+                var departments = await context.Departments.ToListAsync();
+                var csDept = departments.FirstOrDefault(d => d.Code == "CS") ?? departments.FirstOrDefault();
+                var seDept = departments.FirstOrDefault(d => d.Code == "SE") ?? departments.FirstOrDefault();
+                var ceDept = departments.FirstOrDefault(d => d.Code == "CE") ?? departments.FirstOrDefault();
+
+                var courses = new List<Course>
+                {
+                    new Course { Code = "CS101", Name = "Introduction to Computer Science", Description = "Fundamentals of computer science", Credits = 3, ECTS = 5, DepartmentId = csDept?.Id ?? 1 },
+                    new Course { Code = "CS102", Name = "Data Structures", Description = "Introduction to data structures and algorithms", Credits = 4, ECTS = 6, DepartmentId = csDept?.Id ?? 1 },
+                    new Course { Code = "CS201", Name = "Object-Oriented Programming", Description = "OOP concepts and design patterns", Credits = 4, ECTS = 6, DepartmentId = csDept?.Id ?? 1 },
+                    new Course { Code = "CS301", Name = "Database Systems", Description = "Relational database design and SQL", Credits = 3, ECTS = 5, DepartmentId = csDept?.Id ?? 1 },
+                    new Course { Code = "SE101", Name = "Software Engineering Fundamentals", Description = "Introduction to software engineering", Credits = 3, ECTS = 5, DepartmentId = seDept?.Id ?? 1 },
+                    new Course { Code = "SE201", Name = "Software Design Patterns", Description = "Design patterns in software development", Credits = 4, ECTS = 6, DepartmentId = seDept?.Id ?? 1 },
+                    new Course { Code = "CE101", Name = "Introduction to Civil Engineering", Description = "Fundamentals of civil engineering", Credits = 3, ECTS = 5, DepartmentId = ceDept?.Id ?? 1 },
+                    new Course { Code = "MATH101", Name = "Calculus I", Description = "Differential and integral calculus", Credits = 4, ECTS = 6, DepartmentId = csDept?.Id ?? 1 },
+                    new Course { Code = "MATH102", Name = "Calculus II", Description = "Advanced calculus topics", Credits = 4, ECTS = 6, DepartmentId = csDept?.Id ?? 1 }
+                };
+
+                await context.Courses.AddRangeAsync(courses);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        private static async Task SeedCoursePrerequisitesAsync(CampusContext context)
+        {
+            if (!await context.CoursePrerequisites.AnyAsync())
+            {
+                var courses = await context.Courses.ToListAsync();
+                var cs101 = courses.FirstOrDefault(c => c.Code == "CS101");
+                var cs102 = courses.FirstOrDefault(c => c.Code == "CS102");
+                var cs201 = courses.FirstOrDefault(c => c.Code == "CS201");
+                var cs301 = courses.FirstOrDefault(c => c.Code == "CS301");
+                var math101 = courses.FirstOrDefault(c => c.Code == "MATH101");
+                var math102 = courses.FirstOrDefault(c => c.Code == "MATH102");
+                var se101 = courses.FirstOrDefault(c => c.Code == "SE101");
+                var se201 = courses.FirstOrDefault(c => c.Code == "SE201");
+
+                var prerequisites = new List<CoursePrerequisite>();
+
+                if (cs102 != null && cs101 != null)
+                    prerequisites.Add(new CoursePrerequisite { CourseId = cs102.Id, PrerequisiteCourseId = cs101.Id });
+
+                if (cs201 != null && cs102 != null)
+                    prerequisites.Add(new CoursePrerequisite { CourseId = cs201.Id, PrerequisiteCourseId = cs102.Id });
+
+                if (cs301 != null && cs201 != null)
+                    prerequisites.Add(new CoursePrerequisite { CourseId = cs301.Id, PrerequisiteCourseId = cs201.Id });
+
+                if (math102 != null && math101 != null)
+                    prerequisites.Add(new CoursePrerequisite { CourseId = math102.Id, PrerequisiteCourseId = math101.Id });
+
+                if (se201 != null && se101 != null)
+                    prerequisites.Add(new CoursePrerequisite { CourseId = se201.Id, PrerequisiteCourseId = se101.Id });
+
+                if (prerequisites.Any())
+                {
+                    await context.CoursePrerequisites.AddRangeAsync(prerequisites);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedCourseSectionsAsync(CampusContext context, UserManager<User> userManager)
+        {
+            if (!await context.CourseSections.AnyAsync())
+            {
+                var courses = await context.Courses.ToListAsync();
+                var classrooms = await context.Classrooms.ToListAsync();
+                var facultyUsers = await userManager.GetUsersInRoleAsync("Faculty");
+                var faculty = facultyUsers.FirstOrDefault();
+
+                var currentYear = DateTime.Now.Year;
+                var currentSemester = DateTime.Now.Month >= 9 ? "Fall" : "Spring";
+
+                var sections = new List<CourseSection>();
+
+                foreach (var course in courses.Take(5)) // Seed sections for first 5 courses
+                {
+                    var classroom = classrooms.FirstOrDefault();
+                    var scheduleJson = "[{\"day\": \"Monday\", \"startTime\": \"09:00\", \"endTime\": \"10:30\"}, {\"day\": \"Wednesday\", \"startTime\": \"09:00\", \"endTime\": \"10:30\"}]";
+
+                    sections.Add(new CourseSection
+                    {
+                        CourseId = course.Id,
+                        SectionNumber = "A",
+                        Semester = currentSemester,
+                        Year = currentYear,
+                        InstructorId = faculty?.Id,
+                        Capacity = 50,
+                        EnrolledCount = 0,
+                        ScheduleJson = scheduleJson,
+                        ClassroomId = classroom?.Id
+                    });
+                }
+
+                if (sections.Any())
+                {
+                    await context.CourseSections.AddRangeAsync(sections);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedEnrollmentsAsync(CampusContext context)
+        {
+            if (!await context.Enrollments.AnyAsync())
+            {
+                var students = await context.Students.Take(3).ToListAsync();
+                var sections = await context.CourseSections.Take(3).ToListAsync();
+
+                if (!students.Any() || !sections.Any())
+                    return;
+
+                var enrollments = new List<Enrollment>();
+
+                // Enroll first student to first 2 sections
+                if (students.Count > 0 && sections.Count > 0)
+                {
+                    enrollments.Add(new Enrollment
+                    {
+                        StudentId = students[0].Id,
+                        SectionId = sections[0].Id,
+                        Status = "Active",
+                        EnrollmentDate = DateTime.UtcNow.AddDays(-30)
+                    });
+
+                    if (sections.Count > 1)
+                    {
+                        enrollments.Add(new Enrollment
+                        {
+                            StudentId = students[0].Id,
+                            SectionId = sections[1].Id,
+                            Status = "Active",
+                            EnrollmentDate = DateTime.UtcNow.AddDays(-25)
+                        });
+                    }
+                }
+
+                // Enroll second student to first section
+                if (students.Count > 1 && sections.Count > 0)
+                {
+                    enrollments.Add(new Enrollment
+                    {
+                        StudentId = students[1].Id,
+                        SectionId = sections[0].Id,
+                        Status = "Active",
+                        EnrollmentDate = DateTime.UtcNow.AddDays(-28)
+                    });
+                }
+
+                // Enroll third student to second section with grades (completed course)
+                if (students.Count > 2 && sections.Count > 1)
+                {
+                    enrollments.Add(new Enrollment
+                    {
+                        StudentId = students[2].Id,
+                        SectionId = sections[1].Id,
+                        Status = "Completed",
+                        EnrollmentDate = DateTime.UtcNow.AddMonths(-6),
+                        MidtermGrade = 75,
+                        FinalGrade = 85,
+                        LetterGrade = "B",
+                        GradePoint = 3.0m
+                    });
+                }
+
+                if (enrollments.Any())
+                {
+                    await context.Enrollments.AddRangeAsync(enrollments);
+                    
+                    // Update enrolled counts
+                    foreach (var enrollment in enrollments.Where(e => e.Status == "Active"))
+                    {
+                        var section = sections.FirstOrDefault(s => s.Id == enrollment.SectionId);
+                        if (section != null)
+                        {
+                            section.EnrolledCount++;
+                        }
+                    }
+                    
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedAttendanceSessionsAsync(CampusContext context, UserManager<User> userManager)
+        {
+            if (!await context.AttendanceSessions.AnyAsync())
+            {
+                var sections = await context.CourseSections.Take(2).ToListAsync();
+                var facultyUsers = await userManager.GetUsersInRoleAsync("Faculty");
+                var instructor = facultyUsers.FirstOrDefault();
+
+                if (!sections.Any())
+                    return;
+
+                var sessions = new List<AttendanceSession>();
+                var today = DateTime.UtcNow.Date;
+
+                foreach (var section in sections)
+                {
+                    // Create sessions for the past week
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var sessionDate = today.AddDays(-(7 - i));
+                        sessions.Add(new AttendanceSession
+                        {
+                            SectionId = section.Id,
+                            InstructorId = instructor?.Id,
+                            Date = sessionDate,
+                            StartTime = new TimeSpan(9, 0, 0),
+                            EndTime = new TimeSpan(10, 30, 0),
+                            Latitude = 41.0082m, // Example coordinates (Istanbul)
+                            Longitude = 28.9784m,
+                            GeofenceRadius = 100m, // 100 meters
+                            QrCode = $"QR-{section.Id}-{sessionDate:yyyyMMdd}",
+                            Status = i < 2 ? "Completed" : "Scheduled"
+                        });
+                    }
+                }
+
+                if (sessions.Any())
+                {
+                    await context.AttendanceSessions.AddRangeAsync(sessions);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedAttendanceRecordsAsync(CampusContext context)
+        {
+            if (!await context.AttendanceRecords.AnyAsync())
+            {
+                var sessions = await context.AttendanceSessions
+                    .Where(s => s.Status == "Completed")
+                    .Take(3)
+                    .ToListAsync();
+                
+                var enrollments = await context.Enrollments
+                    .Where(e => e.Status == "Active")
+                    .Include(e => e.Student)
+                    .Take(5)
+                    .ToListAsync();
+
+                if (!sessions.Any() || !enrollments.Any())
+                    return;
+
+                var records = new List<AttendanceRecord>();
+
+                // Create attendance records for first session
+                if (sessions.Count > 0)
+                {
+                    var firstSession = sessions[0];
+                    var sessionEnrollments = enrollments
+                        .Where(e => e.SectionId == firstSession.SectionId)
+                        .Take(3)
+                        .ToList();
+
+                    foreach (var enrollment in sessionEnrollments)
+                    {
+                        var checkInTime = firstSession.Date.Add(firstSession.StartTime).AddMinutes(new Random().Next(0, 15));
+                        records.Add(new AttendanceRecord
+                        {
+                            SessionId = firstSession.Id,
+                            StudentId = enrollment.StudentId,
+                            CheckInTime = checkInTime,
+                            Latitude = firstSession.Latitude,
+                            Longitude = firstSession.Longitude,
+                            DistanceFromCenter = new Random().Next(0, 50), // Within geofence
+                            IsFlagged = false
+                        });
+                    }
+                }
+
+                // Create attendance records for second session with some flagged
+                if (sessions.Count > 1)
+                {
+                    var secondSession = sessions[1];
+                    var sessionEnrollments = enrollments
+                        .Where(e => e.SectionId == secondSession.SectionId)
+                        .Take(2)
+                        .ToList();
+
+                    foreach (var enrollment in sessionEnrollments)
+                    {
+                        var isLate = new Random().Next(0, 2) == 1;
+                        var checkInTime = isLate 
+                            ? secondSession.Date.Add(secondSession.StartTime).AddMinutes(new Random().Next(20, 45))
+                            : secondSession.Date.Add(secondSession.StartTime).AddMinutes(new Random().Next(0, 10));
+
+                        records.Add(new AttendanceRecord
+                        {
+                            SessionId = secondSession.Id,
+                            StudentId = enrollment.StudentId,
+                            CheckInTime = checkInTime,
+                            Latitude = secondSession.Latitude,
+                            Longitude = secondSession.Longitude,
+                            DistanceFromCenter = isLate ? new Random().Next(100, 200) : new Random().Next(0, 50),
+                            IsFlagged = isLate,
+                            FlagReason = isLate ? "Late check-in" : null
+                        });
+                    }
+                }
+
+                if (records.Any())
+                {
+                    await context.AttendanceRecords.AddRangeAsync(records);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedExcuseRequestsAsync(CampusContext context, UserManager<User> userManager)
+        {
+            if (!await context.ExcuseRequests.AnyAsync())
+            {
+                var records = await context.AttendanceRecords
+                    .Where(r => r.IsFlagged)
+                    .Include(r => r.Student)
+                    .Take(2)
+                    .ToListAsync();
+
+                var facultyUsers = await userManager.GetUsersInRoleAsync("Faculty");
+                var reviewer = facultyUsers.FirstOrDefault();
+
+                if (!records.Any())
+                    return;
+
+                var excuseRequests = new List<ExcuseRequest>();
+
+                foreach (var record in records)
+                {
+                    excuseRequests.Add(new ExcuseRequest
+                    {
+                        StudentId = record.StudentId,
+                        SessionId = record.SessionId,
+                        Reason = "Medical appointment - doctor's note attached",
+                        DocumentUrl = "/uploads/excuses/medical-note-sample.pdf",
+                        Status = "Pending"
+                    });
+                }
+
+                // Add one approved request
+                if (records.Count > 0)
+                {
+                    var firstRecord = records[0];
+                    var session = await context.AttendanceSessions
+                        .FirstOrDefaultAsync(s => s.Id == firstRecord.SessionId);
+
+                    if (session != null)
+                    {
+                        excuseRequests.Add(new ExcuseRequest
+                        {
+                            StudentId = firstRecord.StudentId,
+                            SessionId = firstRecord.SessionId,
+                            Reason = "Family emergency - approved by instructor",
+                            DocumentUrl = "/uploads/excuses/emergency-note.pdf",
+                            Status = "Approved",
+                            ReviewedBy = reviewer?.Id,
+                            ReviewedAt = DateTime.UtcNow.AddDays(-1),
+                            Notes = "Approved - valid excuse"
+                        });
+                    }
+                }
+
+                if (excuseRequests.Any())
+                {
+                    await context.ExcuseRequests.AddRangeAsync(excuseRequests);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
+        private static async Task SeedAcademicCalendarsAsync(CampusContext context)
+        {
+            if (!await context.AcademicCalendars.AnyAsync())
+            {
+                var currentYear = DateTime.UtcNow.Year;
+                var calendars = new List<AcademicCalendar>
+                {
+                    // Fall Semester 2024
+                    new AcademicCalendar
+                    {
+                        Title = "Fall Semester Start",
+                        Description = "Fall semester classes begin",
+                        StartDate = new DateTime(currentYear, 9, 15),
+                        EndDate = new DateTime(currentYear, 9, 15),
+                        EventType = "Semester Start",
+                        IsHoliday = false,
+                        Year = currentYear,
+                        Semester = "Fall"
+                    },
+                    new AcademicCalendar
+                    {
+                        Title = "Midterm Exams",
+                        Description = "Midterm examination period",
+                        StartDate = new DateTime(currentYear, 10, 28),
+                        EndDate = new DateTime(currentYear, 11, 1),
+                        EventType = "Exam",
+                        IsHoliday = false,
+                        Year = currentYear,
+                        Semester = "Fall"
+                    },
+                    new AcademicCalendar
+                    {
+                        Title = "Republic Day",
+                        Description = "National holiday",
+                        StartDate = new DateTime(currentYear, 10, 29),
+                        EndDate = new DateTime(currentYear, 10, 29),
+                        EventType = "Holiday",
+                        IsHoliday = true,
+                        Year = currentYear,
+                        Semester = "Fall"
+                    },
+                    new AcademicCalendar
+                    {
+                        Title = "Final Exams",
+                        Description = "Final examination period",
+                        StartDate = new DateTime(currentYear, 12, 23),
+                        EndDate = new DateTime(currentYear, 12, 30),
+                        EventType = "Exam",
+                        IsHoliday = false,
+                        Year = currentYear,
+                        Semester = "Fall"
+                    },
+                    // Spring Semester 2025
+                    new AcademicCalendar
+                    {
+                        Title = "Spring Semester Start",
+                        Description = "Spring semester classes begin",
+                        StartDate = new DateTime(currentYear + 1, 2, 10),
+                        EndDate = new DateTime(currentYear + 1, 2, 10),
+                        EventType = "Semester Start",
+                        IsHoliday = false,
+                        Year = currentYear + 1,
+                        Semester = "Spring"
+                    },
+                    new AcademicCalendar
+                    {
+                        Title = "National Sovereignty Day",
+                        Description = "National holiday",
+                        StartDate = new DateTime(currentYear + 1, 4, 23),
+                        EndDate = new DateTime(currentYear + 1, 4, 23),
+                        EventType = "Holiday",
+                        IsHoliday = true,
+                        Year = currentYear + 1,
+                        Semester = "Spring"
+                    },
+                    new AcademicCalendar
+                    {
+                        Title = "Course Registration Period",
+                        Description = "Course registration for next semester",
+                        StartDate = new DateTime(currentYear + 1, 5, 1),
+                        EndDate = new DateTime(currentYear + 1, 5, 15),
+                        EventType = "Registration",
+                        IsHoliday = false,
+                        Year = currentYear + 1,
+                        Semester = "Spring"
+                    }
+                };
+
+                await context.AcademicCalendars.AddRangeAsync(calendars);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        private static async Task SeedAnnouncementsAsync(CampusContext context)
+        {
+            if (!await context.Announcements.AnyAsync())
+            {
+                var users = await context.Users.Where(u => u.IsActive).ToListAsync();
+                var departments = await context.Departments.Where(d => d.IsActive).ToListAsync();
+                
+                if (users.Any() && departments.Any())
+                {
+                    var admin = users.FirstOrDefault(u => u.Email.Contains("admin"));
+                    var announcements = new List<Announcement>
+                    {
+                        new Announcement
+                        {
+                            Title = "Welcome to New Academic Year",
+                            Content = "We are pleased to welcome all students and faculty to the new academic year. Please check your course schedules and attend orientation sessions.",
+                            TargetAudience = "All",
+                            DepartmentId = null,
+                            CreatedById = admin?.Id,
+                            PublishDate = DateTime.UtcNow.AddDays(-30),
+                            ExpiryDate = DateTime.UtcNow.AddDays(60),
+                            IsImportant = true,
+                            ViewCount = 0
+                        },
+                        new Announcement
+                        {
+                            Title = "Course Registration Deadline",
+                            Content = "The course registration period will end on May 15, 2025. Please complete your course selections before the deadline.",
+                            TargetAudience = "Students",
+                            DepartmentId = null,
+                            CreatedById = admin?.Id,
+                            PublishDate = DateTime.UtcNow.AddDays(-10),
+                            ExpiryDate = DateTime.UtcNow.AddDays(20),
+                            IsImportant = true,
+                            ViewCount = 0
+                        },
+                        new Announcement
+                        {
+                            Title = "Library Hours Extended",
+                            Content = "The library will be open until 22:00 during the exam period. Study rooms are available for group study sessions.",
+                            TargetAudience = "Students",
+                            DepartmentId = null,
+                            CreatedById = admin?.Id,
+                            PublishDate = DateTime.UtcNow.AddDays(-5),
+                            ExpiryDate = DateTime.UtcNow.AddDays(30),
+                            IsImportant = false,
+                            ViewCount = 0
+                        },
+                        new Announcement
+                        {
+                            Title = "Faculty Meeting Scheduled",
+                            Content = "All faculty members are invited to attend the monthly faculty meeting on the first Friday of each month at 14:00.",
+                            TargetAudience = "Faculty",
+                            DepartmentId = null,
+                            CreatedById = admin?.Id,
+                            PublishDate = DateTime.UtcNow.AddDays(-20),
+                            ExpiryDate = null,
+                            IsImportant = false,
+                            ViewCount = 0
+                        }
+                    };
+
+                    // Add department-specific announcements
+                    if (departments.Count >= 2)
+                    {
+                        announcements.Add(new Announcement
+                        {
+                            Title = "Computer Science Department Seminar",
+                            Content = "Join us for a seminar on 'Latest Trends in AI' on Friday at 15:00 in Room A-101.",
+                            TargetAudience = "Students",
+                            DepartmentId = departments[0].Id,
+                            CreatedById = admin?.Id,
+                            PublishDate = DateTime.UtcNow.AddDays(-3),
+                            ExpiryDate = DateTime.UtcNow.AddDays(7),
+                            IsImportant = false,
+                            ViewCount = 0
+                        });
+                    }
+
+                    await context.Announcements.AddRangeAsync(announcements);
                     await context.SaveChangesAsync();
                 }
             }
