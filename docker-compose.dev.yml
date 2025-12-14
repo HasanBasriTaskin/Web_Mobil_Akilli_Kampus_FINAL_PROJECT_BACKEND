@@ -33,7 +33,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: SMARTCAMPUS.API/Dockerfile
+      dockerfile: SMARTCAMPUS.API/Dockerfile.dev
     container_name: smartcampus_api
     restart: on-failure
     depends_on:
@@ -41,18 +41,31 @@ services:
         condition: service_healthy
     ports:
       - "5150:8080"
+    volumes:
+      - .:/src
+      - /src/SMARTCAMPUS.API/bin
+      - /src/SMARTCAMPUS.API/obj
+      - /src/SMARTCAMPUS.BusinessLayer/bin
+      - /src/SMARTCAMPUS.BusinessLayer/obj
+      - /src/SMARTCAMPUS.DataAccessLayer/bin
+      - /src/SMARTCAMPUS.DataAccessLayer/obj
+      - /src/SMARTCAMPUS.EntityLayer/bin
+      - /src/SMARTCAMPUS.EntityLayer/obj
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
+      - DOTNET_USE_POLLING_FILE_WATCHER=true
       - ConnectionStrings__DefaultConnection=Server=db;Database=smart_campus_db;User=root;Password=${DB_PASSWORD};
       - ClientSettings__Url=http://localhost
 
   frontend:
     build:
       context: ../Web_Mobil_Akilli_Kampus_FINAL_PROJECT_FRONTEND
-      dockerfile: ../Web_Mobil_Akilli_Kampus_FINAL_PROJECT_BACKEND/docker/frontend.dev.Dockerfile
+      dockerfile: frontend.dev.Dockerfile
     container_name: smartcampus_frontend
     restart: on-failure
+    env_file:
+      - ../Web_Mobil_Akilli_Kampus_FINAL_PROJECT_FRONTEND/.env.docker
     depends_on:
       - backend
     volumes:
