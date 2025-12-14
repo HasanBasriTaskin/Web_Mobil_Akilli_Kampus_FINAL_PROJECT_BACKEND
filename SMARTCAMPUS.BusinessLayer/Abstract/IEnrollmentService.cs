@@ -1,4 +1,5 @@
 using SMARTCAMPUS.BusinessLayer.Common;
+using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Academic;
 
 namespace SMARTCAMPUS.BusinessLayer.Abstract
