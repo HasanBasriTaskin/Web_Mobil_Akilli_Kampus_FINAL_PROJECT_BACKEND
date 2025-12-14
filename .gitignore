@@ -4,29 +4,6 @@
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
 
-# User-specific files
-*.rsuser
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-*.env
-
-# AppSettings
-**/appsettings.json
-**/appsettings.Development.json
-**/appsettings.Production.json
-**/!appsettings.example.json
-
-# Coverage Report
-**/coverage-report/
-
-# Database Schema Export
-Database_Repo/
-
-# Build logs 
-**/build_log.txt
-
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
