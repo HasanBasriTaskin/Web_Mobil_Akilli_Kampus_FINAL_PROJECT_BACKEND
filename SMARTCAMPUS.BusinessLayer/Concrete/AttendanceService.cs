@@ -355,10 +355,36 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
-        public async Task<Response<IEnumerable<AttendanceRecordDto>>> GetStudentAttendanceAsync(int studentId)
+        public async Task<Response<IEnumerable<AttendanceRecordDto>>> GetStudentAttendanceAsync(int studentId, int? requestingStudentId = null, bool isAdmin = false, string? instructorId = null)
         {
             try
             {
+                // Authorization: Students can only view their own attendance
+                // Faculty can view attendance of students in their sections
+                // Admin can view all attendance
+                if (!isAdmin)
+                {
+                    if (requestingStudentId.HasValue && requestingStudentId.Value != studentId)
+                    {
+                        // Check if instructor is authorized (student is in instructor's section)
+                        if (string.IsNullOrEmpty(instructorId))
+                        {
+                            return Response<IEnumerable<AttendanceRecordDto>>.Fail("You are not authorized to view this student's attendance", 403);
+                        }
+                        
+                        var hasAccess = await _context.Enrollments
+                            .AnyAsync(e => e.StudentId == studentId 
+                                && e.Status == EnrollmentStatus.Active 
+                                && e.IsActive
+                                && e.Section.InstructorId == instructorId);
+                        
+                        if (!hasAccess)
+                        {
+                            return Response<IEnumerable<AttendanceRecordDto>>.Fail("You are not authorized to view this student's attendance", 403);
+                        }
+                    }
+                }
+
                 var records = await _unitOfWork.AttendanceRecords.GetRecordsByStudentAsync(studentId);
                 var recordDtos = _mapper.Map<IEnumerable<AttendanceRecordDto>>(records);
                 return Response<IEnumerable<AttendanceRecordDto>>.Success(recordDtos, 200);
@@ -369,13 +395,46 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
-        public async Task<Response<AttendanceSessionDto>> GetSessionByIdAsync(int sessionId)
+        public async Task<Response<AttendanceSessionDto>> GetSessionByIdAsync(int sessionId, int? studentId = null, string? instructorId = null, bool isAdmin = false)
         {
             try
             {
                 var session = await _unitOfWork.AttendanceSessions.GetSessionWithRecordsAsync(sessionId);
                 if (session == null)
                     return Response<AttendanceSessionDto>.Fail("Session not found", 404);
+
+                // Authorization: Students can view sessions of their enrolled sections
+                // Faculty can view their own sessions
+                // Admin can view all sessions
+                if (!isAdmin)
+                {
+                    if (studentId.HasValue)
+                    {
+                        // Check if student is enrolled in this section
+                        var isEnrolled = await _context.Enrollments
+                            .AnyAsync(e => e.StudentId == studentId.Value 
+                                && e.SectionId == session.SectionId 
+                                && e.Status == EnrollmentStatus.Active 
+                                && e.IsActive);
+                        
+                        if (!isEnrolled)
+                        {
+                            return Response<AttendanceSessionDto>.Fail("You are not authorized to view this session", 403);
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(instructorId))
+                    {
+                        // Check if instructor owns this session
+                        if (session.InstructorId != instructorId)
+                        {
+                            return Response<AttendanceSessionDto>.Fail("You are not authorized to view this session", 403);
+                        }
+                    }
+                    else
+                    {
+                        return Response<AttendanceSessionDto>.Fail("Authorization required", 403);
+                    }
+                }
 
                 var sessionDto = _mapper.Map<AttendanceSessionDto>(session);
                 sessionDto.CourseCode = session.Section?.Course?.Code;
@@ -568,13 +627,20 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
         }
 
-        public async Task<Response<QrCodeRefreshDto>> RefreshQrCodeAsync(int sessionId)
+        public async Task<Response<QrCodeRefreshDto>> RefreshQrCodeAsync(int sessionId, string? instructorId = null, bool isAdmin = false)
         {
             try
             {
                 var session = await _unitOfWork.AttendanceSessions.GetByIdAsync(sessionId);
                 if (session == null)
                     return Response<QrCodeRefreshDto>.Fail("Session not found", 404);
+
+                // Authorization check: Admin can refresh all, Faculty can only refresh their own sessions
+                if (!isAdmin && !string.IsNullOrEmpty(instructorId))
+                {
+                    if (session.InstructorId != instructorId)
+                        return Response<QrCodeRefreshDto>.Fail("You are not authorized to refresh this session's QR code", 403);
+                }
 
                 // Check if QR code needs refresh (every 5 seconds)
                 var shouldRefresh = !session.QrCodeExpiresAt.HasValue || 

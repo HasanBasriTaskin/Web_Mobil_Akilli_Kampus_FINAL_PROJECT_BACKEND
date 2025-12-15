@@ -49,7 +49,10 @@ namespace SMARTCAMPUS.API.Controllers
             if (!studentId.HasValue)
                 return Unauthorized("Student not found or user is not a student");
 
-            var result = await _enrollmentService.GetStudentEnrollmentsAsync(studentId.Value);
+            var isAdmin = User.IsInRole("Admin");
+            var instructorId = User.IsInRole("Faculty") ? _userClaimsHelper.GetUserId() : null;
+            
+            var result = await _enrollmentService.GetStudentEnrollmentsAsync(studentId.Value, studentId, isAdmin, instructorId);
             return StatusCode(result.StatusCode, result);
         }
 
@@ -67,6 +70,17 @@ namespace SMARTCAMPUS.API.Controllers
         [HttpGet("check-prerequisites/{courseId}/{studentId}")]
         public async Task<IActionResult> CheckPrerequisites(int courseId, int studentId)
         {
+            // Authorization: Students can only check their own prerequisites
+            // Faculty/Admin can check any student's prerequisites
+            var currentStudentId = await _userClaimsHelper.GetStudentIdAsync();
+            var isAdmin = User.IsInRole("Admin");
+            var isFaculty = User.IsInRole("Faculty");
+            
+            if (!isAdmin && !isFaculty && (!currentStudentId.HasValue || currentStudentId.Value != studentId))
+            {
+                return Unauthorized("You can only check your own prerequisites");
+            }
+
             var result = await _enrollmentService.CheckPrerequisitesAsync(courseId, studentId);
             return StatusCode(result.StatusCode, result);
         }
@@ -74,6 +88,17 @@ namespace SMARTCAMPUS.API.Controllers
         [HttpGet("check-conflict/{sectionId}/{studentId}")]
         public async Task<IActionResult> CheckScheduleConflict(int sectionId, int studentId)
         {
+            // Authorization: Students can only check their own schedule conflicts
+            // Faculty/Admin can check any student's schedule conflicts
+            var currentStudentId = await _userClaimsHelper.GetStudentIdAsync();
+            var isAdmin = User.IsInRole("Admin");
+            var isFaculty = User.IsInRole("Faculty");
+            
+            if (!isAdmin && !isFaculty && (!currentStudentId.HasValue || currentStudentId.Value != studentId))
+            {
+                return Unauthorized("You can only check your own schedule conflicts");
+            }
+
             var result = await _enrollmentService.CheckScheduleConflictAsync(studentId, sectionId);
             return StatusCode(result.StatusCode, result);
         }
