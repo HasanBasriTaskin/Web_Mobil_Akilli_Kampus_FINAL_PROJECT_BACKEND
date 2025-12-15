@@ -7,7 +7,6 @@ namespace SMARTCAMPUS.BusinessLayer.ValidationRules.Academic
     {
         public AttendanceCheckInValidator()
         {
-
             RuleFor(x => x.Latitude)
                 .InclusiveBetween(-90, 90)
                 .WithMessage("Latitude must be between -90 and 90")
