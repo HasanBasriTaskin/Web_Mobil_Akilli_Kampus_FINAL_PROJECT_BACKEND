@@ -16,7 +16,7 @@ namespace SMARTCAMPUS.API.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginDto loginDto)
+        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
             var result = await _authService.LoginAsync(loginDto);
             if (!result.IsSuccessful)
@@ -27,7 +27,7 @@ namespace SMARTCAMPUS.API.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterUserDto registerDto)
+        public async Task<IActionResult> Register([FromBody] RegisterUserDto registerDto)
         {
             var result = await _authService.RegisterAsync(registerDto);
             if (!result.IsSuccessful)
@@ -38,14 +38,14 @@ namespace SMARTCAMPUS.API.Controllers
         }
 
         [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto forgotPasswordDto)
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
         {
             var result = await _authService.ForgotPasswordAsync(forgotPasswordDto);
             return StatusCode(result.StatusCode, result);
         }
 
         [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword(ResetPasswordDto resetPasswordDto)
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
         {
             var result = await _authService.ResetPasswordAsync(resetPasswordDto);
             if (!result.IsSuccessful)
