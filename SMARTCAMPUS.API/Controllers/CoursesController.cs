@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SMARTCAMPUS.BusinessLayer.Abstract;
-using SMARTCAMPUS.EntityLayer.DTOs.Academic;
+using SMARTCAMPUS.BusinessLayer.Common;
+using SMARTCAMPUS.EntityLayer.DTOs;
+using SMARTCAMPUS.EntityLayer.DTOs.Course;
 
 namespace SMARTCAMPUS.API.Controllers
 {
     [Route("api/v1/[controller]")]
     [ApiController]
-    [Authorize]
     public class CoursesController : ControllerBase
     {
         private readonly ICourseService _courseService;
@@ -17,64 +18,68 @@ namespace SMARTCAMPUS.API.Controllers
             _courseService = courseService;
         }
 
+        /// <summary>
+        /// Tüm dersleri listele (sayfalama ve filtreleme ile)
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetCourses([FromQuery] CourseQueryParameters queryParams)
+        [Authorize]
+        public async Task<IActionResult> GetAllCourses(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] int? departmentId = null,
+            [FromQuery] string? search = null)
         {
-            var result = await _courseService.GetCoursesAsync(queryParams);
+            var result = await _courseService.GetAllCoursesAsync(page, pageSize, departmentId, search);
             return StatusCode(result.StatusCode, result);
         }
 
+        /// <summary>
+        /// Ders detayını getir
+        /// </summary>
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetCourse(int id)
+        [Authorize]
+        public async Task<IActionResult> GetCourseById(int id)
         {
             var result = await _courseService.GetCourseByIdAsync(id);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("code/{code}")]
-        public async Task<IActionResult> GetCourseByCode(string code)
+        /// <summary>
+        /// Dersin önkoşullarını getir
+        /// </summary>
+        [HttpGet("{id}/prerequisites")]
+        [Authorize]
+        public async Task<IActionResult> GetPrerequisites(int id)
         {
-            var result = await _courseService.GetCourseByCodeAsync(code);
+            var result = await _courseService.GetPrerequisitesAsync(id);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("department/{departmentId}")]
-        public async Task<IActionResult> GetCoursesByDepartment(int departmentId)
-        {
-            var result = await _courseService.GetCoursesByDepartmentAsync(departmentId);
-            return StatusCode(result.StatusCode, result);
-        }
-
-        [HttpGet("{courseId}/sections")]
-        public async Task<IActionResult> GetCourseSections(int courseId)
-        {
-            var result = await _courseService.GetCourseSectionsAsync(courseId);
-            return StatusCode(result.StatusCode, result);
-        }
-
-        [HttpGet("sections/{sectionId}")]
-        public async Task<IActionResult> GetSection(int sectionId)
-        {
-            var result = await _courseService.GetSectionByIdAsync(sectionId);
-            return StatusCode(result.StatusCode, result);
-        }
-
+        /// <summary>
+        /// Yeni ders oluştur (Admin only)
+        /// </summary>
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> CreateCourse([FromBody] CourseCreateDto courseCreateDto)
+        public async Task<IActionResult> CreateCourse([FromBody] CreateCourseDto dto)
         {
-            var result = await _courseService.CreateCourseAsync(courseCreateDto);
+            var result = await _courseService.CreateCourseAsync(dto);
             return StatusCode(result.StatusCode, result);
         }
 
+        /// <summary>
+        /// Ders güncelle (Admin only)
+        /// </summary>
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateCourse(int id, [FromBody] CourseUpdateDto courseUpdateDto)
+        public async Task<IActionResult> UpdateCourse(int id, [FromBody] UpdateCourseDto dto)
         {
-            var result = await _courseService.UpdateCourseAsync(id, courseUpdateDto);
+            var result = await _courseService.UpdateCourseAsync(id, dto);
             return StatusCode(result.StatusCode, result);
         }
 
+        /// <summary>
+        /// Ders sil (Admin only)
+        /// </summary>
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteCourse(int id)
@@ -84,6 +89,3 @@ namespace SMARTCAMPUS.API.Controllers
         }
     }
 }
-
-
-

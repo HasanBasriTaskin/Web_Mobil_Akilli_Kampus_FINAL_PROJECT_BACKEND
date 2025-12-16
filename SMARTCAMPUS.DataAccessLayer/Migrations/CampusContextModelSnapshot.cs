@@ -128,119 +128,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.AcademicCalendar", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("varchar(2000)");
-
-                    b.Property<DateTime>("EndDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("IsHoliday")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("Semester")
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)");
-
-                    b.Property<DateTime?>("UpdatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("Year")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AcademicCalendars");
-                });
-
-            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Announcement", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasMaxLength(5000)
-                        .HasColumnType("varchar(5000)");
-
-                    b.Property<string>("CreatedById")
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("DepartmentId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ExpiryDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("IsImportant")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<DateTime>("PublishDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("TargetAudience")
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)");
-
-                    b.Property<DateTime?>("UpdatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("ViewCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedById");
-
-                    b.HasIndex("DepartmentId");
-
-                    b.ToTable("Announcements");
-                });
-
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.AttendanceRecord", b =>
                 {
                     b.Property<int>("Id")
@@ -249,28 +136,18 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("CheckInTime")
+                    b.Property<DateTime>("CheckInTime")
                         .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<string>("DeviceInfo")
-                        .HasColumnType("longtext");
-
-                    b.Property<decimal?>("DistanceFromCenter")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)");
+                    b.Property<double>("DistanceFromCenter")
+                        .HasColumnType("double");
 
                     b.Property<string>("FlagReason")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
-
-                    b.Property<int>("FraudScore")
-                        .HasColumnType("int");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("longtext");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
@@ -278,16 +155,11 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<bool>("IsFlagged")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<bool>("IsMockLocation")
-                        .HasColumnType("tinyint(1)");
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double");
 
-                    b.Property<decimal?>("Latitude")
-                        .HasPrecision(10, 8)
-                        .HasColumnType("decimal(10,8)");
-
-                    b.Property<decimal?>("Longitude")
-                        .HasPrecision(11, 8)
-                        .HasColumnType("decimal(11,8)");
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double");
 
                     b.Property<int>("SessionId")
                         .HasColumnType("int");
@@ -298,16 +170,12 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<decimal?>("Velocity")
-                        .HasColumnType("decimal(65,30)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("StudentId");
 
                     b.HasIndex("SessionId", "StudentId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_AttendanceRecord_Unique");
+                        .IsUnique();
 
                     b.ToTable("AttendanceRecords");
                 });
@@ -329,33 +197,24 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<TimeSpan>("EndTime")
                         .HasColumnType("time(6)");
 
-                    b.Property<decimal?>("GeofenceRadius")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)");
+                    b.Property<int>("GeofenceRadius")
+                        .HasColumnType("int");
 
-                    b.Property<string>("InstructorId")
-                        .HasColumnType("varchar(255)");
+                    b.Property<int>("InstructorId")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<decimal?>("Latitude")
-                        .HasPrecision(10, 8)
-                        .HasColumnType("decimal(10,8)");
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double");
 
-                    b.Property<decimal?>("Longitude")
-                        .HasPrecision(11, 8)
-                        .HasColumnType("decimal(11,8)");
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double");
 
-                    b.Property<string>("QrCode")
+                    b.Property<string>("QRCode")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
-
-                    b.Property<DateTime?>("QrCodeExpiresAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("QrCodeGeneratedAt")
-                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("SectionId")
                         .HasColumnType("int");
@@ -363,12 +222,8 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<TimeSpan>("StartTime")
                         .HasColumnType("time(6)");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)")
-                        .HasDefaultValue("Scheduled");
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime(6)");
@@ -392,8 +247,8 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.Property<string>("Building")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<int>("Capacity")
                         .HasColumnType("int");
@@ -402,11 +257,16 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("FeaturesJson")
-                        .HasMaxLength(1000)
-                        .HasColumnType("varchar(1000)");
+                        .HasColumnType("longtext");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double");
 
                     b.Property<string>("RoomNumber")
                         .IsRequired()
@@ -419,8 +279,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Building", "RoomNumber")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Classroom_Unique");
+                        .IsUnique();
 
                     b.ToTable("Classrooms");
                 });
@@ -481,39 +340,17 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.CoursePrerequisite", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
                     b.Property<int>("CourseId")
                         .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("PrerequisiteCourseId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("UpdatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
+                    b.HasKey("CourseId", "PrerequisiteCourseId");
 
                     b.HasIndex("PrerequisiteCourseId");
 
-                    b.HasIndex("CourseId", "PrerequisiteCourseId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_CoursePrerequisite_Unique");
-
-                    b.ToTable("CoursePrerequisites", t =>
-                        {
-                            t.HasCheckConstraint("CK_CoursePrerequisite_NoSelfReference", "CourseId != PrerequisiteCourseId");
-                        });
+                    b.ToTable("CoursePrerequisites");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.CourseSection", b =>
@@ -527,9 +364,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<int>("Capacity")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ClassroomId")
-                        .HasColumnType("int");
-
                     b.Property<int>("CourseId")
                         .HasColumnType("int");
 
@@ -537,19 +371,16 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<int>("EnrolledCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("int");
 
-                    b.Property<string>("InstructorId")
-                        .HasColumnType("varchar(255)");
+                    b.Property<int>("InstructorId")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("ScheduleJson")
-                        .HasMaxLength(2000)
-                        .HasColumnType("varchar(2000)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("SectionNumber")
                         .IsRequired()
@@ -569,13 +400,10 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ClassroomId");
-
                     b.HasIndex("InstructorId");
 
                     b.HasIndex("CourseId", "SectionNumber", "Semester", "Year")
-                        .IsUnique()
-                        .HasDatabaseName("IX_CourseSection_Unique");
+                        .IsUnique();
 
                     b.ToTable("CourseSections");
                 });
@@ -674,13 +502,11 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<DateTime>("EnrollmentDate")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<decimal?>("FinalGrade")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                    b.Property<double?>("FinalGrade")
+                        .HasColumnType("double");
 
-                    b.Property<decimal?>("GradePoint")
-                        .HasPrecision(3, 2)
-                        .HasColumnType("decimal(3,2)");
+                    b.Property<double?>("GradePoint")
+                        .HasColumnType("double");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
@@ -689,17 +515,14 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .HasMaxLength(5)
                         .HasColumnType("varchar(5)");
 
-                    b.Property<decimal?>("MidtermGrade")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
+                    b.Property<double?>("MidtermGrade")
+                        .HasColumnType("double");
 
                     b.Property<int>("SectionId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<int>("StudentId")
                         .HasColumnType("int");
@@ -712,8 +535,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("SectionId");
 
                     b.HasIndex("StudentId", "SectionId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Enrollment_Unique");
+                        .IsUnique();
 
                     b.ToTable("Enrollments");
                 });
@@ -737,8 +559,8 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("varchar(2000)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
 
                     b.Property<string>("Reason")
                         .IsRequired()
@@ -748,18 +570,14 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<DateTime?>("ReviewedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<string>("ReviewedBy")
+                    b.Property<string>("ReviewedById")
                         .HasColumnType("varchar(255)");
 
                     b.Property<int>("SessionId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)")
-                        .HasDefaultValue("Pending");
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<int>("StudentId")
                         .HasColumnType("int");
@@ -769,7 +587,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ReviewedBy");
+                    b.HasIndex("ReviewedById");
 
                     b.HasIndex("SessionId");
 
@@ -1116,23 +934,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Announcement", b =>
-                {
-                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Department", "Department")
-                        .WithMany()
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("CreatedBy");
-
-                    b.Navigation("Department");
-                });
-
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.AttendanceRecord", b =>
                 {
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.AttendanceSession", "Session")
@@ -1142,9 +943,9 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .IsRequired();
 
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.Student", "Student")
-                        .WithMany()
+                        .WithMany("AttendanceRecords")
                         .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Session");
@@ -1154,10 +955,11 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.AttendanceSession", b =>
                 {
-                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "Instructor")
-                        .WithMany()
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Faculty", "Instructor")
+                        .WithMany("AttendanceSessions")
                         .HasForeignKey("InstructorId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.CourseSection", "Section")
                         .WithMany("AttendanceSessions")
@@ -1190,7 +992,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .IsRequired();
 
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.Course", "PrerequisiteCourse")
-                        .WithMany("RequiredBy")
+                        .WithMany("RequiredFor")
                         .HasForeignKey("PrerequisiteCourseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1202,23 +1004,17 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.CourseSection", b =>
                 {
-                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Classroom", "Classroom")
-                        .WithMany("Sections")
-                        .HasForeignKey("ClassroomId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.Course", "Course")
-                        .WithMany("Sections")
+                        .WithMany("CourseSections")
                         .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "Instructor")
-                        .WithMany()
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Faculty", "Instructor")
+                        .WithMany("TeachingSections")
                         .HasForeignKey("InstructorId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Classroom");
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Course");
 
@@ -1241,13 +1037,13 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.CourseSection", "Section")
                         .WithMany("Enrollments")
                         .HasForeignKey("SectionId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.Student", "Student")
-                        .WithMany()
+                        .WithMany("Enrollments")
                         .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Section");
@@ -1257,9 +1053,9 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.ExcuseRequest", b =>
                 {
-                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "Reviewer")
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "ReviewedBy")
                         .WithMany()
-                        .HasForeignKey("ReviewedBy")
+                        .HasForeignKey("ReviewedById")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.AttendanceSession", "Session")
@@ -1269,12 +1065,12 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .IsRequired();
 
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.Student", "Student")
-                        .WithMany()
+                        .WithMany("ExcuseRequests")
                         .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Reviewer");
+                    b.Navigation("ReviewedBy");
 
                     b.Navigation("Session");
 
@@ -1348,18 +1144,13 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("ExcuseRequests");
                 });
 
-            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Classroom", b =>
-                {
-                    b.Navigation("Sections");
-                });
-
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Course", b =>
                 {
+                    b.Navigation("CourseSections");
+
                     b.Navigation("Prerequisites");
 
-                    b.Navigation("RequiredBy");
-
-                    b.Navigation("Sections");
+                    b.Navigation("RequiredFor");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.CourseSection", b =>
@@ -1374,6 +1165,22 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("FacultyMembers");
 
                     b.Navigation("Students");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Faculty", b =>
+                {
+                    b.Navigation("AttendanceSessions");
+
+                    b.Navigation("TeachingSections");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Student", b =>
+                {
+                    b.Navigation("AttendanceRecords");
+
+                    b.Navigation("Enrollments");
+
+                    b.Navigation("ExcuseRequests");
                 });
 #pragma warning restore 612, 618
         }
