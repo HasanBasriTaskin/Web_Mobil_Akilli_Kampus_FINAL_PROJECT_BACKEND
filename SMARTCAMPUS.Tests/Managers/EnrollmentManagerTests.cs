@@ -683,7 +683,7 @@ namespace SMARTCAMPUS.Tests.Managers
             {
                 Id = 1,
                 ScheduleJson = "[{\"Day\":\"Monday\",\"StartTime\":\"09:30\",\"EndTime\":\"10:30\"}]",
-                Course = new Course { Code = "C1" },
+                Course = new Course { Code = "C1", Name = "C1" },
                 SectionNumber = "1",
                 Semester = "Fall",
                 Year = 2024
