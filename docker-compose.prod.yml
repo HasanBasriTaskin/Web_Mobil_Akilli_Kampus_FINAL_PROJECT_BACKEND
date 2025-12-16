@@ -1,0 +1,80 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: smartcampus_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - certbot_webroot:/var/www/certbot:ro
+    depends_on:
+      - backend
+      - frontend
+
+  certbot:
+    image: certbot/certbot
+    container_name: smartcampus_certbot
+    volumes:
+      - ./nginx/certs:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  db:
+    image: mysql:8.0
+    container_name: smartcampus_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: smart_campus_db
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    build:
+      context: .
+      dockerfile: SMARTCAMPUS.API/Dockerfile
+    container_name: smartcampus_api
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=db;Database=smart_campus_db;User=root;Password=${DB_PASSWORD};
+      - ClientSettings__Url=https://smartcampus.taskinnovation.net
+      - JwtSettings__Secret=${JWT_SECRET}
+      - JwtSettings__Issuer=SmartCampusAPI
+      - JwtSettings__Audience=SmartCampusClient
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: smartcampus_phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: smartcampus_frontend
+    restart: always
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
+  certbot_webroot:
