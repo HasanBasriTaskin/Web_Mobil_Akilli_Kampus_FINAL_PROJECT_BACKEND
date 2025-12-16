@@ -38,14 +38,13 @@ try
         configuration.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<SMARTCAMPUS.BusinessLayer.Tools.UserClaimsHelper>();
 
 // Add services to the container.
 
 // 2. Database Connection
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<CampusContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 0))));
 
 // 3. Identity Configuration
 builder.Services.AddIdentity<User, Role>(options =>
@@ -96,16 +95,15 @@ builder.Services.AddScoped<IRefreshTokenDal, EfRefreshTokenDal>();
 builder.Services.AddScoped<IPasswordResetTokenDal, EfPasswordResetTokenDal>();
 builder.Services.AddScoped<IEmailVerificationTokenDal, EfEmailVerificationTokenDal>();
 
-// Academic Management DALs
+// Part 2 Repositories
 builder.Services.AddScoped<ICourseDal, EfCourseDal>();
 builder.Services.AddScoped<ICourseSectionDal, EfCourseSectionDal>();
+builder.Services.AddScoped<ICoursePrerequisiteDal, EfCoursePrerequisiteDal>();
 builder.Services.AddScoped<IEnrollmentDal, EfEnrollmentDal>();
 builder.Services.AddScoped<IAttendanceSessionDal, EfAttendanceSessionDal>();
 builder.Services.AddScoped<IAttendanceRecordDal, EfAttendanceRecordDal>();
 builder.Services.AddScoped<IExcuseRequestDal, EfExcuseRequestDal>();
 builder.Services.AddScoped<IClassroomDal, EfClassroomDal>();
-builder.Services.AddScoped<IAcademicCalendarDal, EfAcademicCalendarDal>();
-builder.Services.AddScoped<IAnnouncementDal, EfAnnouncementDal>();
 
 // 5. Business Layer Services (AutoMapper & FluentValidation & Tools)
 builder.Services.AddAutoMapper(typeof(MappingProfile));
@@ -115,19 +113,11 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentManager>();
 builder.Services.AddScoped<INotificationService, EmailService>();
 
-// Academic Management Services
-builder.Services.AddScoped<ICourseService, CourseService>();
-builder.Services.AddScoped<ICourseSectionService, CourseSectionService>();
-builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
-builder.Services.AddScoped<IGradeService, GradeService>();
-builder.Services.AddScoped<IAttendanceService, AttendanceService>();
-builder.Services.AddScoped<IExcuseRequestService, ExcuseRequestService>();
-builder.Services.AddScoped<ITranscriptService, TranscriptService>();
-builder.Services.AddScoped<IAcademicCalendarService, AcademicCalendarService>();
-builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
+// Part 2 Services
+builder.Services.AddScoped<ICourseService, CourseManager>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentManager>();
+builder.Services.AddScoped<IAttendanceService, AttendanceManager>();
 
-// Background Jobs
-builder.Services.AddHostedService<SMARTCAMPUS.BusinessLayer.Jobs.AbsenceWarningJob>();
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>(); // Scans assembly for all AbstractValidator<T>

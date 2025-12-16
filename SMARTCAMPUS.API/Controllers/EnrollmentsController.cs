@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SMARTCAMPUS.BusinessLayer.Abstract;
-using SMARTCAMPUS.BusinessLayer.Tools;
-using SMARTCAMPUS.EntityLayer.DTOs.Academic;
+using SMARTCAMPUS.EntityLayer.DTOs.Enrollment;
+using System.Security.Claims;
 
 namespace SMARTCAMPUS.API.Controllers
 {
@@ -12,109 +12,176 @@ namespace SMARTCAMPUS.API.Controllers
     public class EnrollmentsController : ControllerBase
     {
         private readonly IEnrollmentService _enrollmentService;
-        private readonly UserClaimsHelper _userClaimsHelper;
 
-        public EnrollmentsController(IEnrollmentService enrollmentService, UserClaimsHelper userClaimsHelper)
+        public EnrollmentsController(IEnrollmentService enrollmentService)
         {
             _enrollmentService = enrollmentService;
-            _userClaimsHelper = userClaimsHelper;
         }
 
+        /// <summary>
+        /// Enroll in a course section
+        /// </summary>
         [HttpPost]
-        public async Task<IActionResult> Enroll([FromBody] EnrollmentRequestDto request)
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> EnrollInCourse([FromBody] CreateEnrollmentDto dto)
         {
-            var studentId = await _userClaimsHelper.GetStudentIdAsync();
-            if (!studentId.HasValue)
-                return Unauthorized("Student not found or user is not a student");
+            var studentId = GetCurrentStudentId();
+            if (studentId == null)
+                return Unauthorized("Student ID not found");
 
-            var result = await _enrollmentService.EnrollAsync(studentId.Value, request);
+            var result = await _enrollmentService.EnrollInCourseAsync(studentId.Value, dto);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DropCourse(int id)
+        /// <summary>
+        /// Drop a course (withdraw)
+        /// </summary>
+        [HttpDelete("{enrollmentId}")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> DropCourse(int enrollmentId)
         {
-            var studentId = await _userClaimsHelper.GetStudentIdAsync();
-            if (!studentId.HasValue)
-                return Unauthorized("Student not found or user is not a student");
+            var studentId = GetCurrentStudentId();
+            if (studentId == null)
+                return Unauthorized("Student ID not found");
 
-            var result = await _enrollmentService.DropCourseAsync(studentId.Value, id);
+            var result = await _enrollmentService.DropCourseAsync(studentId.Value, enrollmentId);
             return StatusCode(result.StatusCode, result);
         }
 
+        /// <summary>
+        /// Get current student's enrolled courses
+        /// </summary>
         [HttpGet("my-courses")]
+        [Authorize(Roles = "Student")]
         public async Task<IActionResult> GetMyCourses()
         {
-            var studentId = await _userClaimsHelper.GetStudentIdAsync();
-            if (!studentId.HasValue)
-                return Unauthorized("Student not found or user is not a student");
+            var studentId = GetCurrentStudentId();
+            if (studentId == null)
+                return Unauthorized("Student ID not found");
 
-            var isAdmin = User.IsInRole("Admin");
-            var instructorId = User.IsInRole("Faculty") ? _userClaimsHelper.GetUserId() : null;
-            
-            var result = await _enrollmentService.GetStudentEnrollmentsAsync(studentId.Value, studentId, isAdmin, instructorId);
+            var result = await _enrollmentService.GetMyCoursesAsync(studentId.Value);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("students/{sectionId}")]
+        /// <summary>
+        /// Get students enrolled in a section (Faculty only)
+        /// </summary>
+        [HttpGet("sections/{sectionId}/students")]
         [Authorize(Roles = "Faculty,Admin")]
-        public async Task<IActionResult> GetSectionEnrollments(int sectionId)
+        public async Task<IActionResult> GetStudentsBySection(int sectionId)
         {
-            var instructorId = _userClaimsHelper.GetUserId();
-            var isAdmin = User.IsInRole("Admin");
-            
-            var result = await _enrollmentService.GetSectionEnrollmentsAsync(sectionId, instructorId, isAdmin);
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
+
+            var result = await _enrollmentService.GetStudentsBySectionAsync(sectionId, instructorId.Value);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("check-prerequisites/{courseId}/{studentId}")]
-        public async Task<IActionResult> CheckPrerequisites(int courseId, int studentId)
+        /// <summary>
+        /// Check prerequisites for a course
+        /// </summary>
+        [HttpGet("check-prerequisites/{courseId}")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> CheckPrerequisites(int courseId)
         {
-            // Authorization: Students can only check their own prerequisites
-            // Faculty/Admin can check any student's prerequisites
-            var currentStudentId = await _userClaimsHelper.GetStudentIdAsync();
-            var isAdmin = User.IsInRole("Admin");
-            var isFaculty = User.IsInRole("Faculty");
-            
-            if (!isAdmin && !isFaculty && (!currentStudentId.HasValue || currentStudentId.Value != studentId))
-            {
-                return Unauthorized("You can only check your own prerequisites");
-            }
+            var studentId = GetCurrentStudentId();
+            if (studentId == null)
+                return Unauthorized("Student ID not found");
 
-            var result = await _enrollmentService.CheckPrerequisitesAsync(courseId, studentId);
+            var result = await _enrollmentService.CheckPrerequisitesAsync(studentId.Value, courseId);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("check-conflict/{sectionId}/{studentId}")]
-        public async Task<IActionResult> CheckScheduleConflict(int sectionId, int studentId)
+        /// <summary>
+        /// Check schedule conflicts for a section
+        /// </summary>
+        [HttpGet("check-conflict/{sectionId}")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> CheckScheduleConflict(int sectionId)
         {
-            // Authorization: Students can only check their own schedule conflicts
-            // Faculty/Admin can check any student's schedule conflicts
-            var currentStudentId = await _userClaimsHelper.GetStudentIdAsync();
-            var isAdmin = User.IsInRole("Admin");
-            var isFaculty = User.IsInRole("Faculty");
-            
-            if (!isAdmin && !isFaculty && (!currentStudentId.HasValue || currentStudentId.Value != studentId))
-            {
-                return Unauthorized("You can only check your own schedule conflicts");
-            }
+            var studentId = GetCurrentStudentId();
+            if (studentId == null)
+                return Unauthorized("Student ID not found");
 
-            var result = await _enrollmentService.CheckScheduleConflictAsync(studentId, sectionId);
+            var result = await _enrollmentService.CheckScheduleConflictAsync(studentId.Value, sectionId);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("my-schedule")]
-        public async Task<IActionResult> GetPersonalSchedule([FromQuery] string? semester, [FromQuery] int? year)
+        /// <summary>
+        /// Get faculty's own sections with pending count
+        /// </summary>
+        [HttpGet("my-sections")]
+        [Authorize(Roles = "Faculty,Admin")]
+        public async Task<IActionResult> GetMySections()
         {
-            var studentId = await _userClaimsHelper.GetStudentIdAsync();
-            if (!studentId.HasValue)
-                return Unauthorized("Student not found or user is not a student");
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
 
-            var result = await _enrollmentService.GetPersonalScheduleAsync(studentId.Value, semester, year);
+            var result = await _enrollmentService.GetMySectionsAsync(instructorId.Value);
             return StatusCode(result.StatusCode, result);
+        }
+
+        /// <summary>
+        /// Get pending enrollment requests for a section (Faculty only)
+        /// </summary>
+        [HttpGet("sections/{sectionId}/pending")]
+        [Authorize(Roles = "Faculty,Admin")]
+        public async Task<IActionResult> GetPendingEnrollments(int sectionId)
+        {
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
+
+            var result = await _enrollmentService.GetPendingEnrollmentsAsync(sectionId, instructorId.Value);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        /// <summary>
+        /// Approve an enrollment request (Faculty only)
+        /// </summary>
+        [HttpPost("{enrollmentId}/approve")]
+        [Authorize(Roles = "Faculty,Admin")]
+        public async Task<IActionResult> ApproveEnrollment(int enrollmentId)
+        {
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
+
+            var result = await _enrollmentService.ApproveEnrollmentAsync(enrollmentId, instructorId.Value);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        /// <summary>
+        /// Reject an enrollment request (Faculty only)
+        /// </summary>
+        [HttpPost("{enrollmentId}/reject")]
+        [Authorize(Roles = "Faculty,Admin")]
+        public async Task<IActionResult> RejectEnrollment(int enrollmentId, [FromBody] RejectEnrollmentDto? dto)
+        {
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
+
+            var result = await _enrollmentService.RejectEnrollmentAsync(enrollmentId, instructorId.Value, dto?.Reason);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        private int? GetCurrentStudentId()
+        {
+            var claim = User.FindFirst("StudentId");
+            if (claim != null && int.TryParse(claim.Value, out var id))
+                return id;
+            return null;
+        }
+
+        private int? GetCurrentFacultyId()
+        {
+            var claim = User.FindFirst("FacultyId");
+            if (claim != null && int.TryParse(claim.Value, out var id))
+                return id;
+            return null;
         }
     }
 }
-
-
-

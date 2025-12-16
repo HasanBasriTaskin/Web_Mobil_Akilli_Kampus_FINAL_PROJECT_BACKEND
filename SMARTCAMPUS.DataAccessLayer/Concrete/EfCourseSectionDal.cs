@@ -2,127 +2,60 @@ using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.Models;
-using System.Text.Json;
 
 namespace SMARTCAMPUS.DataAccessLayer.Concrete
 {
     public class EfCourseSectionDal : GenericRepository<CourseSection>, ICourseSectionDal
     {
+        private readonly CampusContext _context;
+
         public EfCourseSectionDal(CampusContext context) : base(context)
         {
+            _context = context;
         }
 
-        public async Task<CourseSection?> GetSectionWithDetailsAsync(int sectionId)
+        public async Task<CourseSection?> GetSectionWithDetailsAsync(int id)
         {
             return await _context.CourseSections
                 .Include(s => s.Course)
-                    .ThenInclude(c => c.Department)
                 .Include(s => s.Instructor)
-                .Include(s => s.Classroom)
-                .FirstOrDefaultAsync(s => s.Id == sectionId);
-        }
-
-        public async Task<IEnumerable<CourseSection>> GetSectionsByCourseAsync(int courseId)
-        {
-            return await _context.CourseSections
-                .Where(s => s.CourseId == courseId && s.IsActive)
-                .Include(s => s.Course)
-                .Include(s => s.Instructor)
-                .Include(s => s.Classroom)
-                .ToListAsync();
+                    .ThenInclude(i => i.User)
+                .FirstOrDefaultAsync(s => s.Id == id);
         }
 
         public async Task<IEnumerable<CourseSection>> GetSectionsBySemesterAsync(string semester, int year)
         {
             return await _context.CourseSections
-                .Where(s => s.Semester == semester && s.Year == year && s.IsActive)
+                .Where(s => s.Semester == semester && s.Year == year)
                 .Include(s => s.Course)
                 .Include(s => s.Instructor)
-                .Include(s => s.Classroom)
+                    .ThenInclude(i => i.User)
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<CourseSection>> GetSectionsByInstructorAsync(string instructorId)
+        public async Task<IEnumerable<CourseSection>> GetSectionsByInstructorAsync(int instructorId)
         {
             return await _context.CourseSections
-                .Where(s => s.InstructorId == instructorId && s.IsActive)
+                .Where(s => s.InstructorId == instructorId)
                 .Include(s => s.Course)
-                .Include(s => s.Classroom)
                 .ToListAsync();
         }
 
-        public async Task<bool> HasScheduleConflictAsync(int studentId, int sectionId, string semester, int year)
+        public async Task<bool> IncrementEnrolledCountAsync(int sectionId)
         {
-            var newSection = await GetSectionWithDetailsAsync(sectionId);
-            if (newSection == null || string.IsNullOrEmpty(newSection.ScheduleJson))
-                return false;
-
-            var studentEnrollments = await _context.Enrollments
-                .Where(e => e.StudentId == studentId 
-                    && e.Status == "Active"
-                    && e.Section.Semester == semester
-                    && e.Section.Year == year
-                    && e.IsActive)
-                .Include(e => e.Section)
-                .ToListAsync();
-
-            if (!studentEnrollments.Any())
-                return false;
-
-            try
-            {
-                var newSchedule = JsonSerializer.Deserialize<List<ScheduleItem>>(newSection.ScheduleJson);
-                if (newSchedule == null || !newSchedule.Any())
-                    return false;
-
-                foreach (var enrollment in studentEnrollments)
-                {
-                    if (string.IsNullOrEmpty(enrollment.Section.ScheduleJson))
-                        continue;
-
-                    var existingSchedule = JsonSerializer.Deserialize<List<ScheduleItem>>(enrollment.Section.ScheduleJson);
-                    if (existingSchedule == null || !existingSchedule.Any())
-                        continue;
-
-                    foreach (var newItem in newSchedule)
-                    {
-                        foreach (var existingItem in existingSchedule)
-                        {
-                            if (newItem.Day == existingItem.Day)
-                            {
-                                if (TimeOverlaps(newItem.StartTime, newItem.EndTime, existingItem.StartTime, existingItem.EndTime))
-                                    return true;
-                            }
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                return false;
-            }
-
-            return false;
+            // Atomic update with capacity check
+            var affected = await _context.Database.ExecuteSqlRawAsync(
+                "UPDATE CourseSections SET EnrolledCount = EnrolledCount + 1 WHERE Id = {0} AND EnrolledCount < Capacity",
+                sectionId);
+            return affected > 0;
         }
 
-        private bool TimeOverlaps(string start1, string end1, string start2, string end2)
+        public async Task<bool> DecrementEnrolledCountAsync(int sectionId)
         {
-            var time1Start = TimeSpan.Parse(start1);
-            var time1End = TimeSpan.Parse(end1);
-            var time2Start = TimeSpan.Parse(start2);
-            var time2End = TimeSpan.Parse(end2);
-
-            return time1Start < time2End && time2Start < time1End;
-        }
-
-        private class ScheduleItem
-        {
-            public string Day { get; set; } = null!;
-            public string StartTime { get; set; } = null!;
-            public string EndTime { get; set; } = null!;
+            var affected = await _context.Database.ExecuteSqlRawAsync(
+                "UPDATE CourseSections SET EnrolledCount = EnrolledCount - 1 WHERE Id = {0} AND EnrolledCount > 0",
+                sectionId);
+            return affected > 0;
         }
     }
 }
-
-
-

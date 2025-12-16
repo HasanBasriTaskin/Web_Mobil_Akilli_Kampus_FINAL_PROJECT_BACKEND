@@ -8,28 +8,19 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
     {
         public void Configure(EntityTypeBuilder<CoursePrerequisite> builder)
         {
-            builder.HasKey(x => x.Id);
+            // Composite primary key
+            builder.HasKey(x => new { x.CourseId, x.PrerequisiteCourseId });
 
-            builder.HasIndex(x => new { x.CourseId, x.PrerequisiteCourseId })
-                .IsUnique()
-                .HasDatabaseName("IX_CoursePrerequisite_Unique");
-
+            // Relationships - Self-referencing many-to-many
             builder.HasOne(x => x.Course)
                 .WithMany(x => x.Prerequisites)
                 .HasForeignKey(x => x.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasOne(x => x.PrerequisiteCourse)
-                .WithMany(x => x.RequiredBy)
+                .WithMany(x => x.RequiredFor)
                 .HasForeignKey(x => x.PrerequisiteCourseId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            // Prevent self-referencing prerequisites
-            builder.HasCheckConstraint("CK_CoursePrerequisite_NoSelfReference", 
-                "CourseId != PrerequisiteCourseId");
+                .OnDelete(DeleteBehavior.Restrict); // Prevent deleting a course that is a prerequisite
         }
     }
 }
-
-
-
