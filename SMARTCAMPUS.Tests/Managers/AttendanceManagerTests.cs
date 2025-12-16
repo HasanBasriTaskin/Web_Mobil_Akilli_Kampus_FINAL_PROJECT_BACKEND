@@ -315,7 +315,7 @@ namespace SMARTCAMPUS.Tests.Managers
             var user = new User { Id = "u1", FullName = "Student" };
             var student = new Student { Id = 1, StudentNumber = "S1", UserId = "u1", User = user };
             var course = new Course { Id = 1, Code = "C1", Name = "C1" };
-            var section = new CourseSection { Id = 1, Course = course, SectionNumber = "1" };
+            var section = new CourseSection { Id = 1, Course = course, SectionNumber = "1", Semester = "Fall", Year = 2024 };
             var session = new AttendanceSession { Id = 1, Section = section, InstructorId = 1 };
 
             var request = new ExcuseRequest
@@ -325,6 +325,7 @@ namespace SMARTCAMPUS.Tests.Managers
                 Student = student,
                 SessionId = 1,
                 Session = session,
+                Reason = "Sick",
                 CreatedDate = DateTime.UtcNow
             };
 
@@ -353,7 +354,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             var session = new AttendanceSession { Id = 1, InstructorId = 1 };
-            var request = new ExcuseRequest { Id = 1, SessionId = 1, Session = session, Status = ExcuseRequestStatus.Pending };
+            var request = new ExcuseRequest { Id = 1, SessionId = 1, Session = session, Status = ExcuseRequestStatus.Pending, Reason = "Sick" };
 
             await _context.AttendanceSessions.AddAsync(session);
             await _context.ExcuseRequests.AddAsync(request);
@@ -377,7 +378,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             var session = new AttendanceSession { Id = 1, InstructorId = 1 };
-            var request = new ExcuseRequest { Id = 1, SessionId = 1, Session = session, Status = ExcuseRequestStatus.Pending };
+            var request = new ExcuseRequest { Id = 1, SessionId = 1, Session = session, Status = ExcuseRequestStatus.Pending, Reason = "Sick" };
 
             await _context.AttendanceSessions.AddAsync(session);
             await _context.ExcuseRequests.AddAsync(request);
