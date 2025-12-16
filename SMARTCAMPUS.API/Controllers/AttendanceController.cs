@@ -20,9 +20,6 @@ namespace SMARTCAMPUS.API.Controllers
 
         #region Session Management (Faculty)
 
-        /// <summary>
-        /// Create a new attendance session
-        /// </summary>
         [HttpPost("sessions")]
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> CreateSession([FromBody] CreateSessionDto dto)
@@ -35,9 +32,6 @@ namespace SMARTCAMPUS.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Get session details
-        /// </summary>
         [HttpGet("sessions/{sessionId}")]
         public async Task<IActionResult> GetSession(int sessionId)
         {
@@ -45,9 +39,6 @@ namespace SMARTCAMPUS.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Close an attendance session
-        /// </summary>
         [HttpPut("sessions/{sessionId}/close")]
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> CloseSession(int sessionId)
@@ -60,9 +51,6 @@ namespace SMARTCAMPUS.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Get instructor's sessions
-        /// </summary>
         [HttpGet("sessions/my-sessions")]
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> GetMySessions()
@@ -75,9 +63,6 @@ namespace SMARTCAMPUS.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Get attendance records for a session
-        /// </summary>
         [HttpGet("sessions/{sessionId}/records")]
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> GetSessionRecords(int sessionId)
@@ -90,9 +75,6 @@ namespace SMARTCAMPUS.API.Controllers
 
         #region Student Check-in
 
-        /// <summary>
-        /// Check-in to an attendance session
-        /// </summary>
         [HttpPost("sessions/{sessionId}/checkin")]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> CheckIn(int sessionId, [FromBody] CheckInDto dto)
@@ -105,9 +87,6 @@ namespace SMARTCAMPUS.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Get student's attendance records
-        /// </summary>
         [HttpGet("my-attendance")]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> GetMyAttendance()
@@ -124,9 +103,6 @@ namespace SMARTCAMPUS.API.Controllers
 
         #region Excuse Requests
 
-        /// <summary>
-        /// Submit an excuse request
-        /// </summary>
         [HttpPost("excuse-requests")]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> CreateExcuseRequest([FromBody] CreateExcuseRequestDto dto)
@@ -140,9 +116,6 @@ namespace SMARTCAMPUS.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Get excuse requests (Faculty)
-        /// </summary>
         [HttpGet("excuse-requests")]
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> GetExcuseRequests([FromQuery] int? sectionId = null)
@@ -155,9 +128,6 @@ namespace SMARTCAMPUS.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Approve an excuse request
-        /// </summary>
         [HttpPut("excuse-requests/{requestId}/approve")]
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> ApproveExcuseRequest(int requestId, [FromBody] ReviewExcuseRequestDto dto)
@@ -170,9 +140,6 @@ namespace SMARTCAMPUS.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Reject an excuse request
-        /// </summary>
         [HttpPut("excuse-requests/{requestId}/reject")]
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> RejectExcuseRequest(int requestId, [FromBody] ReviewExcuseRequestDto dto)

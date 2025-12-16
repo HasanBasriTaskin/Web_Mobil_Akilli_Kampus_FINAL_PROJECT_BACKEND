@@ -1,11 +1,10 @@
 using SMARTCAMPUS.BusinessLayer.Common;
-using SMARTCAMPUS.EntityLayer.Models;
+using SMARTCAMPUS.EntityLayer.DTOs.Academic;
 
 namespace SMARTCAMPUS.BusinessLayer.Abstract
 {
     public interface IDepartmentService
     {
-        // Placeholder for future methods
-        Task<Response<List<Department>>> GetDepartmentsAsync();
+        Task<Response<List<DepartmentDto>>> GetDepartmentsAsync();
     }
 }
