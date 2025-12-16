@@ -1,9 +1,6 @@
 using FluentValidation.TestHelper;
 using SMARTCAMPUS.BusinessLayer.ValidationRules.Academic;
 using SMARTCAMPUS.EntityLayer.DTOs.Academic;
-using SMARTCAMPUS.EntityLayer.DTOs.Attendance;
-using SMARTCAMPUS.EntityLayer.DTOs.Course;
-using SMARTCAMPUS.EntityLayer.DTOs.Enrollment;
 using Xunit;
 
 namespace SMARTCAMPUS.Tests.ValidationRules
@@ -14,7 +11,7 @@ namespace SMARTCAMPUS.Tests.ValidationRules
         public void AttendanceCheckInValidator_ShouldHaveError_WhenCoordinatesInvalid()
         {
             var validator = new AttendanceCheckInValidator();
-            var dto = new CheckInDto { Latitude = 200, Longitude = 200 }; // Invalid
+            var dto = new AttendanceCheckInDto { Latitude = 200, Longitude = 200 }; // Invalid
 
             var result = validator.TestValidate(dto);
 
@@ -26,7 +23,7 @@ namespace SMARTCAMPUS.Tests.ValidationRules
         public void CourseCreateValidator_ShouldHaveError_WhenCodeEmpty()
         {
             var validator = new CourseCreateValidator();
-            var dto = new CreateCourseDto { Code = "", Name = "Name", DepartmentId = 1 };
+            var dto = new CourseCreateDto { Code = "", Name = "Name", DepartmentId = 1 };
 
             var result = validator.TestValidate(dto);
 
@@ -37,7 +34,7 @@ namespace SMARTCAMPUS.Tests.ValidationRules
         public void CourseSectionCreateValidator_ShouldHaveError_WhenSemesterEmpty()
         {
             var validator = new CourseSectionCreateValidator();
-            var dto = new CourseSectionCreateDto { CourseId = 1, InstructorId = 1, Semester = "", Year = 2024 };
+            var dto = new CourseSectionCreateDto { CourseId = 1, InstructorId = "1", Semester = "", Year = 2024 };
 
             var result = validator.TestValidate(dto);
 
@@ -48,7 +45,7 @@ namespace SMARTCAMPUS.Tests.ValidationRules
         public void EnrollmentRequestValidator_ShouldHaveError_WhenSectionIdZero()
         {
             var validator = new EnrollmentRequestValidator();
-            var dto = new CreateEnrollmentDto { SectionId = 0 };
+            var dto = new EnrollmentRequestDto { SectionId = 0 };
 
             var result = validator.TestValidate(dto);
 
