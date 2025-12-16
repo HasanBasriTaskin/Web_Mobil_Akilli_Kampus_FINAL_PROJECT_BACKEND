@@ -12,7 +12,11 @@ namespace SMARTCAMPUS.BusinessLayer.Abstract
         Task<Response<IEnumerable<StudentCourseDto>>> GetMyCoursesAsync(int studentId);
         
         // Faculty operations
+        Task<Response<IEnumerable<FacultySectionDto>>> GetMySectionsAsync(int instructorId);
         Task<Response<IEnumerable<SectionStudentDto>>> GetStudentsBySectionAsync(int sectionId, int instructorId);
+        Task<Response<IEnumerable<PendingEnrollmentDto>>> GetPendingEnrollmentsAsync(int sectionId, int instructorId);
+        Task<Response<NoDataDto>> ApproveEnrollmentAsync(int enrollmentId, int instructorId);
+        Task<Response<NoDataDto>> RejectEnrollmentAsync(int enrollmentId, int instructorId, string? reason);
         
         // Validation
         Task<Response<NoDataDto>> CheckPrerequisitesAsync(int studentId, int courseId);

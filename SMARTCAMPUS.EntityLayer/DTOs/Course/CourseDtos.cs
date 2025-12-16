@@ -10,8 +10,9 @@ namespace SMARTCAMPUS.EntityLayer.DTOs.Course
         public int ECTS { get; set; }
         public string? SyllabusUrl { get; set; }
         public int DepartmentId { get; set; }
-        public string DepartmentName { get; set; } = null!;
+        public string? DepartmentName { get; set; }
         public List<CoursePrerequisiteDto> Prerequisites { get; set; } = new();
+        public List<CourseSectionDto> Sections { get; set; } = new();
     }
 
     public class CoursePrerequisiteDto
@@ -50,6 +51,9 @@ namespace SMARTCAMPUS.EntityLayer.DTOs.Course
         public string Name { get; set; } = null!;
         public int Credits { get; set; }
         public int ECTS { get; set; }
-        public string DepartmentName { get; set; } = null!;
+        public int DepartmentId { get; set; }
+        public string? DepartmentName { get; set; }
+        public int SectionCount { get; set; }
     }
 }
+

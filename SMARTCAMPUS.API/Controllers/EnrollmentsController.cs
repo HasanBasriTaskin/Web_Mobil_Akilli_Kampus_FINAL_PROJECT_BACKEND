@@ -108,6 +108,66 @@ namespace SMARTCAMPUS.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
+        /// <summary>
+        /// Get faculty's own sections with pending count
+        /// </summary>
+        [HttpGet("my-sections")]
+        [Authorize(Roles = "Faculty,Admin")]
+        public async Task<IActionResult> GetMySections()
+        {
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
+
+            var result = await _enrollmentService.GetMySectionsAsync(instructorId.Value);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        /// <summary>
+        /// Get pending enrollment requests for a section (Faculty only)
+        /// </summary>
+        [HttpGet("sections/{sectionId}/pending")]
+        [Authorize(Roles = "Faculty,Admin")]
+        public async Task<IActionResult> GetPendingEnrollments(int sectionId)
+        {
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
+
+            var result = await _enrollmentService.GetPendingEnrollmentsAsync(sectionId, instructorId.Value);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        /// <summary>
+        /// Approve an enrollment request (Faculty only)
+        /// </summary>
+        [HttpPost("{enrollmentId}/approve")]
+        [Authorize(Roles = "Faculty,Admin")]
+        public async Task<IActionResult> ApproveEnrollment(int enrollmentId)
+        {
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
+
+            var result = await _enrollmentService.ApproveEnrollmentAsync(enrollmentId, instructorId.Value);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        /// <summary>
+        /// Reject an enrollment request (Faculty only)
+        /// </summary>
+        [HttpPost("{enrollmentId}/reject")]
+        [Authorize(Roles = "Faculty,Admin")]
+        public async Task<IActionResult> RejectEnrollment(int enrollmentId, [FromBody] RejectEnrollmentDto? dto)
+        {
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
+
+            var result = await _enrollmentService.RejectEnrollmentAsync(enrollmentId, instructorId.Value, dto?.Reason);
+            return StatusCode(result.StatusCode, result);
+        }
+
         private int? GetCurrentStudentId()
         {
             var claim = User.FindFirst("StudentId");
