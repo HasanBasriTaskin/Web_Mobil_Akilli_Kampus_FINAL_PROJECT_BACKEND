@@ -114,6 +114,7 @@ builder.Services.AddScoped<IDepartmentService, DepartmentManager>();
 builder.Services.AddScoped<INotificationService, EmailService>();
 
 // Part 2 Services
+builder.Services.AddScoped<ICourseService, CourseManager>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentManager>();
 builder.Services.AddScoped<IAttendanceService, AttendanceManager>();
 

@@ -10,10 +10,10 @@
 *.user
 *.userosscache
 *.sln.docstates
-*.env
+# *.env
 
 # AppSettings
-**/appsettings.json
+# **/appsettings.json
 **/appsettings.Development.json
 **/appsettings.Production.json
 **/!appsettings.example.json

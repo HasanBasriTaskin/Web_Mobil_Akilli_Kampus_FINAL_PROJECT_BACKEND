@@ -57,22 +57,17 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             if (existingEnrollment)
                 return Response<EnrollmentDto>.Fail("Already enrolled in this section", 400);
 
-            // Create enrollment
+            // Create enrollment with Pending status
             var enrollment = new Enrollment
             {
                 StudentId = studentId,
                 SectionId = dto.SectionId,
-                Status = EnrollmentStatus.Enrolled,
+                Status = EnrollmentStatus.Pending,
                 EnrollmentDate = DateTime.UtcNow
             };
 
             await _enrollmentDal.AddAsync(enrollment);
-            
-            // Increment enrolled count atomically
-            var success = await _sectionDal.IncrementEnrolledCountAsync(dto.SectionId);
-            if (!success)
-                return Response<EnrollmentDto>.Fail("Failed to update section capacity", 500);
-
+            // Note: Don't increment enrolled count - that happens on approval
             await _context.SaveChangesAsync();
 
             // Map to DTO
@@ -161,16 +156,131 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 .Select(e => new SectionStudentDto
                 {
                     StudentId = e.StudentId,
+                    EnrollmentId = e.Id,
                     StudentNumber = e.Student.StudentNumber,
                     StudentName = e.Student.User.FullName,
                     Email = e.Student.User.Email ?? "",
                     EnrollmentDate = e.EnrollmentDate,
+                    Status = e.Status,
                     MidtermGrade = e.MidtermGrade,
                     FinalGrade = e.FinalGrade,
                     LetterGrade = e.LetterGrade
                 });
 
             return Response<IEnumerable<SectionStudentDto>>.Success(students, 200);
+        }
+
+        public async Task<Response<IEnumerable<FacultySectionDto>>> GetMySectionsAsync(int instructorId)
+        {
+            var sections = await _context.CourseSections
+                .Include(s => s.Course)
+                .Where(s => s.InstructorId == instructorId)
+                .Select(s => new FacultySectionDto
+                {
+                    Id = s.Id,
+                    CourseId = s.CourseId,
+                    CourseCode = s.Course.Code,
+                    CourseName = s.Course.Name,
+                    SectionNumber = s.SectionNumber,
+                    Semester = s.Semester,
+                    Year = s.Year,
+                    Capacity = s.Capacity,
+                    EnrolledCount = s.EnrolledCount,
+                    PendingCount = _context.Enrollments.Count(e => e.SectionId == s.Id && e.Status == EnrollmentStatus.Pending)
+                })
+                .ToListAsync();
+
+            return Response<IEnumerable<FacultySectionDto>>.Success(sections, 200);
+        }
+
+        public async Task<Response<IEnumerable<PendingEnrollmentDto>>> GetPendingEnrollmentsAsync(int sectionId, int instructorId)
+        {
+            // Verify instructor owns this section
+            var section = await _context.CourseSections
+                .Include(s => s.Course)
+                .FirstOrDefaultAsync(s => s.Id == sectionId && s.InstructorId == instructorId);
+
+            if (section == null)
+                return Response<IEnumerable<PendingEnrollmentDto>>.Fail("Section not found or access denied", 404);
+
+            var pendingEnrollments = await _context.Enrollments
+                .Include(e => e.Student)
+                    .ThenInclude(s => s.User)
+                .Include(e => e.Section)
+                    .ThenInclude(sec => sec.Course)
+                .Where(e => e.SectionId == sectionId && e.Status == EnrollmentStatus.Pending)
+                .Select(e => new PendingEnrollmentDto
+                {
+                    EnrollmentId = e.Id,
+                    StudentId = e.StudentId,
+                    StudentNumber = e.Student.StudentNumber,
+                    StudentName = e.Student.User.FullName,
+                    Email = e.Student.User.Email ?? "",
+                    RequestDate = e.EnrollmentDate,
+                    SectionId = e.SectionId,
+                    CourseCode = e.Section.Course.Code,
+                    CourseName = e.Section.Course.Name,
+                    SectionNumber = e.Section.SectionNumber
+                })
+                .ToListAsync();
+
+            return Response<IEnumerable<PendingEnrollmentDto>>.Success(pendingEnrollments, 200);
+        }
+
+        public async Task<Response<NoDataDto>> ApproveEnrollmentAsync(int enrollmentId, int instructorId)
+        {
+            var enrollment = await _context.Enrollments
+                .Include(e => e.Section)
+                .FirstOrDefaultAsync(e => e.Id == enrollmentId);
+
+            if (enrollment == null)
+                return Response<NoDataDto>.Fail("Enrollment not found", 404);
+
+            // Verify instructor owns the section
+            if (enrollment.Section.InstructorId != instructorId)
+                return Response<NoDataDto>.Fail("Access denied - not your section", 403);
+
+            if (enrollment.Status != EnrollmentStatus.Pending)
+                return Response<NoDataDto>.Fail("This enrollment is not pending", 400);
+
+            // Check capacity before approval
+            if (enrollment.Section.EnrolledCount >= enrollment.Section.Capacity)
+                return Response<NoDataDto>.Fail("Section is now full, cannot approve", 400);
+
+            // Approve the enrollment
+            enrollment.Status = EnrollmentStatus.Enrolled;
+            
+            // Increment enrolled count
+            await _sectionDal.IncrementEnrolledCountAsync(enrollment.SectionId);
+            
+            await _context.SaveChangesAsync();
+
+            return Response<NoDataDto>.Success(200);
+        }
+
+        public async Task<Response<NoDataDto>> RejectEnrollmentAsync(int enrollmentId, int instructorId, string? reason)
+        {
+            var enrollment = await _context.Enrollments
+                .Include(e => e.Section)
+                .FirstOrDefaultAsync(e => e.Id == enrollmentId);
+
+            if (enrollment == null)
+                return Response<NoDataDto>.Fail("Enrollment not found", 404);
+
+            // Verify instructor owns the section
+            if (enrollment.Section.InstructorId != instructorId)
+                return Response<NoDataDto>.Fail("Access denied - not your section", 403);
+
+            if (enrollment.Status != EnrollmentStatus.Pending)
+                return Response<NoDataDto>.Fail("This enrollment is not pending", 400);
+
+            // Reject the enrollment
+            enrollment.Status = EnrollmentStatus.Rejected;
+            // Note: reason could be stored in a new field if needed
+            
+            await _context.SaveChangesAsync();
+
+            return Response<NoDataDto>.Success(200);
         }
 
         public async Task<Response<NoDataDto>> CheckPrerequisitesAsync(int studentId, int courseId)
