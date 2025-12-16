@@ -13,6 +13,9 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
             builder.Property(x => x.LetterGrade)
                 .HasMaxLength(5);
 
+            builder.Property(x => x.Status)
+                .HasConversion<string>();
+
             // Unique constraint: One enrollment per student per section
             builder.HasIndex(x => new { x.StudentId, x.SectionId }).IsUnique();
 

@@ -51,13 +51,56 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             if (!conflictResult.IsSuccessful)
                 return Response<EnrollmentDto>.Fail(conflictResult.Errors!, 400);
 
-            // Check if already enrolled
-            var existingEnrollment = await _context.Enrollments
-                .AnyAsync(e => e.StudentId == studentId && e.SectionId == dto.SectionId);
-            if (existingEnrollment)
-                return Response<EnrollmentDto>.Fail("Already enrolled in this section", 400);
+            // Check if there is an existing enrollment for THIS section
+            var existingSameSection = await _context.Enrollments
+                .FirstOrDefaultAsync(e => e.StudentId == studentId && e.SectionId == dto.SectionId);
 
-            // Create enrollment with Pending status
+            if (existingSameSection != null)
+            {
+                // If currently active
+                if (existingSameSection.Status == EnrollmentStatus.Pending || existingSameSection.Status == EnrollmentStatus.Enrolled)
+                {
+                    return Response<EnrollmentDto>.Fail("Bu derse zaten kayıtlısınız veya onay bekliyor", 400);
+                }
+
+                // If previously rejected/dropped/withdrawn, Reactivate it as Pending
+                existingSameSection.Status = EnrollmentStatus.Pending;
+                existingSameSection.EnrollmentDate = DateTime.UtcNow;
+                existingSameSection.MidtermGrade = null;
+                existingSameSection.FinalGrade = null;
+                existingSameSection.LetterGrade = null;
+                existingSameSection.GradePoint = null;
+
+                _enrollmentDal.Update(existingSameSection);
+                await _context.SaveChangesAsync();
+
+                // Build DTO
+                var resultDto = new EnrollmentDto
+                {
+                    Id = existingSameSection.Id,
+                    Status = existingSameSection.Status,
+                    EnrollmentDate = existingSameSection.EnrollmentDate,
+                    StudentId = studentId,
+                    SectionId = dto.SectionId,
+                    CourseCode = section.Course.Code,
+                    CourseName = section.Course.Name,
+                    SectionNumber = section.SectionNumber,
+                    InstructorName = $"{section.Instructor.Title} {section.Instructor.User.FullName}"
+                };
+                return Response<EnrollmentDto>.Success(resultDto, 200); // 200 OK for update
+            }
+
+            // Check if enrolled in ANOTHER section of the SAME course
+            var existingOtherSection = await _context.Enrollments
+                .Include(e => e.Section)
+                .AnyAsync(e => e.StudentId == studentId 
+                    && e.Section.CourseId == section.CourseId
+                    && (e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.Enrolled));
+            
+            if (existingOtherSection)
+                return Response<EnrollmentDto>.Fail("Bu dersin başka bir seksiyonuna zaten kayıtlısınız", 400);
+
+            // Create new enrollment
             var enrollment = new Enrollment
             {
                 StudentId = studentId,
@@ -67,11 +110,10 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             };
 
             await _enrollmentDal.AddAsync(enrollment);
-            // Note: Don't increment enrolled count - that happens on approval
             await _context.SaveChangesAsync();
 
             // Map to DTO
-            var resultDto = new EnrollmentDto
+            var newResultDto = new EnrollmentDto
             {
                 Id = enrollment.Id,
                 Status = enrollment.Status,
@@ -84,7 +126,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 InstructorName = $"{section.Instructor.Title} {section.Instructor.User.FullName}"
             };
 
-            return Response<EnrollmentDto>.Success(resultDto, 201);
+            return Response<EnrollmentDto>.Success(newResultDto, 201);
         }
 
         public async Task<Response<NoDataDto>> DropCourseAsync(int studentId, int enrollmentId)
@@ -361,12 +403,27 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             {
                 foreach (var s2 in schedule2)
                 {
+                    if (string.IsNullOrWhiteSpace(s1.StartTime) || string.IsNullOrWhiteSpace(s1.EndTime) ||
+                        string.IsNullOrWhiteSpace(s2.StartTime) || string.IsNullOrWhiteSpace(s2.EndTime))
+                    {
+                        continue;
+                    }
+
                     if (s1.Day.Equals(s2.Day, StringComparison.OrdinalIgnoreCase))
                     {
-                        var start1 = TimeSpan.Parse(s1.StartTime);
-                        var end1 = TimeSpan.Parse(s1.EndTime);
-                        var start2 = TimeSpan.Parse(s2.StartTime);
-                        var end2 = TimeSpan.Parse(s2.EndTime);
+                        TimeSpan start1, end1, start2, end2;
+                        
+                        try 
+                        {
+                            start1 = TimeSpan.Parse(s1.StartTime);
+                            end1 = TimeSpan.Parse(s1.EndTime);
+                            start2 = TimeSpan.Parse(s2.StartTime);
+                            end2 = TimeSpan.Parse(s2.EndTime);
+                        }
+                        catch
+                        {
+                            continue; // Skip invalid formats
+                        }
 
                         // Check overlap
                         if (start1 < end2 && start2 < end1)
