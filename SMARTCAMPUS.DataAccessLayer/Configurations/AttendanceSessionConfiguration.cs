@@ -10,27 +10,32 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
         {
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.Date).IsRequired();
-            builder.Property(x => x.StartTime).IsRequired();
-            builder.Property(x => x.EndTime).IsRequired();
-            builder.Property(x => x.Status).IsRequired().HasMaxLength(20).HasDefaultValue("Scheduled");
-            builder.Property(x => x.QrCode).HasMaxLength(500);
-            builder.Property(x => x.Latitude).HasPrecision(10, 8);
-            builder.Property(x => x.Longitude).HasPrecision(11, 8);
-            builder.Property(x => x.GeofenceRadius).HasPrecision(10, 2);
+            builder.Property(x => x.QRCode)
+                .HasMaxLength(500);
 
+            builder.Property(x => x.Status)
+                .HasConversion<string>();
+
+            // Relationships
             builder.HasOne(x => x.Section)
                 .WithMany(x => x.AttendanceSessions)
                 .HasForeignKey(x => x.SectionId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasOne(x => x.Instructor)
-                .WithMany()
+                .WithMany(x => x.AttendanceSessions)
                 .HasForeignKey(x => x.InstructorId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasMany(x => x.AttendanceRecords)
+                .WithOne(x => x.Session)
+                .HasForeignKey(x => x.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasMany(x => x.ExcuseRequests)
+                .WithOne(x => x.Session)
+                .HasForeignKey(x => x.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
-
-
-

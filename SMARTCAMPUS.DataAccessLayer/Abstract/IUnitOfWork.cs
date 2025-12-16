@@ -18,8 +18,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
         IAttendanceRecordDal AttendanceRecords { get; }
         IExcuseRequestDal ExcuseRequests { get; }
         IClassroomDal Classrooms { get; }
-        IAcademicCalendarDal AcademicCalendars { get; }
-        IAnnouncementDal Announcements { get; }
 
         Task CommitAsync();
         void Commit();

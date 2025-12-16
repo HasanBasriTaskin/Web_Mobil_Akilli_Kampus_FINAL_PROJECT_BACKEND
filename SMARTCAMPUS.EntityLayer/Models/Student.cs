@@ -17,5 +17,10 @@ namespace SMARTCAMPUS.EntityLayer.Models
         public int DepartmentId { get; set; }
         [ForeignKey("DepartmentId")]
         public Department Department { get; set; } = null!;
+        
+        // Navigation Properties
+        public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+        public ICollection<AttendanceRecord> AttendanceRecords { get; set; } = new List<AttendanceRecord>();
+        public ICollection<ExcuseRequest> ExcuseRequests { get; set; } = new List<ExcuseRequest>();
     }
 }

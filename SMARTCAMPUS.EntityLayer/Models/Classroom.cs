@@ -1,16 +1,28 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SMARTCAMPUS.EntityLayer.Models
 {
     public class Classroom : BaseEntity
     {
-        public string Building { get; set; } = null!; // e.g., "A", "B", "Engineering"
-        public string RoomNumber { get; set; } = null!; // e.g., "101", "A-205"
-        public int Capacity { get; set; }
-        public string? FeaturesJson { get; set; } // JSON format: {"projector": true, "computer": true, "whiteboard": true}
+        [Required]
+        [MaxLength(100)]
+        public string Building { get; set; } = null!;
         
-        // Navigation Properties
-        public ICollection<CourseSection>? Sections { get; set; }
+        [Required]
+        [MaxLength(20)]
+        public string RoomNumber { get; set; } = null!;
+        
+        [Range(1, 1000)]
+        public int Capacity { get; set; }
+        
+        // Features stored as JSON: ["projector", "smartboard", "computer_lab", "air_conditioning"]
+        public string? FeaturesJson { get; set; }
+        
+        // GPS Coordinates for attendance geofencing
+        [Range(-90, 90)]
+        public double Latitude { get; set; }
+        
+        [Range(-180, 180)]
+        public double Longitude { get; set; }
     }
 }
-
-
-
