@@ -10,34 +10,37 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
         {
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.SectionNumber).IsRequired().HasMaxLength(10);
-            builder.Property(x => x.Semester).IsRequired().HasMaxLength(20);
-            builder.Property(x => x.Year).IsRequired();
-            builder.Property(x => x.Capacity).IsRequired();
-            builder.Property(x => x.EnrolledCount).IsRequired().HasDefaultValue(0);
-            builder.Property(x => x.ScheduleJson).HasMaxLength(2000);
+            builder.Property(x => x.SectionNumber)
+                .IsRequired()
+                .HasMaxLength(10);
 
-            builder.HasIndex(x => new { x.CourseId, x.SectionNumber, x.Semester, x.Year })
-                .IsUnique()
-                .HasDatabaseName("IX_CourseSection_Unique");
+            builder.Property(x => x.Semester)
+                .IsRequired()
+                .HasMaxLength(20);
 
+            // Unique constraint: One section number per course per semester/year
+            builder.HasIndex(x => new { x.CourseId, x.SectionNumber, x.Semester, x.Year }).IsUnique();
+
+            // Relationships
             builder.HasOne(x => x.Course)
-                .WithMany(x => x.Sections)
+                .WithMany(x => x.CourseSections)
                 .HasForeignKey(x => x.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasOne(x => x.Instructor)
-                .WithMany()
+                .WithMany(x => x.TeachingSections)
                 .HasForeignKey(x => x.InstructorId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(x => x.Classroom)
-                .WithMany(x => x.Sections)
-                .HasForeignKey(x => x.ClassroomId)
-                .OnDelete(DeleteBehavior.SetNull);
+            builder.HasMany(x => x.Enrollments)
+                .WithOne(x => x.Section)
+                .HasForeignKey(x => x.SectionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasMany(x => x.AttendanceSessions)
+                .WithOne(x => x.Section)
+                .HasForeignKey(x => x.SectionId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
-
-
-

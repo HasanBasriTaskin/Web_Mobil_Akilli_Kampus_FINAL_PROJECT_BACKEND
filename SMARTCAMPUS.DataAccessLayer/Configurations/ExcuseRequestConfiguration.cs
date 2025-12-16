@@ -10,28 +10,31 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
         {
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.Reason).IsRequired().HasMaxLength(1000);
-            builder.Property(x => x.DocumentUrl).HasMaxLength(500);
-            builder.Property(x => x.Status).IsRequired().HasMaxLength(20).HasDefaultValue("Pending");
-            builder.Property(x => x.Notes).HasMaxLength(2000);
+            builder.Property(x => x.Reason)
+                .IsRequired()
+                .HasMaxLength(1000);
 
+            builder.Property(x => x.DocumentUrl)
+                .HasMaxLength(500);
+
+            builder.Property(x => x.Notes)
+                .HasMaxLength(1000);
+
+            // Relationships
             builder.HasOne(x => x.Student)
-                .WithMany()
+                .WithMany(x => x.ExcuseRequests)
                 .HasForeignKey(x => x.StudentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasOne(x => x.Session)
                 .WithMany(x => x.ExcuseRequests)
                 .HasForeignKey(x => x.SessionId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            builder.HasOne(x => x.Reviewer)
+            builder.HasOne(x => x.ReviewedBy)
                 .WithMany()
-                .HasForeignKey(x => x.ReviewedBy)
+                .HasForeignKey(x => x.ReviewedById)
                 .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }
-
-
-

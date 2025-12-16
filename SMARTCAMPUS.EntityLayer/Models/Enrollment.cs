@@ -1,27 +1,36 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using SMARTCAMPUS.EntityLayer.Enums;
 
 namespace SMARTCAMPUS.EntityLayer.Models
 {
     public class Enrollment : BaseEntity
     {
+        public EnrollmentStatus Status { get; set; } = EnrollmentStatus.Enrolled;
+        
+        public DateTime EnrollmentDate { get; set; } = DateTime.UtcNow;
+        
+        [Range(0, 100)]
+        public double? MidtermGrade { get; set; }
+        
+        [Range(0, 100)]
+        public double? FinalGrade { get; set; }
+        
+        [MaxLength(5)]
+        public string? LetterGrade { get; set; }
+        
+        [Range(0, 4)]
+        public double? GradePoint { get; set; }
+        
+        // Foreign Keys
         public int StudentId { get; set; }
+        
         [ForeignKey("StudentId")]
         public Student Student { get; set; } = null!;
         
         public int SectionId { get; set; }
+        
         [ForeignKey("SectionId")]
         public CourseSection Section { get; set; } = null!;
-        
-        public string Status { get; set; } = "Active"; // "Active", "Dropped", "Completed", "Failed"
-        public DateTime EnrollmentDate { get; set; } = DateTime.UtcNow;
-        
-        // Grades
-        public decimal? MidtermGrade { get; set; }
-        public decimal? FinalGrade { get; set; }
-        public string? LetterGrade { get; set; } // "A", "B", "C", "D", "F", etc.
-        public decimal? GradePoint { get; set; } // 4.0 scale
     }
 }
-
-
-

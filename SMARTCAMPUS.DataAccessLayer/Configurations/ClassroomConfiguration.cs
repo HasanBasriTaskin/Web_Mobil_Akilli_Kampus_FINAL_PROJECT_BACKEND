@@ -10,17 +10,16 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
         {
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.Building).IsRequired().HasMaxLength(50);
-            builder.Property(x => x.RoomNumber).IsRequired().HasMaxLength(20);
-            builder.Property(x => x.Capacity).IsRequired();
-            builder.Property(x => x.FeaturesJson).HasMaxLength(1000);
+            builder.Property(x => x.Building)
+                .IsRequired()
+                .HasMaxLength(100);
 
-            builder.HasIndex(x => new { x.Building, x.RoomNumber })
-                .IsUnique()
-                .HasDatabaseName("IX_Classroom_Unique");
+            builder.Property(x => x.RoomNumber)
+                .IsRequired()
+                .HasMaxLength(20);
+
+            // Unique constraint: One room number per building
+            builder.HasIndex(x => new { x.Building, x.RoomNumber }).IsUnique();
         }
     }
 }
-
-
-

@@ -96,6 +96,8 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     UpdatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    Latitude = table.Column<double>(type: "double", nullable: true),
+                    Longitude = table.Column<double>(type: "double", nullable: true),
                     IsActive = table.Column<bool>(type: "tinyint(1)", nullable: false)
                 },
                 constraints: table =>
@@ -180,8 +182,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     Semester = table.Column<string>(type: "varchar(20)", maxLength: 20, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Year = table.Column<int>(type: "int", nullable: false),
-                    InstructorId = table.Column<string>(type: "varchar(255)", nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    InstructorId = table.Column<int>(type: "int", nullable: false),
                     Capacity = table.Column<int>(type: "int", nullable: false),
                     EnrolledCount = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
                     ScheduleJson = table.Column<string>(type: "varchar(2000)", maxLength: 2000, nullable: true)
@@ -207,11 +208,11 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_CourseSections_Users_InstructorId",
+                        name: "FK_CourseSections_Faculties_InstructorId",
                         column: x => x.InstructorId,
-                        principalTable: "Users",
+                        principalTable: "Faculties",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Restrict);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -222,8 +223,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     SectionId = table.Column<int>(type: "int", nullable: false),
-                    InstructorId = table.Column<string>(type: "varchar(255)", nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    InstructorId = table.Column<int>(type: "int", nullable: false),
                     Date = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     StartTime = table.Column<TimeSpan>(type: "time(6)", nullable: false),
                     EndTime = table.Column<TimeSpan>(type: "time(6)", nullable: false),
@@ -250,11 +250,11 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_AttendanceSessions_Users_InstructorId",
+                        name: "FK_AttendanceSessions_Faculties_InstructorId",
                         column: x => x.InstructorId,
-                        principalTable: "Users",
+                        principalTable: "Faculties",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Restrict);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 

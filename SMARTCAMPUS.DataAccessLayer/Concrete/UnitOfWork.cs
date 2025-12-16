@@ -23,8 +23,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
         public IAttendanceRecordDal AttendanceRecords { get; }
         public IExcuseRequestDal ExcuseRequests { get; }
         public IClassroomDal Classrooms { get; }
-        public IAcademicCalendarDal AcademicCalendars { get; }
-        public IAnnouncementDal Announcements { get; }
 
         public UnitOfWork(CampusContext context)
         {
@@ -47,8 +45,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
             AttendanceRecords = new EfAttendanceRecordDal(_context);
             ExcuseRequests = new EfExcuseRequestDal(_context);
             Classrooms = new EfClassroomDal(_context);
-            AcademicCalendars = new EfAcademicCalendarDal(_context);
-            Announcements = new EfAnnouncementDal(_context);
         }
 
         public void Commit()

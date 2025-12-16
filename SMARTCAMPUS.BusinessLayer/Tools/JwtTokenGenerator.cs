@@ -18,7 +18,7 @@ namespace SMARTCAMPUS.BusinessLayer.Tools
             _configuration = configuration;
         }
 
-        public virtual TokenDto GenerateToken(User user, IList<string> roles)
+        public virtual TokenDto GenerateToken(User user, IList<string> roles, int? studentId = null, int? facultyId = null)
         {
             var claims = new List<Claim>
             {
@@ -31,6 +31,16 @@ namespace SMARTCAMPUS.BusinessLayer.Tools
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
+            // Add StudentId or FacultyId claim if provided
+            if (studentId.HasValue)
+            {
+                claims.Add(new Claim("StudentId", studentId.Value.ToString()));
+            }
+            if (facultyId.HasValue)
+            {
+                claims.Add(new Claim("FacultyId", facultyId.Value.ToString()));
             }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Secret"]!));
