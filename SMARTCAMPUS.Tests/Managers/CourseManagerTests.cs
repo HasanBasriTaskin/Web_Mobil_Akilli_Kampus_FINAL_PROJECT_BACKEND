@@ -241,6 +241,57 @@ namespace SMARTCAMPUS.Tests.Managers
             result.Data.First().CourseCode.Should().Be("C2");
         }
 
+        [Fact]
+        public async Task GetAllCoursesAsync_ShouldFilterBySearch()
+        {
+            // Arrange
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var c1 = new Course { Id = 1, Code = "CS101", Name = "Introduction to Programming", DepartmentId = 1, Department = dept };
+            var c2 = new Course { Id = 2, Code = "MTH201", Name = "Calculus", DepartmentId = 1, Department = dept };
+            await _context.Departments.AddAsync(dept);
+            await _context.Courses.AddRangeAsync(c1, c2);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.GetAllCoursesAsync(1, 10, search: "Programming");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().HaveCount(1);
+            result.Data.First().Code.Should().Be("CS101");
+        }
+
+        [Fact]
+        public async Task UpdateCourseAsync_ShouldUpdateCreditsAndECTS()
+        {
+            // Arrange
+            var course = new Course { Id = 1, Code = "C1", Name = "Old", Credits = 3, ECTS = 5, DepartmentId = 1 };
+            await _context.Courses.AddAsync(course);
+            await _context.SaveChangesAsync();
+
+            var dto = new UpdateCourseDto { Credits = 4, ECTS = 6 };
+
+            // Act
+            var result = await _manager.UpdateCourseAsync(1, dto);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            var updated = await _context.Courses.FindAsync(1);
+            updated!.Credits.Should().Be(4);
+            updated.ECTS.Should().Be(6);
+        }
+
+        [Fact]
+        public async Task GetPrerequisitesAsync_ShouldFail_WhenCourseNotFound()
+        {
+            // Act
+            var result = await _manager.GetPrerequisitesAsync(999);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+        }
+
         #endregion
     }
 }
