@@ -39,6 +39,7 @@ namespace SMARTCAMPUS.Tests.Managers
 
         public void Dispose()
         {
+            _context.Database.EnsureDeleted();
             _context.Dispose();
         }
 
@@ -81,6 +82,220 @@ namespace SMARTCAMPUS.Tests.Managers
             result.IsSuccessful.Should().BeFalse();
             result.StatusCode.Should().Be(400);
             result.Errors.Should().Contain("Section is full");
+        }
+
+        [Fact]
+        public async Task EnrollInCourseAsync_ShouldFail_WhenPrerequisitesNotMet()
+        {
+            // Arrange
+            var section = new CourseSection
+            {
+                Id = 1,
+                CourseId = 1,
+                EnrolledCount = 0,
+                Capacity = 10,
+                Course = new Course { Code = "C1", Name = "C1" }
+            };
+
+            _mockSectionDal.Setup(x => x.GetSectionWithDetailsAsync(1)).ReturnsAsync(section);
+
+            // Simulating missing prereqs
+            _mockPrerequisiteDal.Setup(x => x.GetAllPrerequisiteIdsRecursiveAsync(1))
+                .ReturnsAsync(new List<int> { 2 });
+
+            var missingCourse = new Course { Id = 2, Code = "C2", Name = "C2" };
+            await _context.Courses.AddAsync(missingCourse);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.EnrollInCourseAsync(1, new CreateEnrollmentDto { SectionId = 1 });
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+            result.Errors.Should().ContainMatch("*Missing prerequisites*");
+        }
+
+        [Fact]
+        public async Task EnrollInCourseAsync_ShouldFail_WhenScheduleConflict()
+        {
+            // Arrange
+            var section = new CourseSection
+            {
+                Id = 2,
+                CourseId = 2,
+                EnrolledCount = 0,
+                Capacity = 10,
+                Course = new Course { Code = "C2", Name = "C2" },
+                ScheduleJson = "[{\"Day\":\"Monday\",\"StartTime\":\"09:00\",\"EndTime\":\"10:00\"}]",
+                SectionNumber = "2",
+                Semester = "Fall",
+                Year = 2024
+            };
+
+            // Existing enrollment with conflict
+            var existingSection = new CourseSection
+            {
+                Id = 1,
+                CourseId = 1,
+                ScheduleJson = "[{\"Day\":\"Monday\",\"StartTime\":\"09:30\",\"EndTime\":\"10:30\"}]",
+                Course = new Course { Code = "C1", Name = "C1" },
+                SectionNumber = "1",
+                Semester = "Fall",
+                Year = 2024
+            };
+            var existingEnrollment = new Enrollment
+            {
+                StudentId = 1,
+                SectionId = 1,
+                Section = existingSection,
+                Status = EnrollmentStatus.Enrolled
+            };
+
+            await _context.CourseSections.AddAsync(section);
+            await _context.Enrollments.AddAsync(existingEnrollment);
+            await _context.SaveChangesAsync();
+
+            _mockSectionDal.Setup(x => x.GetSectionWithDetailsAsync(2)).ReturnsAsync(section);
+            _mockPrerequisiteDal.Setup(x => x.GetAllPrerequisiteIdsRecursiveAsync(2)).ReturnsAsync(new List<int>());
+
+            // Act
+            var result = await _manager.EnrollInCourseAsync(1, new CreateEnrollmentDto { SectionId = 2 });
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+            result.Errors.Should().ContainMatch("*Schedule conflict*");
+        }
+
+        [Fact]
+        public async Task EnrollInCourseAsync_ShouldFail_WhenEnrolledInAnotherSectionOfSameCourse()
+        {
+             // Arrange
+            var section = new CourseSection
+            {
+                Id = 2,
+                CourseId = 1, // Same course ID as existing enrollment
+                EnrolledCount = 0,
+                Capacity = 10,
+                Course = new Course { Id = 1, Code = "C1", Name = "C1" },
+                SectionNumber = "2",
+                Semester = "Fall",
+                Year = 2024
+            };
+
+            var existingSection = new CourseSection
+            {
+                Id = 1,
+                CourseId = 1,
+                Course = section.Course,
+                SectionNumber = "1",
+                Semester = "Fall",
+                Year = 2024
+            };
+            var existingEnrollment = new Enrollment
+            {
+                StudentId = 1,
+                SectionId = 1,
+                Section = existingSection,
+                Status = EnrollmentStatus.Enrolled
+            };
+
+            await _context.Enrollments.AddAsync(existingEnrollment);
+            await _context.SaveChangesAsync();
+
+            _mockSectionDal.Setup(x => x.GetSectionWithDetailsAsync(2)).ReturnsAsync(section);
+            _mockPrerequisiteDal.Setup(x => x.GetAllPrerequisiteIdsRecursiveAsync(1)).ReturnsAsync(new List<int>());
+
+            // Act
+            var result = await _manager.EnrollInCourseAsync(1, new CreateEnrollmentDto { SectionId = 2 });
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+            result.Errors.Should().Contain("Bu dersin başka bir seksiyonuna zaten kayıtlısınız");
+        }
+
+        [Fact]
+        public async Task EnrollInCourseAsync_ShouldReactivate_WhenAlreadyExistsAndNotPendingOrEnrolled()
+        {
+             // Arrange
+            var user = new User { FullName = "Prof" };
+            var instructor = new Faculty { Title = "Dr.", User = user, EmployeeNumber = "E1" };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
+            var section = new CourseSection
+            {
+                Id = 1,
+                EnrolledCount = 0,
+                Capacity = 10,
+                CourseId = 1,
+                Course = course,
+                Instructor = instructor,
+                SectionNumber = "1",
+                Semester = "Fall",
+                Year = 2024
+            };
+
+            var existingEnrollment = new Enrollment
+            {
+                StudentId = 1,
+                SectionId = 1,
+                Status = EnrollmentStatus.Dropped, // Previously dropped
+                EnrollmentDate = DateTime.UtcNow.AddDays(-10)
+            };
+
+            await _context.Users.AddAsync(user);
+            await _context.Faculties.AddAsync(instructor); // Ensure instructor exists
+            await _context.CourseSections.AddAsync(section);
+            await _context.Enrollments.AddAsync(existingEnrollment);
+            await _context.SaveChangesAsync();
+
+            _mockSectionDal.Setup(x => x.GetSectionWithDetailsAsync(1)).ReturnsAsync(section);
+            _mockPrerequisiteDal.Setup(x => x.GetAllPrerequisiteIdsRecursiveAsync(1)).ReturnsAsync(new List<int>());
+
+            // Act
+            var result = await _manager.EnrollInCourseAsync(1, new CreateEnrollmentDto { SectionId = 1 });
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.StatusCode.Should().Be(200);
+            existingEnrollment.Status.Should().Be(EnrollmentStatus.Pending);
+            _mockEnrollmentDal.Verify(x => x.Update(existingEnrollment), Times.Once);
+        }
+
+        [Fact]
+        public async Task EnrollInCourseAsync_ShouldFail_WhenAlreadyEnrolledOrPendingSameSection()
+        {
+             // Arrange
+            var section = new CourseSection
+            {
+                Id = 1,
+                CourseId = 1,
+                EnrolledCount = 0,
+                Capacity = 10,
+                Course = new Course { Id = 1, Code = "C1", Name = "C1" },
+            };
+
+            var existingEnrollment = new Enrollment
+            {
+                StudentId = 1,
+                SectionId = 1,
+                Status = EnrollmentStatus.Pending
+            };
+
+            await _context.Enrollments.AddAsync(existingEnrollment);
+            await _context.SaveChangesAsync();
+
+            _mockSectionDal.Setup(x => x.GetSectionWithDetailsAsync(1)).ReturnsAsync(section);
+            _mockPrerequisiteDal.Setup(x => x.GetAllPrerequisiteIdsRecursiveAsync(1)).ReturnsAsync(new List<int>());
+
+            // Act
+            var result = await _manager.EnrollInCourseAsync(1, new CreateEnrollmentDto { SectionId = 1 });
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+             result.Errors.Should().Contain("Bu derse zaten kayıtlısınız veya onay bekliyor");
         }
 
         [Fact]
@@ -197,6 +412,69 @@ namespace SMARTCAMPUS.Tests.Managers
         #region ApproveEnrollmentAsync Tests
 
         [Fact]
+        public async Task ApproveEnrollmentAsync_ShouldFail_WhenNotFound()
+        {
+             // Act
+            var result = await _manager.ApproveEnrollmentAsync(1, 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+        }
+
+        [Fact]
+        public async Task ApproveEnrollmentAsync_ShouldFail_WhenAccessDenied()
+        {
+            // Arrange
+            var section = new CourseSection { Id = 1, InstructorId = 2, SectionNumber = "1", Semester = "Fall", Year = 2024 }; // different instructor
+            var enrollment = new Enrollment { Id = 1, SectionId = 1, Section = section };
+            await _context.Enrollments.AddAsync(enrollment);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.ApproveEnrollmentAsync(1, 1); // instructorId 1
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(403);
+        }
+
+        [Fact]
+        public async Task ApproveEnrollmentAsync_ShouldFail_WhenNotPending()
+        {
+            // Arrange
+            var section = new CourseSection { Id = 1, InstructorId = 1, SectionNumber = "1", Semester = "Fall", Year = 2024 };
+            var enrollment = new Enrollment { Id = 1, SectionId = 1, Section = section, Status = EnrollmentStatus.Enrolled };
+            await _context.Enrollments.AddAsync(enrollment);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.ApproveEnrollmentAsync(1, 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+        }
+
+        [Fact]
+        public async Task ApproveEnrollmentAsync_ShouldFail_WhenSectionFull()
+        {
+            // Arrange
+            var section = new CourseSection { Id = 1, InstructorId = 1, Capacity = 10, EnrolledCount = 10, SectionNumber = "1", Semester = "Fall", Year = 2024 };
+            var enrollment = new Enrollment { Id = 1, SectionId = 1, Section = section, Status = EnrollmentStatus.Pending };
+            await _context.Enrollments.AddAsync(enrollment);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.ApproveEnrollmentAsync(1, 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+             result.Errors.Should().Contain("Section is now full, cannot approve");
+        }
+
+        [Fact]
         public async Task ApproveEnrollmentAsync_ShouldSucceed()
         {
             // Arrange
@@ -227,6 +505,51 @@ namespace SMARTCAMPUS.Tests.Managers
         #endregion
 
         #region RejectEnrollmentAsync Tests
+
+        [Fact]
+        public async Task RejectEnrollmentAsync_ShouldFail_WhenNotFound()
+        {
+             // Act
+            var result = await _manager.RejectEnrollmentAsync(1, 1, null);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+        }
+
+        [Fact]
+        public async Task RejectEnrollmentAsync_ShouldFail_WhenAccessDenied()
+        {
+            // Arrange
+            var section = new CourseSection { Id = 1, InstructorId = 2, SectionNumber = "1", Semester = "Fall", Year = 2024 };
+            var enrollment = new Enrollment { Id = 1, SectionId = 1, Section = section };
+            await _context.Enrollments.AddAsync(enrollment);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.RejectEnrollmentAsync(1, 1, null);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(403);
+        }
+
+        [Fact]
+        public async Task RejectEnrollmentAsync_ShouldFail_WhenNotPending()
+        {
+             // Arrange
+            var section = new CourseSection { Id = 1, InstructorId = 1, SectionNumber = "1", Semester = "Fall", Year = 2024 };
+            var enrollment = new Enrollment { Id = 1, SectionId = 1, Section = section, Status = EnrollmentStatus.Enrolled };
+            await _context.Enrollments.AddAsync(enrollment);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.RejectEnrollmentAsync(1, 1, null);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+        }
 
         [Fact]
         public async Task RejectEnrollmentAsync_ShouldSucceed()
@@ -311,6 +634,97 @@ namespace SMARTCAMPUS.Tests.Managers
             result.IsSuccessful.Should().BeTrue();
         }
 
+        [Fact]
+        public async Task CheckPrerequisitesAsync_ShouldSucceed_WhenNoPrerequisites()
+        {
+             // Arrange
+            _mockPrerequisiteDal.Setup(x => x.GetAllPrerequisiteIdsRecursiveAsync(1)).ReturnsAsync(new List<int>());
+
+            // Act
+            var result = await _manager.CheckPrerequisitesAsync(1, 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+        }
+
+        #endregion
+
+        #region CheckScheduleConflictAsync Tests
+
+        [Fact]
+        public async Task CheckScheduleConflictAsync_ShouldSucceed_WhenNoConflict()
+        {
+            // Arrange
+            var section = new CourseSection { Id = 1, SectionNumber = "1", Semester = "Fall", Year = 2024 };
+            await _context.CourseSections.AddAsync(section);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.CheckScheduleConflictAsync(1, 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+        }
+
+         [Fact]
+        public async Task CheckScheduleConflictAsync_ShouldFail_WhenConflictExists()
+        {
+            // Arrange
+            var section = new CourseSection
+            {
+                Id = 2,
+                ScheduleJson = "[{\"Day\":\"Monday\",\"StartTime\":\"09:00\",\"EndTime\":\"10:00\"}]",
+                SectionNumber = "2",
+                Semester = "Fall",
+                Year = 2024
+            };
+
+            var existingSection = new CourseSection
+            {
+                Id = 1,
+                ScheduleJson = "[{\"Day\":\"Monday\",\"StartTime\":\"09:30\",\"EndTime\":\"10:30\"}]",
+                Course = new Course { Code = "C1" },
+                SectionNumber = "1",
+                Semester = "Fall",
+                Year = 2024
+            };
+            var existingEnrollment = new Enrollment { StudentId = 1, Section = existingSection, Status = EnrollmentStatus.Enrolled };
+
+            await _context.CourseSections.AddAsync(section);
+            await _context.Enrollments.AddAsync(existingEnrollment);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.CheckScheduleConflictAsync(1, 2);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.Errors.Should().ContainMatch("*Schedule conflict*");
+        }
+
+        [Fact]
+        public async Task CheckScheduleConflictAsync_ShouldHandleInvalidScheduleJson()
+        {
+             // Arrange
+            var section = new CourseSection
+            {
+                Id = 2,
+                ScheduleJson = "InvalidJson",
+                SectionNumber = "2",
+                Semester = "Fall",
+                Year = 2024
+            };
+
+            await _context.CourseSections.AddAsync(section);
+            await _context.SaveChangesAsync();
+
+             // Act
+            var result = await _manager.CheckScheduleConflictAsync(1, 2);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue(); // Should succeed if schedule is unparseable (fail safe) or treat as empty
+        }
+
         #endregion
 
         #region GetMySectionsAsync Tests
@@ -331,11 +745,25 @@ namespace SMARTCAMPUS.Tests.Managers
             // Assert
             result.IsSuccessful.Should().BeTrue();
             result.Data.Should().HaveCount(1);
+            // Force execution
+            var list = result.Data.ToList();
+            list.Count.Should().Be(1);
         }
 
         #endregion
 
         #region GetPendingEnrollmentsAsync Tests
+
+        [Fact]
+        public async Task GetPendingEnrollmentsAsync_ShouldFail_WhenSectionNotFound()
+        {
+            // Act
+            var result = await _manager.GetPendingEnrollmentsAsync(1, 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+        }
 
         [Fact]
         public async Task GetPendingEnrollmentsAsync_ShouldReturnPending()
@@ -360,11 +788,25 @@ namespace SMARTCAMPUS.Tests.Managers
             // Assert
             result.IsSuccessful.Should().BeTrue();
             result.Data.Should().HaveCount(1);
+             // Force execution
+            var list = result.Data.ToList();
+            list.Count.Should().Be(1);
         }
 
         #endregion
 
         #region GetStudentsBySectionAsync Tests
+
+        [Fact]
+        public async Task GetStudentsBySectionAsync_ShouldFail_WhenSectionNotFound()
+        {
+             // Act
+            var result = await _manager.GetStudentsBySectionAsync(1, 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+        }
 
         [Fact]
         public async Task GetStudentsBySectionAsync_ShouldReturnStudents()
@@ -389,6 +831,35 @@ namespace SMARTCAMPUS.Tests.Managers
             // Assert
             result.IsSuccessful.Should().BeTrue();
             result.Data.Should().HaveCount(1);
+             // Force execution
+            var list = result.Data.ToList();
+            list.Count.Should().Be(1);
+        }
+
+        #endregion
+
+        #region GetMyCoursesAsync Tests
+
+        [Fact]
+        public async Task GetMyCoursesAsync_ShouldReturnCourses()
+        {
+             // Arrange
+            var user = new User { FullName = "Prof" };
+            var instructor = new Faculty { Title = "Dr.", User = user, EmployeeNumber = "E1" };
+            var section = new CourseSection { Id = 1, SectionNumber = "1", Semester = "F", Year = 2024, Course = new Course { Code = "C1", Name = "C1" }, Instructor = instructor };
+            var enrollment = new Enrollment { Id = 1, StudentId = 1, SectionId = 1, Status = EnrollmentStatus.Enrolled, Section = section };
+
+            _mockEnrollmentDal.Setup(x => x.GetEnrollmentsByStudentAsync(1)).ReturnsAsync(new List<Enrollment> { enrollment });
+
+            // Act
+            var result = await _manager.GetMyCoursesAsync(1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().HaveCount(1);
+             // Force execution
+            var list = result.Data.ToList();
+            list.Count.Should().Be(1);
         }
 
         #endregion
