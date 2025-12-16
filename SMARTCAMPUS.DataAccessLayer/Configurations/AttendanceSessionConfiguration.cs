@@ -13,6 +13,9 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
             builder.Property(x => x.QRCode)
                 .HasMaxLength(500);
 
+            builder.Property(x => x.Status)
+                .HasConversion<string>();
+
             // Relationships
             builder.HasOne(x => x.Section)
                 .WithMany(x => x.AttendanceSessions)

@@ -22,8 +22,8 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
             CreateMap<CourseSection, CourseSectionDto>()
                 .ForMember(dest => dest.CourseCode, opt => opt.MapFrom(src => src.Course.Code))
                 .ForMember(dest => dest.CourseName, opt => opt.MapFrom(src => src.Course.Name))
-                .ForMember(dest => dest.InstructorName, opt => opt.MapFrom(src => src.Instructor != null ? src.Instructor.FullName : null))
-                .ForMember(dest => dest.ClassroomInfo, opt => opt.MapFrom(src => src.Classroom != null ? $"{src.Classroom.Building}-{src.Classroom.RoomNumber}" : null));
+                .ForMember(dest => dest.InstructorName, opt => opt.MapFrom(src => src.Instructor != null && src.Instructor.User != null ? src.Instructor.User.FullName : null))
+                .ForMember(dest => dest.ClassroomInfo, opt => opt.Ignore());
 
             CreateMap<Enrollment, EnrollmentDto>()
                 .ForMember(dest => dest.StudentNumber, opt => opt.MapFrom(src => src.Student.StudentNumber))
@@ -31,7 +31,7 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
                 .ForMember(dest => dest.CourseCode, opt => opt.MapFrom(src => src.Section.Course.Code))
                 .ForMember(dest => dest.CourseName, opt => opt.MapFrom(src => src.Section.Course.Name))
                 .ForMember(dest => dest.SectionNumber, opt => opt.MapFrom(src => src.Section.SectionNumber))
-                .ForMember(dest => dest.InstructorName, opt => opt.MapFrom(src => src.Section.Instructor != null ? src.Section.Instructor.FullName : null))
+                .ForMember(dest => dest.InstructorName, opt => opt.MapFrom(src => src.Section.Instructor != null && src.Section.Instructor.User != null ? src.Section.Instructor.User.FullName : null))
                 .ForMember(dest => dest.ScheduleJson, opt => opt.MapFrom(src => src.Section.ScheduleJson))
                 .ForMember(dest => dest.CanDrop, opt => opt.Ignore())
                 .ForMember(dest => dest.DropReason, opt => opt.Ignore())
@@ -40,7 +40,7 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
             CreateMap<AttendanceSession, AttendanceSessionDto>()
                 .ForMember(dest => dest.CourseCode, opt => opt.MapFrom(src => src.Section.Course.Code))
                 .ForMember(dest => dest.CourseName, opt => opt.MapFrom(src => src.Section.Course.Name))
-                .ForMember(dest => dest.InstructorName, opt => opt.MapFrom(src => src.Instructor != null ? src.Instructor.FullName : null));
+                .ForMember(dest => dest.InstructorName, opt => opt.MapFrom(src => src.Instructor != null && src.Instructor.User != null ? src.Instructor.User.FullName : null));
 
             CreateMap<AttendanceRecord, AttendanceRecordDto>()
                 .ForMember(dest => dest.StudentNumber, opt => opt.MapFrom(src => src.Student.StudentNumber))
