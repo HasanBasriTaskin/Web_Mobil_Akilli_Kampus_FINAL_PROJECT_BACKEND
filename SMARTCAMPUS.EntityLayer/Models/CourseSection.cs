@@ -21,8 +21,6 @@ namespace SMARTCAMPUS.EntityLayer.Models
         
         public int EnrolledCount { get; set; } = 0;
         
-        public string? ScheduleJson { get; set; }
-        
         // Foreign Keys
         public int CourseId { get; set; }
         
@@ -37,5 +35,6 @@ namespace SMARTCAMPUS.EntityLayer.Models
         // Navigation Properties
         public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
         public ICollection<AttendanceSession> AttendanceSessions { get; set; } = new List<AttendanceSession>();
+        public ICollection<Schedule> Schedules { get; set; } = new List<Schedule>();
     }
 }
