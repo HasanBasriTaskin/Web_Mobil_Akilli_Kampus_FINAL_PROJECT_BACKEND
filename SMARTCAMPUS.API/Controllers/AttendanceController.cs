@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SMARTCAMPUS.BusinessLayer.Abstract;
-using SMARTCAMPUS.BusinessLayer.Tools;
-using SMARTCAMPUS.EntityLayer.DTOs.Academic;
+using SMARTCAMPUS.EntityLayer.DTOs.Attendance;
+using System.Security.Claims;
 
 namespace SMARTCAMPUS.API.Controllers
 {
@@ -12,75 +12,42 @@ namespace SMARTCAMPUS.API.Controllers
     public class AttendanceController : ControllerBase
     {
         private readonly IAttendanceService _attendanceService;
-        private readonly UserClaimsHelper _userClaimsHelper;
 
-        public AttendanceController(IAttendanceService attendanceService, UserClaimsHelper userClaimsHelper)
+        public AttendanceController(IAttendanceService attendanceService)
         {
             _attendanceService = attendanceService;
-            _userClaimsHelper = userClaimsHelper;
         }
+
+        #region Session Management (Faculty)
 
         [HttpPost("sessions")]
         [Authorize(Roles = "Faculty,Admin")]
-        public async Task<IActionResult> CreateSession([FromBody] AttendanceSessionCreateDto sessionCreateDto)
+        public async Task<IActionResult> CreateSession([FromBody] CreateSessionDto dto)
         {
-            var result = await _attendanceService.CreateSessionAsync(sessionCreateDto);
-            return StatusCode(result.StatusCode, result);
-        }
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
 
-        [HttpPost("sessions/{sessionId}/checkin")]
-        public async Task<IActionResult> CheckIn(int sessionId, [FromBody] AttendanceCheckInDto checkInDto)
-        {
-            var studentId = await _userClaimsHelper.GetStudentIdAsync();
-            if (!studentId.HasValue)
-                return Unauthorized("Student not found or user is not a student");
-
-            var result = await _attendanceService.CheckInAsync(studentId.Value, sessionId, checkInDto);
+            var result = await _attendanceService.CreateSessionAsync(instructorId.Value, dto);
             return StatusCode(result.StatusCode, result);
         }
 
         [HttpGet("sessions/{sessionId}")]
         public async Task<IActionResult> GetSession(int sessionId)
         {
-            var studentId = await _userClaimsHelper.GetStudentIdAsync();
-            var instructorId = User.IsInRole("Faculty") ? _userClaimsHelper.GetUserId() : null;
-            var isAdmin = User.IsInRole("Admin");
-            
-            var result = await _attendanceService.GetSessionByIdAsync(sessionId, studentId, instructorId, isAdmin);
+            var result = await _attendanceService.GetSessionByIdAsync(sessionId);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("sessions/{sessionId}/records")]
+        [HttpPut("sessions/{sessionId}/close")]
         [Authorize(Roles = "Faculty,Admin")]
-        public async Task<IActionResult> GetSessionRecords(int sessionId)
+        public async Task<IActionResult> CloseSession(int sessionId)
         {
-            var instructorId = _userClaimsHelper.GetUserId();
-            var isAdmin = User.IsInRole("Admin");
-            
-            var result = await _attendanceService.GetSessionRecordsAsync(sessionId, instructorId, isAdmin);
-            return StatusCode(result.StatusCode, result);
-        }
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
 
-        [HttpGet("students/{studentId}")]
-        public async Task<IActionResult> GetStudentAttendance(int studentId)
-        {
-            var requestingStudentId = await _userClaimsHelper.GetStudentIdAsync();
-            var instructorId = User.IsInRole("Faculty") ? _userClaimsHelper.GetUserId() : null;
-            var isAdmin = User.IsInRole("Admin");
-            
-            var result = await _attendanceService.GetStudentAttendanceAsync(studentId, requestingStudentId, isAdmin, instructorId);
-            return StatusCode(result.StatusCode, result);
-        }
-
-        [HttpPut("sessions/{id}/close")]
-        [Authorize(Roles = "Faculty,Admin")]
-        public async Task<IActionResult> CloseSession(int id)
-        {
-            var instructorId = _userClaimsHelper.GetUserId();
-            if (string.IsNullOrEmpty(instructorId))
-                return Unauthorized("Instructor not found");
-
-            var result = await _attendanceService.CloseSessionAsync(id, instructorId);
+            var result = await _attendanceService.CloseSessionAsync(instructorId.Value, sessionId);
             return StatusCode(result.StatusCode, result);
         }
 
@@ -88,46 +55,119 @@ namespace SMARTCAMPUS.API.Controllers
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> GetMySessions()
         {
-            var instructorId = _userClaimsHelper.GetUserId();
-            if (string.IsNullOrEmpty(instructorId))
-                return Unauthorized("Instructor not found");
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
 
-            var result = await _attendanceService.GetMySessionsAsync(instructorId);
+            var result = await _attendanceService.GetMySessionsAsync(instructorId.Value);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("report/{sectionId}")]
+        [HttpGet("sessions/{sessionId}/records")]
         [Authorize(Roles = "Faculty,Admin")]
-        public async Task<IActionResult> GetAttendanceReport(int sectionId)
+        public async Task<IActionResult> GetSessionRecords(int sessionId)
         {
-            var instructorId = _userClaimsHelper.GetUserId();
-            var isAdmin = User.IsInRole("Admin");
-            
-            var result = await _attendanceService.GetSectionAttendanceReportAsync(sectionId, instructorId, isAdmin);
+            var result = await _attendanceService.GetSessionRecordsAsync(sessionId);
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("sessions/{id}/qr-code")]
-        [Authorize(Roles = "Faculty,Admin")]
-        public async Task<IActionResult> RefreshQrCode(int id)
+        #endregion
+
+        #region Student Check-in
+
+        [HttpPost("sessions/{sessionId}/checkin")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> CheckIn(int sessionId, [FromBody] CheckInDto dto)
         {
-            var instructorId = _userClaimsHelper.GetUserId();
-            var isAdmin = User.IsInRole("Admin");
-            
-            var result = await _attendanceService.RefreshQrCodeAsync(id, instructorId, isAdmin);
+            var studentId = GetCurrentStudentId();
+            if (studentId == null)
+                return Unauthorized("Student ID not found");
+
+            var result = await _attendanceService.CheckInAsync(studentId.Value, sessionId, dto);
             return StatusCode(result.StatusCode, result);
         }
 
         [HttpGet("my-attendance")]
+        [Authorize(Roles = "Student")]
         public async Task<IActionResult> GetMyAttendance()
         {
-            var studentId = await _userClaimsHelper.GetStudentIdAsync();
-            if (!studentId.HasValue)
-                return Unauthorized("Student not found or user is not a student");
+            var studentId = GetCurrentStudentId();
+            if (studentId == null)
+                return Unauthorized("Student ID not found");
 
             var result = await _attendanceService.GetMyAttendanceAsync(studentId.Value);
             return StatusCode(result.StatusCode, result);
         }
+
+        #endregion
+
+        #region Excuse Requests
+
+        [HttpPost("excuse-requests")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> CreateExcuseRequest([FromBody] CreateExcuseRequestDto dto)
+        {
+            var studentId = GetCurrentStudentId();
+            if (studentId == null)
+                return Unauthorized("Student ID not found");
+
+            // TODO: Handle file upload for document
+            var result = await _attendanceService.CreateExcuseRequestAsync(studentId.Value, dto, null);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpGet("excuse-requests")]
+        [Authorize(Roles = "Faculty,Admin")]
+        public async Task<IActionResult> GetExcuseRequests([FromQuery] int? sectionId = null)
+        {
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
+
+            var result = await _attendanceService.GetExcuseRequestsAsync(instructorId.Value, sectionId);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPut("excuse-requests/{requestId}/approve")]
+        [Authorize(Roles = "Faculty,Admin")]
+        public async Task<IActionResult> ApproveExcuseRequest(int requestId, [FromBody] ReviewExcuseRequestDto dto)
+        {
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
+
+            var result = await _attendanceService.ApproveExcuseRequestAsync(instructorId.Value, requestId, dto);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPut("excuse-requests/{requestId}/reject")]
+        [Authorize(Roles = "Faculty,Admin")]
+        public async Task<IActionResult> RejectExcuseRequest(int requestId, [FromBody] ReviewExcuseRequestDto dto)
+        {
+            var instructorId = GetCurrentFacultyId();
+            if (instructorId == null)
+                return Unauthorized("Faculty ID not found");
+
+            var result = await _attendanceService.RejectExcuseRequestAsync(instructorId.Value, requestId, dto);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        #endregion
+
+        private int? GetCurrentStudentId()
+        {
+            var claim = User.FindFirst("StudentId");
+            if (claim != null && int.TryParse(claim.Value, out var id))
+                return id;
+            return null;
+        }
+
+        private int? GetCurrentFacultyId()
+        {
+            var claim = User.FindFirst("FacultyId");
+            if (claim != null && int.TryParse(claim.Value, out var id))
+                return id;
+            return null;
+        }
     }
 }
-
