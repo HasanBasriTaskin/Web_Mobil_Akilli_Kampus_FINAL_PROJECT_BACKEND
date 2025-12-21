@@ -127,7 +127,7 @@ namespace SMARTCAMPUS.Tests.Managers
                 EnrolledCount = 0,
                 Capacity = 10,
                 Course = new Course { Code = "C2", Name = "C2" },
-                ScheduleJson = "[{\"Day\":\"Monday\",\"StartTime\":\"09:00\",\"EndTime\":\"10:00\"}]",
+                // TODO: Schedule entity ile çakışma kontrolü yapılacak
                 SectionNumber = "2",
                 Semester = "Fall",
                 Year = 2024
@@ -138,7 +138,7 @@ namespace SMARTCAMPUS.Tests.Managers
             {
                 Id = 1,
                 CourseId = 1,
-                ScheduleJson = "[{\"Day\":\"Monday\",\"StartTime\":\"09:30\",\"EndTime\":\"10:30\"}]",
+                // TODO: Schedule entity ile çakışma kontrolü yapılacak
                 Course = new Course { Code = "C1", Name = "C1" },
                 SectionNumber = "1",
                 Semester = "Fall",
@@ -673,7 +673,7 @@ namespace SMARTCAMPUS.Tests.Managers
             var section = new CourseSection
             {
                 Id = 2,
-                ScheduleJson = "[{\"Day\":\"Monday\",\"StartTime\":\"09:00\",\"EndTime\":\"10:00\"}]",
+                // TODO: Schedule entity ile çakışma kontrolü yapılacak
                 SectionNumber = "2",
                 Semester = "Fall",
                 Year = 2024
@@ -682,7 +682,7 @@ namespace SMARTCAMPUS.Tests.Managers
             var existingSection = new CourseSection
             {
                 Id = 1,
-                ScheduleJson = "[{\"Day\":\"Monday\",\"StartTime\":\"09:30\",\"EndTime\":\"10:30\"}]",
+                // TODO: Schedule entity ile çakışma kontrolü yapılacak
                 Course = new Course { Code = "C1", Name = "C1" },
                 SectionNumber = "1",
                 Semester = "Fall",
@@ -709,7 +709,7 @@ namespace SMARTCAMPUS.Tests.Managers
             var section = new CourseSection
             {
                 Id = 2,
-                ScheduleJson = "InvalidJson",
+                // TODO: Schedule entity ile çakışma kontrolü yapılacak
                 SectionNumber = "2",
                 Semester = "Fall",
                 Year = 2024

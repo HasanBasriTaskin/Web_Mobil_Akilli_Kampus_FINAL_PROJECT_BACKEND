@@ -172,7 +172,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     SectionNumber = e.Section.SectionNumber,
                     InstructorName = $"{e.Section.Instructor.Title} {e.Section.Instructor.User.FullName}",
                     Credits = e.Section.Course.Credits,
-                    ScheduleJson = e.Section.ScheduleJson,
+                    ScheduleJson = null, // TODO:  Schedule entity'den alınacak
                     Status = e.Status,
                     MidtermGrade = e.MidtermGrade,
                     FinalGrade = e.FinalGrade,
@@ -357,31 +357,42 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<NoDataDto>> CheckScheduleConflictAsync(int studentId, int sectionId)
         {
-            var newSection = await _context.CourseSections.FindAsync(sectionId);
-            if (newSection == null || string.IsNullOrEmpty(newSection.ScheduleJson))
-                return Response<NoDataDto>.Success(200);
-
-            // Get student's current enrolled sections
-            var currentSections = await _context.Enrollments
-                .Where(e => e.StudentId == studentId && e.Status == EnrollmentStatus.Enrolled)
-                .Select(e => e.Section)
+            // Schedule entity üzerinden çakışma kontrolü
+            var newSchedules = await _context.Schedules
+                .Where(s => s.SectionId == sectionId)
                 .ToListAsync();
-
-            var newSchedule = ParseSchedule(newSection.ScheduleJson);
-
-            foreach (var current in currentSections)
+            
+            if (!newSchedules.Any())
+                return Response<NoDataDto>.Success(200); // No schedules defined yet
+            
+            // Get student's current enrolled sections' schedules
+            var enrolledSectionIds = await _context.Enrollments
+                .Where(e => e.StudentId == studentId && e.Status == EnrollmentStatus.Enrolled)
+                .Select(e => e.SectionId)
+                .ToListAsync();
+            
+            var existingSchedules = await _context.Schedules
+                .Include(s => s.Section)
+                    .ThenInclude(sec => sec.Course)
+                .Where(s => enrolledSectionIds.Contains(s.SectionId))
+                .ToListAsync();
+            
+            foreach (var newSchedule in newSchedules)
             {
-                if (string.IsNullOrEmpty(current.ScheduleJson)) continue;
-
-                var existingSchedule = ParseSchedule(current.ScheduleJson);
-
-                if (HasTimeConflict(newSchedule, existingSchedule))
+                foreach (var existing in existingSchedules)
                 {
-                    return Response<NoDataDto>.Fail(
-                        $"Schedule conflict with {current.Course?.Code ?? "another course"}", 400);
+                    if (newSchedule.DayOfWeek == existing.DayOfWeek)
+                    {
+                        // Check time overlap
+                        if (newSchedule.StartTime < existing.EndTime && existing.StartTime < newSchedule.EndTime)
+                        {
+                            return Response<NoDataDto>.Fail(
+                                $"Schedule conflict with {existing.Section?.Course?.Code ?? "another course"}", 400);
+                        }
+                    }
                 }
             }
-
+            
             return Response<NoDataDto>.Success(200);
         }
 
