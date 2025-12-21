@@ -17,14 +17,14 @@ services:
     container_name: smartcampus_db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: Erdem61.
       MYSQL_DATABASE: smart_campus_db
     ports:
       - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pErdem61." ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -33,39 +33,26 @@ services:
   backend:
     build:
       context: .
-      dockerfile: SMARTCAMPUS.API/Dockerfile.dev
+      dockerfile: SMARTCAMPUS.API/Dockerfile
     container_name: smartcampus_api
-    restart: on-failure
+    restart: always
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "5150:8080"
-    volumes:
-      - .:/src
-      - /src/SMARTCAMPUS.API/bin
-      - /src/SMARTCAMPUS.API/obj
-      - /src/SMARTCAMPUS.BusinessLayer/bin
-      - /src/SMARTCAMPUS.BusinessLayer/obj
-      - /src/SMARTCAMPUS.DataAccessLayer/bin
-      - /src/SMARTCAMPUS.DataAccessLayer/obj
-      - /src/SMARTCAMPUS.EntityLayer/bin
-      - /src/SMARTCAMPUS.EntityLayer/obj
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - DOTNET_USE_POLLING_FILE_WATCHER=true
-      - ConnectionStrings__DefaultConnection=Server=db;Database=smart_campus_db;User=root;Password=${DB_PASSWORD};
+      - ConnectionStrings__DefaultConnection=Server=db;Database=smart_campus_db;User=root;Password=Erdem61.;
       - ClientSettings__Url=http://localhost
 
   frontend:
     build:
       context: ../Web_Mobil_Akilli_Kampus_FINAL_PROJECT_FRONTEND
-      dockerfile: frontend.dev.Dockerfile
+      dockerfile: ../Web_Mobil_Akilli_Kampus_FINAL_PROJECT_BACKEND/docker/frontend.dev.Dockerfile
     container_name: smartcampus_frontend
-    restart: on-failure
-    env_file:
-      - ../Web_Mobil_Akilli_Kampus_FINAL_PROJECT_FRONTEND/.env.docker
+    restart: always
     depends_on:
       - backend
     volumes:
@@ -83,7 +70,7 @@ services:
       PMA_HOST: db
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: ${DB_PASSWORD}
+      PMA_PASSWORD: SmartCampus2024!
     depends_on:
       - db
 

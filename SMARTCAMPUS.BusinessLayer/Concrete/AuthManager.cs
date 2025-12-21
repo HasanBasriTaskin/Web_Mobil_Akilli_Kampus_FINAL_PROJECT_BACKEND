@@ -68,8 +68,44 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             var roles = await _userManager.GetRolesAsync(user);
             var primaryRole = roles.FirstOrDefault() ?? "User";
 
-            // Generate Token
-            var tokenDto = _tokenGenerator.GenerateToken(user, roles);
+            // Fetch Student or Faculty info based on role BEFORE generating token
+            int? studentId = null;
+            int? facultyId = null;
+            StudentInfoDto? studentInfo = null;
+            FacultyInfoDto? facultyInfo = null;
+
+            if (primaryRole == "Student")
+            {
+                var student = await _unitOfWork.Students.Where(s => s.UserId == user.Id).FirstOrDefaultAsync();
+                if (student != null)
+                {
+                    studentId = student.Id;
+                    studentInfo = new StudentInfoDto
+                    {
+                        StudentNumber = student.StudentNumber,
+                        DepartmentId = student.DepartmentId,
+                        EnrollmentDate = student.CreatedDate
+                    };
+                }
+            }
+            else if (primaryRole == "Faculty")
+            {
+                var faculty = await _unitOfWork.Faculties.Where(f => f.UserId == user.Id).FirstOrDefaultAsync();
+                if (faculty != null)
+                {
+                    facultyId = faculty.Id;
+                    facultyInfo = new FacultyInfoDto
+                    {
+                        EmployeeNumber = faculty.EmployeeNumber,
+                        Title = faculty.Title,
+                        DepartmentId = faculty.DepartmentId,
+                        OfficeLocation = faculty.OfficeLocation
+                    };
+                }
+            }
+
+            // Generate Token with StudentId or FacultyId
+            var tokenDto = _tokenGenerator.GenerateToken(user, roles, studentId, facultyId);
 
             // Save Refresh Token
             var refreshTokenEntity = new RefreshToken
@@ -97,37 +133,10 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 PhoneNumber = user.PhoneNumber,
                 ProfilePictureUrl = user.ProfilePictureUrl,
                 CreatedAt = user.CreatedDate,
-                Roles = roles
+                Roles = roles,
+                Student = studentInfo,
+                Faculty = facultyInfo
             };
-
-            // Fetch Student or Faculty info based on role
-            if (primaryRole == "Student")
-            {
-                var student = await _unitOfWork.Students.Where(s => s.UserId == user.Id).FirstOrDefaultAsync();
-                if (student != null)
-                {
-                    userDto.Student = new StudentInfoDto
-                    {
-                        StudentNumber = student.StudentNumber,
-                        DepartmentId = student.DepartmentId,
-                        EnrollmentDate = student.CreatedDate
-                    };
-                }
-            }
-            else if (primaryRole == "Faculty")
-            {
-                var faculty = await _unitOfWork.Faculties.Where(f => f.UserId == user.Id).FirstOrDefaultAsync();
-                if (faculty != null)
-                {
-                    userDto.Faculty = new FacultyInfoDto
-                    {
-                        EmployeeNumber = faculty.EmployeeNumber,
-                        Title = faculty.Title,
-                        DepartmentId = faculty.DepartmentId,
-                        OfficeLocation = faculty.OfficeLocation
-                    };
-                }
-            }
 
             var loginResponse = new LoginResponseDto
             {
@@ -354,7 +363,24 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             _unitOfWork.RefreshTokens.Update(existingToken);
 
             var roles = await _userManager.GetRolesAsync(user);
-            var newTokenDto = _tokenGenerator.GenerateToken(user, roles);
+            var primaryRole = roles.FirstOrDefault() ?? "User";
+
+            // Fetch StudentId or FacultyId for token claims
+            int? studentId = null;
+            int? facultyId = null;
+
+            if (primaryRole == "Student")
+            {
+                var student = await _unitOfWork.Students.Where(s => s.UserId == user.Id).FirstOrDefaultAsync();
+                if (student != null) studentId = student.Id;
+            }
+            else if (primaryRole == "Faculty")
+            {
+                var faculty = await _unitOfWork.Faculties.Where(f => f.UserId == user.Id).FirstOrDefaultAsync();
+                if (faculty != null) facultyId = faculty.Id;
+            }
+
+            var newTokenDto = _tokenGenerator.GenerateToken(user, roles, studentId, facultyId);
 
             var newRefreshTokenEntity = new RefreshToken
             {

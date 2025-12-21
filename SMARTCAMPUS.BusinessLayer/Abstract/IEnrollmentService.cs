@@ -1,20 +1,25 @@
 using SMARTCAMPUS.BusinessLayer.Common;
 using SMARTCAMPUS.EntityLayer.DTOs;
-using SMARTCAMPUS.EntityLayer.DTOs.Academic;
+using SMARTCAMPUS.EntityLayer.DTOs.Enrollment;
 
 namespace SMARTCAMPUS.BusinessLayer.Abstract
 {
     public interface IEnrollmentService
     {
-        Task<Response<EnrollmentResponseDto>> EnrollAsync(int studentId, EnrollmentRequestDto request);
+        // Student operations
+        Task<Response<EnrollmentDto>> EnrollInCourseAsync(int studentId, CreateEnrollmentDto dto);
         Task<Response<NoDataDto>> DropCourseAsync(int studentId, int enrollmentId);
-        Task<Response<IEnumerable<EnrollmentDto>>> GetStudentEnrollmentsAsync(int studentId, int? requestingStudentId = null, bool isAdmin = false, string? instructorId = null);
-        Task<Response<IEnumerable<EnrollmentDto>>> GetSectionEnrollmentsAsync(int sectionId, string? instructorId = null, bool isAdmin = false);
-        Task<Response<bool>> CheckPrerequisitesAsync(int courseId, int studentId);
-        Task<Response<bool>> CheckScheduleConflictAsync(int studentId, int sectionId);
-        Task<Response<PersonalScheduleDto>> GetPersonalScheduleAsync(int studentId, string? semester = null, int? year = null);
+        Task<Response<IEnumerable<StudentCourseDto>>> GetMyCoursesAsync(int studentId);
+        
+        // Faculty operations
+        Task<Response<IEnumerable<FacultySectionDto>>> GetMySectionsAsync(int instructorId);
+        Task<Response<IEnumerable<SectionStudentDto>>> GetStudentsBySectionAsync(int sectionId, int instructorId);
+        Task<Response<IEnumerable<PendingEnrollmentDto>>> GetPendingEnrollmentsAsync(int sectionId, int instructorId);
+        Task<Response<NoDataDto>> ApproveEnrollmentAsync(int enrollmentId, int instructorId);
+        Task<Response<NoDataDto>> RejectEnrollmentAsync(int enrollmentId, int instructorId, string? reason);
+        
+        // Validation
+        Task<Response<NoDataDto>> CheckPrerequisitesAsync(int studentId, int courseId);
+        Task<Response<NoDataDto>> CheckScheduleConflictAsync(int studentId, int sectionId);
     }
 }
-
-
-
