@@ -14,8 +14,6 @@ namespace SMARTCAMPUS.EntityLayer.Models
         [MaxLength(50)]
         public string? IconName { get; set; }
         
-        public bool IsActive { get; set; } = true;
-        
         // Navigation Properties
         public ICollection<Event> Events { get; set; } = new List<Event>();
     }

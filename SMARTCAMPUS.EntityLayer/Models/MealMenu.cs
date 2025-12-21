@@ -17,23 +17,14 @@ namespace SMARTCAMPUS.EntityLayer.Models
         [Required]
         public MealType MealType { get; set; }
         
-        /// <summary>
-        /// JSON array of menu items: ["Mercimek Çorbası", "Pilav", "Tavuk Sote"]
-        /// </summary>
-        [Required]
-        public string ItemsJson { get; set; } = null!;
-        
-        /// <summary>
-        /// JSON object with nutrition info: {"calories": 850, "protein": 25, ...}
-        /// </summary>
-        public string? NutritionJson { get; set; }
-        
         [Column(TypeName = "decimal(10,2)")]
         public decimal Price { get; set; }
         
         public bool IsPublished { get; set; } = false;
         
         // Navigation Properties
+        public ICollection<MealMenuItem> MenuItems { get; set; } = new List<MealMenuItem>();
+        public MealNutrition? Nutrition { get; set; }
         public ICollection<MealReservation> Reservations { get; set; } = new List<MealReservation>();
     }
 }

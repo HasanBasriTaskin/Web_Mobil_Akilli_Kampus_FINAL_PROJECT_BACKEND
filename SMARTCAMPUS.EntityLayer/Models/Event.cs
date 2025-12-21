@@ -38,8 +38,6 @@ namespace SMARTCAMPUS.EntityLayer.Models
         [MaxLength(500)]
         public string? ImageUrl { get; set; }
         
-        public bool IsActive { get; set; } = true;
-        
         [Required]
         public string CreatedByUserId { get; set; } = null!;
         
