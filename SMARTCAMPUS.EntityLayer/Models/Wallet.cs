@@ -18,8 +18,6 @@ namespace SMARTCAMPUS.EntityLayer.Models
         [MaxLength(3)]
         public string Currency { get; set; } = "TRY";
         
-        public bool IsActive { get; set; } = true;
-        
         // Navigation Properties
         public ICollection<WalletTransaction> Transactions { get; set; } = new List<WalletTransaction>();
     }
