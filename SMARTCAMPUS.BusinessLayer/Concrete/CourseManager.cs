@@ -94,7 +94,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     Year = s.Year,
                     Capacity = s.Capacity,
                     EnrolledCount = s.EnrolledCount,
-                    ScheduleJson = s.ScheduleJson,
+                    ScheduleJson = null, // TODO: Schedule entity'den alınacak
                     CourseId = s.CourseId,
                     CourseCode = course.Code,
                     CourseName = course.Name,
