@@ -71,8 +71,17 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             return Response<PagedResponse<WalletTransactionDto>>.Success(pagedResponse, 200);
         }
 
-        public async Task<Response<TopUpResultDto>> TopUpAsync(string userId, PaymentDto paymentDto)
+        public async Task<Response<TopUpResultDto>> TopUpAsync(string userId, WalletTopUpDto dto)
         {
+            // WalletTopUpDto'yu PaymentDto'ya dönüştür
+            var paymentDto = new PaymentDto
+            {
+                CardNumber = dto.CardNumber,
+                CVV = dto.CVV,
+                ExpiryDate = dto.ExpiryDate,
+                Amount = dto.Amount
+            };
+
             // Ödeme işlemini gerçekleştir
             var paymentResult = _paymentService.ProcessPayment(paymentDto);
 

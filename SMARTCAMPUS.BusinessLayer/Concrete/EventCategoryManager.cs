@@ -55,17 +55,17 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }, 200);
         }
 
-        public async Task<Response<EventCategoryDto>> CreateAsync(string name, string? description, string? iconName)
+        public async Task<Response<EventCategoryDto>> CreateAsync(EventCategoryCreateDto dto)
         {
-            var exists = await _context.EventCategories.AnyAsync(c => c.Name == name);
+            var exists = await _context.EventCategories.AnyAsync(c => c.Name == dto.Name);
             if (exists)
                 return Response<EventCategoryDto>.Fail("Bu isimde bir kategori zaten mevcut", 400);
 
             var category = new EventCategory
             {
-                Name = name,
-                Description = description,
-                IconName = iconName,
+                Name = dto.Name,
+                Description = dto.Description,
+                IconName = dto.IconName,
                 IsActive = true,
                 CreatedDate = DateTime.UtcNow
             };
@@ -83,23 +83,22 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }, 201);
         }
 
-        public async Task<Response<EventCategoryDto>> UpdateAsync(int id, string? name, string? description, string? iconName, bool? isActive)
+        public async Task<Response<EventCategoryDto>> UpdateAsync(int id, EventCategoryUpdateDto dto)
         {
             var category = await _context.EventCategories.FindAsync(id);
             if (category == null)
                 return Response<EventCategoryDto>.Fail("Kategori bulunamadı", 404);
 
-            if (!string.IsNullOrEmpty(name) && name != category.Name)
+            if (!string.IsNullOrEmpty(dto.Name) && dto.Name != category.Name)
             {
-                var nameExists = await _context.EventCategories.AnyAsync(c => c.Name == name && c.Id != id);
+                var nameExists = await _context.EventCategories.AnyAsync(c => c.Name == dto.Name && c.Id != id);
                 if (nameExists)
                     return Response<EventCategoryDto>.Fail("Bu isimde bir kategori zaten mevcut", 400);
-                category.Name = name;
+                category.Name = dto.Name;
             }
 
-            if (description != null) category.Description = description;
-            if (iconName != null) category.IconName = iconName;
-            if (isActive.HasValue) category.IsActive = isActive.Value;
+            if (dto.Description != null) category.Description = dto.Description;
+            if (dto.IconName != null) category.IconName = dto.IconName;
 
             category.UpdatedDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
