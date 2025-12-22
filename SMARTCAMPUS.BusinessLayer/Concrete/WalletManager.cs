@@ -1,7 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
-using SMARTCAMPUS.DataAccessLayer.Context;
+using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Wallet;
 using SMARTCAMPUS.EntityLayer.Enums;
@@ -11,12 +10,12 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 {
     public class WalletManager : IWalletService
     {
-        private readonly CampusContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMockPaymentService _paymentService;
 
-        public WalletManager(CampusContext context, IMockPaymentService paymentService)
+        public WalletManager(IUnitOfWork unitOfWork, IMockPaymentService paymentService)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _paymentService = paymentService;
         }
 
@@ -38,42 +37,33 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<PagedResponse<WalletTransactionDto>>> GetTransactionsAsync(string userId, int page = 1, int pageSize = 20)
         {
-            var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == userId);
+            var wallet = await _unitOfWork.Wallets.GetByUserIdAsync(userId);
             if (wallet == null)
                 return Response<PagedResponse<WalletTransactionDto>>.Fail("Cüzdan bulunamadı", 404);
 
-            var query = _context.WalletTransactions
-                .Where(t => t.WalletId == wallet.Id)
-                .OrderByDescending(t => t.TransactionDate);
+            var totalCount = await _unitOfWork.WalletTransactions.GetCountByWalletIdAsync(wallet.Id);
+            var transactions = await _unitOfWork.WalletTransactions.GetByWalletIdPagedAsync(wallet.Id, page, pageSize);
 
-            var totalCount = await query.CountAsync();
-            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+            var dtos = transactions.Select(t => new WalletTransactionDto
+            {
+                Id = t.Id,
+                WalletId = t.WalletId,
+                Type = t.Type,
+                Amount = t.Amount,
+                BalanceAfter = t.BalanceAfter,
+                ReferenceType = t.ReferenceType,
+                ReferenceId = t.ReferenceId,
+                Description = t.Description,
+                TransactionDate = t.TransactionDate
+            }).ToList();
 
-            var transactions = await query
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(t => new WalletTransactionDto
-                {
-                    Id = t.Id,
-                    WalletId = t.WalletId,
-                    Type = t.Type,
-                    Amount = t.Amount,
-                    BalanceAfter = t.BalanceAfter,
-                    ReferenceType = t.ReferenceType,
-                    ReferenceId = t.ReferenceId,
-                    Description = t.Description,
-                    TransactionDate = t.TransactionDate
-                })
-                .ToListAsync();
-
-            var pagedResponse = new PagedResponse<WalletTransactionDto>(transactions, page, pageSize, totalCount);
+            var pagedResponse = new PagedResponse<WalletTransactionDto>(dtos, page, pageSize, totalCount);
 
             return Response<PagedResponse<WalletTransactionDto>>.Success(pagedResponse, 200);
         }
 
         public async Task<Response<TopUpResultDto>> TopUpAsync(string userId, WalletTopUpDto dto)
         {
-            // WalletTopUpDto'yu PaymentDto'ya dönüştür
             var paymentDto = new PaymentDto
             {
                 CardNumber = dto.CardNumber,
@@ -82,7 +72,6 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 Amount = dto.Amount
             };
 
-            // Ödeme işlemini gerçekleştir
             var paymentResult = _paymentService.ProcessPayment(paymentDto);
 
             if (!paymentResult.IsSuccess)
@@ -90,17 +79,15 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 return Response<TopUpResultDto>.Fail($"Ödeme başarısız: {paymentResult.ErrorMessage}", 400);
             }
 
-            // Cüzdanı getir veya oluştur
             var wallet = await GetOrCreateWalletAsync(userId);
 
             if (!wallet.IsActive)
                 return Response<TopUpResultDto>.Fail("Cüzdan aktif değil", 400);
 
-            // Bakiyeyi güncelle
             wallet.Balance += paymentDto.Amount;
             wallet.UpdatedDate = DateTime.UtcNow;
+            _unitOfWork.Wallets.Update(wallet);
 
-            // İşlem kaydı oluştur
             var transaction = new WalletTransaction
             {
                 WalletId = wallet.Id,
@@ -114,8 +101,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 CreatedDate = DateTime.UtcNow
             };
 
-            await _context.WalletTransactions.AddAsync(transaction);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.WalletTransactions.AddAsync(transaction);
+            await _unitOfWork.CommitAsync();
 
             var result = new TopUpResultDto
             {
@@ -128,7 +115,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<WalletTransactionDto>> DeductAsync(string userId, decimal amount, ReferenceType referenceType, int? referenceId, string? description = null)
         {
-            var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == userId);
+            var wallet = await _unitOfWork.Wallets.GetByUserIdAsync(userId);
             if (wallet == null)
                 return Response<WalletTransactionDto>.Fail("Cüzdan bulunamadı", 404);
 
@@ -138,11 +125,10 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             if (wallet.Balance < amount)
                 return Response<WalletTransactionDto>.Fail("Yetersiz bakiye", 400);
 
-            // Bakiyeyi düş
             wallet.Balance -= amount;
             wallet.UpdatedDate = DateTime.UtcNow;
+            _unitOfWork.Wallets.Update(wallet);
 
-            // İşlem kaydı oluştur
             var transaction = new WalletTransaction
             {
                 WalletId = wallet.Id,
@@ -157,8 +143,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 CreatedDate = DateTime.UtcNow
             };
 
-            await _context.WalletTransactions.AddAsync(transaction);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.WalletTransactions.AddAsync(transaction);
+            await _unitOfWork.CommitAsync();
 
             var dto = new WalletTransactionDto
             {
@@ -178,15 +164,14 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<WalletTransactionDto>> RefundAsync(string userId, decimal amount, ReferenceType referenceType, int? referenceId, string? description = null)
         {
-            var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == userId);
+            var wallet = await _unitOfWork.Wallets.GetByUserIdAsync(userId);
             if (wallet == null)
                 return Response<WalletTransactionDto>.Fail("Cüzdan bulunamadı", 404);
 
-            // Bakiyeyi ekle (iade)
             wallet.Balance += amount;
             wallet.UpdatedDate = DateTime.UtcNow;
+            _unitOfWork.Wallets.Update(wallet);
 
-            // İşlem kaydı oluştur
             var transaction = new WalletTransaction
             {
                 WalletId = wallet.Id,
@@ -201,8 +186,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 CreatedDate = DateTime.UtcNow
             };
 
-            await _context.WalletTransactions.AddAsync(transaction);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.WalletTransactions.AddAsync(transaction);
+            await _unitOfWork.CommitAsync();
 
             var dto = new WalletTransactionDto
             {
@@ -227,20 +212,21 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<NoDataDto>> SetWalletStatusAsync(string userId, bool isActive)
         {
-            var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == userId);
+            var wallet = await _unitOfWork.Wallets.GetByUserIdAsync(userId);
             if (wallet == null)
                 return Response<NoDataDto>.Fail("Cüzdan bulunamadı", 404);
 
             wallet.IsActive = isActive;
             wallet.UpdatedDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.Wallets.Update(wallet);
+            await _unitOfWork.CommitAsync();
 
             return Response<NoDataDto>.Success(200);
         }
 
         private async Task<Wallet> GetOrCreateWalletAsync(string userId)
         {
-            var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == userId);
+            var wallet = await _unitOfWork.Wallets.GetByUserIdAsync(userId);
 
             if (wallet == null)
             {
@@ -253,8 +239,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     CreatedDate = DateTime.UtcNow
                 };
 
-                await _context.Wallets.AddAsync(wallet);
-                await _context.SaveChangesAsync();
+                await _unitOfWork.Wallets.AddAsync(wallet);
+                await _unitOfWork.CommitAsync();
             }
 
             return wallet;

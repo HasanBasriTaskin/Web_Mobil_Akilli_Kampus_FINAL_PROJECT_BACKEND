@@ -1,7 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
-using SMARTCAMPUS.DataAccessLayer.Context;
+using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Meal.FoodItem;
 using SMARTCAMPUS.EntityLayer.Enums;
@@ -11,21 +10,18 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 {
     public class FoodItemManager : IFoodItemService
     {
-        private readonly CampusContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public FoodItemManager(CampusContext context)
+        public FoodItemManager(IUnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Response<List<FoodItemDto>>> GetAllAsync(bool includeInactive = false)
         {
-            var query = _context.FoodItems.AsQueryable();
+            var query = _unitOfWork.FoodItems.Where(f => includeInactive || f.IsActive);
 
-            if (!includeInactive)
-                query = query.Where(f => f.IsActive);
-
-            var foodItems = await query
+            var foodItems = query
                 .Select(f => new FoodItemDto
                 {
                     Id = f.Id,
@@ -35,32 +31,31 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     Calories = f.Calories,
                     IsActive = f.IsActive
                 })
-                .ToListAsync();
+                .ToList();
 
             return Response<List<FoodItemDto>>.Success(foodItems, 200);
         }
 
         public async Task<Response<List<FoodItemDto>>> GetByCategoryAsync(MealItemCategory category)
         {
-            var foodItems = await _context.FoodItems
-                .Where(f => f.IsActive && f.Category == category)
-                .Select(f => new FoodItemDto
-                {
-                    Id = f.Id,
-                    Name = f.Name,
-                    Description = f.Description,
-                    Category = f.Category,
-                    Calories = f.Calories,
-                    IsActive = f.IsActive
-                })
-                .ToListAsync();
+            var foodItems = await _unitOfWork.FoodItems.GetByCategoryAsync(category);
 
-            return Response<List<FoodItemDto>>.Success(foodItems, 200);
+            var dtos = foodItems.Select(f => new FoodItemDto
+            {
+                Id = f.Id,
+                Name = f.Name,
+                Description = f.Description,
+                Category = f.Category,
+                Calories = f.Calories,
+                IsActive = f.IsActive
+            }).ToList();
+
+            return Response<List<FoodItemDto>>.Success(dtos, 200);
         }
 
         public async Task<Response<FoodItemDto>> GetByIdAsync(int id)
         {
-            var foodItem = await _context.FoodItems.FindAsync(id);
+            var foodItem = await _unitOfWork.FoodItems.GetByIdAsync(id);
             if (foodItem == null)
                 return Response<FoodItemDto>.Fail("Yemek içeriği bulunamadı", 404);
 
@@ -79,8 +74,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<FoodItemDto>> CreateAsync(FoodItemCreateDto dto)
         {
-            // Check if name already exists
-            var exists = await _context.FoodItems.AnyAsync(f => f.Name == dto.Name);
+            var exists = await _unitOfWork.FoodItems.NameExistsAsync(dto.Name);
             if (exists)
                 return Response<FoodItemDto>.Fail("Bu isimde bir yemek içeriği zaten mevcut", 400);
 
@@ -94,8 +88,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 CreatedDate = DateTime.UtcNow
             };
 
-            await _context.FoodItems.AddAsync(foodItem);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.FoodItems.AddAsync(foodItem);
+            await _unitOfWork.CommitAsync();
 
             var resultDto = new FoodItemDto
             {
@@ -112,14 +106,13 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<FoodItemDto>> UpdateAsync(int id, FoodItemUpdateDto dto)
         {
-            var foodItem = await _context.FoodItems.FindAsync(id);
+            var foodItem = await _unitOfWork.FoodItems.GetByIdAsync(id);
             if (foodItem == null)
                 return Response<FoodItemDto>.Fail("Yemek içeriği bulunamadı", 404);
 
-            // Check if new name conflicts with another food item
             if (!string.IsNullOrEmpty(dto.Name) && dto.Name != foodItem.Name)
             {
-                var nameExists = await _context.FoodItems.AnyAsync(f => f.Name == dto.Name && f.Id != id);
+                var nameExists = await _unitOfWork.FoodItems.NameExistsAsync(dto.Name, id);
                 if (nameExists)
                     return Response<FoodItemDto>.Fail("Bu isimde bir yemek içeriği zaten mevcut", 400);
                 foodItem.Name = dto.Name;
@@ -138,7 +131,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 foodItem.IsActive = dto.IsActive.Value;
 
             foodItem.UpdatedDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.FoodItems.Update(foodItem);
+            await _unitOfWork.CommitAsync();
 
             var resultDto = new FoodItemDto
             {
@@ -155,20 +149,18 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<NoDataDto>> DeleteAsync(int id)
         {
-            var foodItem = await _context.FoodItems.FindAsync(id);
+            var foodItem = await _unitOfWork.FoodItems.GetByIdAsync(id);
             if (foodItem == null)
                 return Response<NoDataDto>.Fail("Yemek içeriği bulunamadı", 404);
 
-            // Bağımlılık kontrolü: Aktif menüde kullanılıyor mu?
-            var isUsedInActiveMenu = await _context.MealMenuItems
-                .AnyAsync(m => m.FoodItemId == id && m.Menu.IsActive);
+            var isUsedInActiveMenu = await _unitOfWork.FoodItems.IsUsedInActiveMenuAsync(id);
             if (isUsedInActiveMenu)
                 return Response<NoDataDto>.Fail("Bu yemek içeriği aktif menülerde kullanılıyor, silinemez", 400);
 
-            // Soft delete
             foodItem.IsActive = false;
             foodItem.UpdatedDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.FoodItems.Update(foodItem);
+            await _unitOfWork.CommitAsync();
 
             return Response<NoDataDto>.Success(200);
         }

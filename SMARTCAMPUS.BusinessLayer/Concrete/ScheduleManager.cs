@@ -1,7 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
-using SMARTCAMPUS.DataAccessLayer.Context;
+using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Scheduling;
 using SMARTCAMPUS.EntityLayer.Models;
@@ -10,52 +9,34 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 {
     public class ScheduleManager : IScheduleService
     {
-        private readonly CampusContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public ScheduleManager(CampusContext context)
+        public ScheduleManager(IUnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Response<List<ScheduleDto>>> GetSchedulesBySectionAsync(int sectionId)
         {
-            var schedules = await _context.Schedules
-                .Include(s => s.Section)
-                    .ThenInclude(sec => sec.Course)
-                .Include(s => s.Classroom)
-                .Where(s => s.SectionId == sectionId && s.IsActive)
-                .OrderBy(s => s.DayOfWeek)
-                .ThenBy(s => s.StartTime)
-                .ToListAsync();
-
+            var schedules = await _unitOfWork.Schedules.GetBySectionIdAsync(sectionId);
             var result = schedules.Select(s => MapToDto(s)).ToList();
             return Response<List<ScheduleDto>>.Success(result, 200);
         }
 
         public async Task<Response<List<WeeklyScheduleDto>>> GetWeeklyScheduleAsync(int sectionId)
         {
-            var section = await _context.CourseSections
-                .Include(s => s.Course)
-                .FirstOrDefaultAsync(s => s.Id == sectionId);
-
+            var section = await _unitOfWork.CourseSections.GetByIdAsync(sectionId);
             if (section == null)
                 return Response<List<WeeklyScheduleDto>>.Fail("Ders bölümü bulunamadı", 404);
 
-            var schedules = await _context.Schedules
-                .Include(s => s.Section)
-                    .ThenInclude(sec => sec.Course)
-                .Include(s => s.Classroom)
-                .Where(s => s.SectionId == sectionId && s.IsActive)
-                .OrderBy(s => s.DayOfWeek)
-                .ThenBy(s => s.StartTime)
-                .ToListAsync();
+            var schedules = await _unitOfWork.Schedules.GetBySectionIdAsync(sectionId);
 
             var result = schedules
                 .GroupBy(s => s.DayOfWeek)
                 .Select(g => new WeeklyScheduleDto
                 {
                     Day = g.Key,
-                    Schedules = g.Select(s => MapToDto(s)).ToList()
+                    Schedules = g.OrderBy(x => x.StartTime).Select(s => MapToDto(s)).ToList()
                 })
                 .ToList();
 
@@ -64,60 +45,29 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<List<ScheduleDto>>> GetSchedulesByClassroomAsync(int classroomId, DayOfWeek? dayOfWeek = null)
         {
-            var query = _context.Schedules
-                .Include(s => s.Section)
-                    .ThenInclude(sec => sec.Course)
-                .Include(s => s.Classroom)
-                .Where(s => s.ClassroomId == classroomId && s.IsActive);
-
-            if (dayOfWeek.HasValue)
-                query = query.Where(s => s.DayOfWeek == dayOfWeek.Value);
-
-            var schedules = await query
-                .OrderBy(s => s.DayOfWeek)
-                .ThenBy(s => s.StartTime)
-                .ToListAsync();
-
+            var schedules = await _unitOfWork.Schedules.GetByClassroomIdAsync(classroomId, dayOfWeek);
             var result = schedules.Select(s => MapToDto(s)).ToList();
             return Response<List<ScheduleDto>>.Success(result, 200);
         }
 
         public async Task<Response<List<ScheduleDto>>> GetSchedulesByInstructorAsync(int facultyId, DayOfWeek? dayOfWeek = null)
         {
-            var query = _context.Schedules
-                .Include(s => s.Section)
-                    .ThenInclude(sec => sec.Course)
-                .Include(s => s.Section)
-                    .ThenInclude(sec => sec.Instructor)
-                .Include(s => s.Classroom)
-                .Where(s => s.Section.InstructorId == facultyId && s.IsActive);
-
-            if (dayOfWeek.HasValue)
-                query = query.Where(s => s.DayOfWeek == dayOfWeek.Value);
-
-            var schedules = await query
-                .OrderBy(s => s.DayOfWeek)
-                .ThenBy(s => s.StartTime)
-                .ToListAsync();
-
+            var schedules = await _unitOfWork.Schedules.GetByInstructorIdAsync(facultyId, dayOfWeek);
             var result = schedules.Select(s => MapToDto(s)).ToList();
             return Response<List<ScheduleDto>>.Success(result, 200);
         }
 
         public async Task<Response<ScheduleDto>> CreateScheduleAsync(ScheduleCreateDto dto)
         {
-            // Çakışma kontrolü
             var conflicts = await CheckConflictsAsync(dto);
             if (conflicts.Data != null && conflicts.Data.Any())
                 return Response<ScheduleDto>.Fail("Çakışma tespit edildi: " + conflicts.Data.First().Message, 400);
 
-            // Section kontrolü
-            var section = await _context.CourseSections.FindAsync(dto.SectionId);
+            var section = await _unitOfWork.CourseSections.GetByIdAsync(dto.SectionId);
             if (section == null)
                 return Response<ScheduleDto>.Fail("Ders bölümü bulunamadı", 404);
 
-            // Classroom kontrolü
-            var classroom = await _context.Classrooms.FindAsync(dto.ClassroomId);
+            var classroom = await _unitOfWork.Classrooms.GetByIdAsync(dto.ClassroomId);
             if (classroom == null)
                 return Response<ScheduleDto>.Fail("Sınıf bulunamadı", 404);
 
@@ -132,25 +82,19 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 CreatedDate = DateTime.UtcNow
             };
 
-            await _context.Schedules.AddAsync(schedule);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.Schedules.AddAsync(schedule);
+            await _unitOfWork.CommitAsync();
 
-            var result = await _context.Schedules
-                .Include(s => s.Section)
-                    .ThenInclude(sec => sec.Course)
-                .Include(s => s.Classroom)
-                .FirstAsync(s => s.Id == schedule.Id);
-
-            return Response<ScheduleDto>.Success(MapToDto(result), 201);
+            var result = await _unitOfWork.Schedules.GetByIdWithDetailsAsync(schedule.Id);
+            return Response<ScheduleDto>.Success(MapToDto(result!), 201);
         }
 
         public async Task<Response<ScheduleDto>> UpdateScheduleAsync(int id, ScheduleUpdateDto dto)
         {
-            var schedule = await _context.Schedules.FindAsync(id);
+            var schedule = await _unitOfWork.Schedules.GetByIdAsync(id);
             if (schedule == null)
                 return Response<ScheduleDto>.Fail("Program bulunamadı", 404);
 
-            // Geçici DTO ile çakışma kontrolü
             var checkDto = new ScheduleCreateDto
             {
                 SectionId = dto.SectionId ?? schedule.SectionId,
@@ -171,26 +115,23 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             if (dto.EndTime.HasValue) schedule.EndTime = dto.EndTime.Value;
 
             schedule.UpdatedDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.Schedules.Update(schedule);
+            await _unitOfWork.CommitAsync();
 
-            var result = await _context.Schedules
-                .Include(s => s.Section)
-                    .ThenInclude(sec => sec.Course)
-                .Include(s => s.Classroom)
-                .FirstAsync(s => s.Id == id);
-
-            return Response<ScheduleDto>.Success(MapToDto(result), 200);
+            var result = await _unitOfWork.Schedules.GetByIdWithDetailsAsync(id);
+            return Response<ScheduleDto>.Success(MapToDto(result!), 200);
         }
 
         public async Task<Response<NoDataDto>> DeleteScheduleAsync(int id)
         {
-            var schedule = await _context.Schedules.FindAsync(id);
+            var schedule = await _unitOfWork.Schedules.GetByIdAsync(id);
             if (schedule == null)
                 return Response<NoDataDto>.Fail("Program bulunamadı", 404);
 
             schedule.IsActive = false;
             schedule.UpdatedDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.Schedules.Update(schedule);
+            await _unitOfWork.CommitAsync();
 
             return Response<NoDataDto>.Success(200);
         }
@@ -199,16 +140,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
         {
             var conflicts = new List<ScheduleConflictDto>();
 
-            // Sınıf çakışması kontrolü
-            var classroomConflict = await _context.Schedules
-                .Include(s => s.Section)
-                    .ThenInclude(sec => sec.Course)
-                .Where(s => s.ClassroomId == dto.ClassroomId &&
-                           s.DayOfWeek == dto.DayOfWeek &&
-                           s.IsActive &&
-                           (excludeId == null || s.Id != excludeId))
-                .Where(s => (s.StartTime < dto.EndTime && s.EndTime > dto.StartTime))
-                .FirstOrDefaultAsync();
+            var classroomConflict = await _unitOfWork.Schedules.GetConflictingScheduleAsync(
+                dto.ClassroomId, dto.DayOfWeek, dto.StartTime, dto.EndTime, excludeId);
 
             if (classroomConflict != null)
             {
@@ -221,14 +154,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 });
             }
 
-            // Aynı section için çakışma kontrolü
-            var sectionConflict = await _context.Schedules
-                .Where(s => s.SectionId == dto.SectionId &&
-                           s.DayOfWeek == dto.DayOfWeek &&
-                           s.IsActive &&
-                           (excludeId == null || s.Id != excludeId))
-                .Where(s => (s.StartTime < dto.EndTime && s.EndTime > dto.StartTime))
-                .FirstOrDefaultAsync();
+            var sectionConflict = await _unitOfWork.Schedules.GetSectionConflictAsync(
+                dto.SectionId, dto.DayOfWeek, dto.StartTime, dto.EndTime, excludeId);
 
             if (sectionConflict != null)
             {

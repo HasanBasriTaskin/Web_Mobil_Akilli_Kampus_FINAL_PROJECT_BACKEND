@@ -1,7 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
-using SMARTCAMPUS.DataAccessLayer.Context;
+using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Meal.Cafeteria;
 using SMARTCAMPUS.EntityLayer.Models;
@@ -10,21 +9,18 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 {
     public class CafeteriaManager : ICafeteriaService
     {
-        private readonly CampusContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public CafeteriaManager(CampusContext context)
+        public CafeteriaManager(IUnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Response<List<CafeteriaDto>>> GetAllAsync(bool includeInactive = false)
         {
-            var query = _context.Cafeterias.AsQueryable();
-            
-            if (!includeInactive)
-                query = query.Where(c => c.IsActive);
+            var query = _unitOfWork.Cafeterias.Where(c => includeInactive || c.IsActive);
 
-            var cafeterias = await query
+            var cafeterias = query
                 .Select(c => new CafeteriaDto
                 {
                     Id = c.Id,
@@ -33,14 +29,14 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     Capacity = c.Capacity,
                     IsActive = c.IsActive
                 })
-                .ToListAsync();
+                .ToList();
 
             return Response<List<CafeteriaDto>>.Success(cafeterias, 200);
         }
 
         public async Task<Response<CafeteriaDto>> GetByIdAsync(int id)
         {
-            var cafeteria = await _context.Cafeterias.FindAsync(id);
+            var cafeteria = await _unitOfWork.Cafeterias.GetByIdAsync(id);
             if (cafeteria == null)
                 return Response<CafeteriaDto>.Fail("Yemekhane bulunamadı", 404);
 
@@ -58,8 +54,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<CafeteriaDto>> CreateAsync(CafeteriaCreateDto dto)
         {
-            // Check if name already exists
-            var exists = await _context.Cafeterias.AnyAsync(c => c.Name == dto.Name);
+            var exists = await _unitOfWork.Cafeterias.NameExistsAsync(dto.Name);
             if (exists)
                 return Response<CafeteriaDto>.Fail("Bu isimde bir yemekhane zaten mevcut", 400);
 
@@ -72,8 +67,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 CreatedDate = DateTime.UtcNow
             };
 
-            await _context.Cafeterias.AddAsync(cafeteria);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.Cafeterias.AddAsync(cafeteria);
+            await _unitOfWork.CommitAsync();
 
             var resultDto = new CafeteriaDto
             {
@@ -89,14 +84,13 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<CafeteriaDto>> UpdateAsync(int id, CafeteriaUpdateDto dto)
         {
-            var cafeteria = await _context.Cafeterias.FindAsync(id);
+            var cafeteria = await _unitOfWork.Cafeterias.GetByIdAsync(id);
             if (cafeteria == null)
                 return Response<CafeteriaDto>.Fail("Yemekhane bulunamadı", 404);
 
-            // Check if new name conflicts with another cafeteria
             if (!string.IsNullOrEmpty(dto.Name) && dto.Name != cafeteria.Name)
             {
-                var nameExists = await _context.Cafeterias.AnyAsync(c => c.Name == dto.Name && c.Id != id);
+                var nameExists = await _unitOfWork.Cafeterias.NameExistsAsync(dto.Name, id);
                 if (nameExists)
                     return Response<CafeteriaDto>.Fail("Bu isimde bir yemekhane zaten mevcut", 400);
                 cafeteria.Name = dto.Name;
@@ -112,7 +106,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 cafeteria.IsActive = dto.IsActive.Value;
 
             cafeteria.UpdatedDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.Cafeterias.Update(cafeteria);
+            await _unitOfWork.CommitAsync();
 
             var resultDto = new CafeteriaDto
             {
@@ -128,24 +123,22 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<NoDataDto>> DeleteAsync(int id)
         {
-            var cafeteria = await _context.Cafeterias.FindAsync(id);
+            var cafeteria = await _unitOfWork.Cafeterias.GetByIdAsync(id);
             if (cafeteria == null)
                 return Response<NoDataDto>.Fail("Yemekhane bulunamadı", 404);
 
-            // Bağımlılık kontrolü: Aktif menü veya rezervasyon var mı?
-            var hasActiveMenus = await _context.MealMenus.AnyAsync(m => m.CafeteriaId == id && m.IsActive);
+            var hasActiveMenus = await _unitOfWork.Cafeterias.HasActiveMenusAsync(id);
             if (hasActiveMenus)
                 return Response<NoDataDto>.Fail("Bu yemekhanenin aktif menüleri var, silinemez", 400);
 
-            var hasActiveReservations = await _context.MealReservations
-                .AnyAsync(r => r.CafeteriaId == id && r.Status == EntityLayer.Enums.MealReservationStatus.Reserved);
+            var hasActiveReservations = await _unitOfWork.Cafeterias.HasActiveReservationsAsync(id);
             if (hasActiveReservations)
                 return Response<NoDataDto>.Fail("Bu yemekhanenin aktif rezervasyonları var, silinemez", 400);
 
-            // Soft delete
             cafeteria.IsActive = false;
             cafeteria.UpdatedDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.Cafeterias.Update(cafeteria);
+            await _unitOfWork.CommitAsync();
 
             return Response<NoDataDto>.Success(200);
         }
