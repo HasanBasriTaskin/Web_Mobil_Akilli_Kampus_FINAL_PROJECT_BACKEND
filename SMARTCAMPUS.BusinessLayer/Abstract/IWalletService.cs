@@ -10,7 +10,7 @@ namespace SMARTCAMPUS.BusinessLayer.Abstract
         // Kullanıcı işlemleri
         Task<Response<WalletDto>> GetWalletAsync(string userId);
         Task<Response<PagedResponse<WalletTransactionDto>>> GetTransactionsAsync(string userId, int page = 1, int pageSize = 20);
-        Task<Response<TopUpResultDto>> TopUpAsync(string userId, PaymentDto paymentDto);
+        Task<Response<TopUpResultDto>> TopUpAsync(string userId, WalletTopUpDto dto);
         
         // Internal işlemler (diğer servisler tarafından kullanılır)
         Task<Response<WalletTransactionDto>> DeductAsync(string userId, decimal amount, ReferenceType referenceType, int? referenceId, string? description = null);

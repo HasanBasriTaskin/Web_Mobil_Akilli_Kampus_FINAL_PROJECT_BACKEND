@@ -118,6 +118,18 @@ builder.Services.AddScoped<ICourseService, CourseManager>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentManager>();
 builder.Services.AddScoped<IAttendanceService, AttendanceManager>();
 
+// Part 3 Services
+builder.Services.AddScoped<IQRCodeService, QRCodeManager>();
+builder.Services.AddScoped<ICafeteriaService, CafeteriaManager>();
+builder.Services.AddScoped<IFoodItemService, FoodItemManager>();
+builder.Services.AddScoped<IMealMenuService, MealMenuManager>();
+builder.Services.AddScoped<IMockPaymentService, MockPaymentManager>();
+builder.Services.AddScoped<IWalletService, WalletManager>();
+builder.Services.AddScoped<IMealReservationService, MealReservationManager>();
+builder.Services.AddScoped<IEventCategoryService, EventCategoryManager>();
+builder.Services.AddScoped<IEventService, EventManager>();
+builder.Services.AddScoped<IScheduleService, ScheduleManager>();
+builder.Services.AddScoped<IClassroomReservationService, ClassroomReservationManager>();
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>(); // Scans assembly for all AbstractValidator<T>
