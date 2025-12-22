@@ -6,5 +6,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
     {
         Task<Course?> GetCourseWithPrerequisitesAsync(int id);
         Task<IEnumerable<Course>> GetCoursesByDepartmentAsync(int departmentId);
+        Task<List<Course>> GetAllCoursesWithDetailsAsync(int page, int pageSize, int? departmentId = null, string? search = null);
+        Task<Course?> GetByIdWithDetailsAsync(int id);
     }
 }

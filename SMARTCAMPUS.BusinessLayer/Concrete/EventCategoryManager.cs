@@ -1,7 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
-using SMARTCAMPUS.DataAccessLayer.Context;
+using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Event;
 using SMARTCAMPUS.EntityLayer.Models;
@@ -10,21 +9,18 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 {
     public class EventCategoryManager : IEventCategoryService
     {
-        private readonly CampusContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public EventCategoryManager(CampusContext context)
+        public EventCategoryManager(IUnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Response<List<EventCategoryDto>>> GetAllAsync(bool includeInactive = false)
         {
-            var query = _context.EventCategories.AsQueryable();
+            var query = _unitOfWork.EventCategories.Where(c => includeInactive || c.IsActive);
 
-            if (!includeInactive)
-                query = query.Where(c => c.IsActive);
-
-            var categories = await query
+            var categories = query
                 .OrderBy(c => c.Name)
                 .Select(c => new EventCategoryDto
                 {
@@ -34,14 +30,14 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     IconName = c.IconName,
                     IsActive = c.IsActive
                 })
-                .ToListAsync();
+                .ToList();
 
             return Response<List<EventCategoryDto>>.Success(categories, 200);
         }
 
         public async Task<Response<EventCategoryDto>> GetByIdAsync(int id)
         {
-            var category = await _context.EventCategories.FindAsync(id);
+            var category = await _unitOfWork.EventCategories.GetByIdAsync(id);
             if (category == null)
                 return Response<EventCategoryDto>.Fail("Kategori bulunamadı", 404);
 
@@ -57,7 +53,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<EventCategoryDto>> CreateAsync(EventCategoryCreateDto dto)
         {
-            var exists = await _context.EventCategories.AnyAsync(c => c.Name == dto.Name);
+            var exists = await _unitOfWork.EventCategories.NameExistsAsync(dto.Name);
             if (exists)
                 return Response<EventCategoryDto>.Fail("Bu isimde bir kategori zaten mevcut", 400);
 
@@ -70,8 +66,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 CreatedDate = DateTime.UtcNow
             };
 
-            await _context.EventCategories.AddAsync(category);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.EventCategories.AddAsync(category);
+            await _unitOfWork.CommitAsync();
 
             return Response<EventCategoryDto>.Success(new EventCategoryDto
             {
@@ -85,13 +81,13 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<EventCategoryDto>> UpdateAsync(int id, EventCategoryUpdateDto dto)
         {
-            var category = await _context.EventCategories.FindAsync(id);
+            var category = await _unitOfWork.EventCategories.GetByIdAsync(id);
             if (category == null)
                 return Response<EventCategoryDto>.Fail("Kategori bulunamadı", 404);
 
             if (!string.IsNullOrEmpty(dto.Name) && dto.Name != category.Name)
             {
-                var nameExists = await _context.EventCategories.AnyAsync(c => c.Name == dto.Name && c.Id != id);
+                var nameExists = await _unitOfWork.EventCategories.NameExistsAsync(dto.Name, id);
                 if (nameExists)
                     return Response<EventCategoryDto>.Fail("Bu isimde bir kategori zaten mevcut", 400);
                 category.Name = dto.Name;
@@ -101,7 +97,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             if (dto.IconName != null) category.IconName = dto.IconName;
 
             category.UpdatedDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.EventCategories.Update(category);
+            await _unitOfWork.CommitAsync();
 
             return Response<EventCategoryDto>.Success(new EventCategoryDto
             {
@@ -115,18 +112,18 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<NoDataDto>> DeleteAsync(int id)
         {
-            var category = await _context.EventCategories.FindAsync(id);
+            var category = await _unitOfWork.EventCategories.GetByIdAsync(id);
             if (category == null)
                 return Response<NoDataDto>.Fail("Kategori bulunamadı", 404);
 
-            // Bağımlılık kontrolü
-            var hasEvents = await _context.Events.AnyAsync(e => e.CategoryId == id && e.IsActive);
+            var hasEvents = await _unitOfWork.EventCategories.HasActiveEventsAsync(id);
             if (hasEvents)
                 return Response<NoDataDto>.Fail("Bu kategoride aktif etkinlikler var, silinemez", 400);
 
             category.IsActive = false;
             category.UpdatedDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.EventCategories.Update(category);
+            await _unitOfWork.CommitAsync();
 
             return Response<NoDataDto>.Success(200);
         }
