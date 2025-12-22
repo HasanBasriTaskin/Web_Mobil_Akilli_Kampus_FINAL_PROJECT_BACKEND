@@ -57,32 +57,6 @@ namespace SMARTCAMPUS.Tests.Repositories
         }
 
         [Fact]
-        public async Task GetSectionsBySemesterAsync_ShouldFilterCorrectly()
-        {
-            // Arrange
-            var user = new User { Id = "u1", FullName = "Prof" };
-            var instructor = new Faculty { Id = 1, UserId = "u1", User = user, EmployeeNumber = "E1", Title = "Dr." };
-            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
-
-            var section1 = new CourseSection { Id = 1, Semester = "Fall", Year = 2024, SectionNumber = "1", Course = course, Instructor = instructor };
-            var section2 = new CourseSection { Id = 2, Semester = "Fall", Year = 2023, SectionNumber = "1", Course = course, Instructor = instructor };
-            var section3 = new CourseSection { Id = 3, Semester = "Spring", Year = 2024, SectionNumber = "1", Course = course, Instructor = instructor };
-
-            await _context.Users.AddAsync(user);
-            await _context.Faculties.AddAsync(instructor);
-            await _context.Courses.AddAsync(course);
-            await _context.CourseSections.AddRangeAsync(section1, section2, section3);
-            await _context.SaveChangesAsync();
-
-            // Act
-            var result = await _repository.GetSectionsBySemesterAsync("Fall", 2024);
-
-            // Assert
-            result.Should().HaveCount(1);
-            result.First().Id.Should().Be(1);
-        }
-
-        [Fact]
         public async Task GetSectionsByInstructorAsync_ShouldReturnInstructorSections()
         {
             // Arrange

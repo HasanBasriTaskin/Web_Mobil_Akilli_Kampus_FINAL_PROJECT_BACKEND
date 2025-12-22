@@ -4,23 +4,18 @@ using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Moq;
 using SMARTCAMPUS.BusinessLayer.Concrete;
-using SMARTCAMPUS.DataAccessLayer.Abstract;
+using SMARTCAMPUS.DataAccessLayer.Concrete;
 using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.DTOs.Attendance;
 using SMARTCAMPUS.EntityLayer.Enums;
 using SMARTCAMPUS.EntityLayer.Models;
-using SMARTCAMPUS.Tests.TestUtilities;
 using Xunit;
 
 namespace SMARTCAMPUS.Tests.Managers
 {
     public class AttendanceManagerTests : IDisposable
     {
-        private readonly Mock<IAttendanceSessionDal> _mockSessionDal;
-        private readonly Mock<IAttendanceRecordDal> _mockRecordDal;
-        private readonly Mock<IExcuseRequestDal> _mockExcuseDal;
         private readonly CampusContext _context;
         private readonly AttendanceManager _manager;
 
@@ -31,11 +26,7 @@ namespace SMARTCAMPUS.Tests.Managers
                 .Options;
 
             _context = new CampusContext(options);
-            _mockSessionDal = new Mock<IAttendanceSessionDal>();
-            _mockRecordDal = new Mock<IAttendanceRecordDal>();
-            _mockExcuseDal = new Mock<IExcuseRequestDal>();
-
-            _manager = new AttendanceManager(_mockSessionDal.Object, _mockRecordDal.Object, _mockExcuseDal.Object, _context);
+            _manager = new AttendanceManager(new UnitOfWork(_context));
         }
 
         public void Dispose()
@@ -63,15 +54,16 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task CreateSessionAsync_ShouldSucceed_WhenValid()
         {
             // Arrange
-            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3 }; // Credits required for valid object?
             var section = new CourseSection { Id = 1, InstructorId = 1, CourseId = 1, Course = course, SectionNumber = "1", Semester = "Fall", Year = 2024 };
             await _context.Courses.AddAsync(course);
             await _context.CourseSections.AddAsync(section);
+            
+            // Need Enrollments for calculation (even if 0)
+            
             await _context.SaveChangesAsync();
 
             var dto = new CreateSessionDto { SectionId = 1, Date = DateTime.UtcNow, StartTime = TimeSpan.Zero, EndTime = TimeSpan.FromHours(1) };
-
-            _mockSessionDal.Setup(x => x.AddAsync(It.IsAny<AttendanceSession>())).Returns(Task.CompletedTask);
 
             // Act
             var result = await _manager.CreateSessionAsync(1, dto);
@@ -79,7 +71,10 @@ namespace SMARTCAMPUS.Tests.Managers
             // Assert
             result.IsSuccessful.Should().BeTrue();
             result.StatusCode.Should().Be(201);
-            _mockSessionDal.Verify(x => x.AddAsync(It.IsAny<AttendanceSession>()), Times.Once);
+            
+            var session = await _context.AttendanceSessions.FirstOrDefaultAsync();
+            session.Should().NotBeNull();
+            session!.SectionId.Should().Be(1);
         }
 
         #endregion
@@ -89,9 +84,6 @@ namespace SMARTCAMPUS.Tests.Managers
         [Fact]
         public async Task GetSessionByIdAsync_ShouldFail_WhenSessionNotFound()
         {
-            // Arrange
-            _mockSessionDal.Setup(x => x.GetSessionWithRecordsAsync(1)).ReturnsAsync((AttendanceSession?)null);
-
             // Act
             var result = await _manager.GetSessionByIdAsync(1);
 
@@ -104,13 +96,21 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task GetSessionByIdAsync_ShouldSucceed_WhenExists()
         {
             // Arrange
+            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
+            var section = new CourseSection { Id = 1, Course = course, SectionNumber = "1" };
             var session = new AttendanceSession
             {
                 Id = 1,
-                Section = new CourseSection { Course = new Course { Code = "C1", Name = "C1" }, SectionNumber = "1" },
-                AttendanceRecords = new List<AttendanceRecord>()
+                Section = section,
+                SectionId = 1,
+                Status = AttendanceSessionStatus.Open,
+                Date = DateTime.UtcNow
             };
-            _mockSessionDal.Setup(x => x.GetSessionWithRecordsAsync(1)).ReturnsAsync(session);
+            
+            await _context.Courses.AddAsync(course);
+            await _context.CourseSections.AddAsync(section);
+            await _context.AttendanceSessions.AddAsync(session);
+            await _context.SaveChangesAsync();
 
             // Act
             var result = await _manager.GetSessionByIdAsync(1);
@@ -139,7 +139,16 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task CloseSessionAsync_ShouldSucceed_WhenOpen()
         {
             // Arrange
-            var session = new AttendanceSession { Id = 1, InstructorId = 1, Status = AttendanceSessionStatus.Open };
+            // Seed Course/Section to satisfy constraints if necessary, or just bare session
+            var session = new AttendanceSession { Id = 1, InstructorId = 1, Status = AttendanceSessionStatus.Open, SectionId = 1 }; // SectionId FK
+            
+            // To avoid FK constraints in InMemory (it's loose but better to be safe) or null refs if logic checks navigation
+            // AttendanceManager might not load Section for CloseSession, but let's see.
+            // Logic: GetByIdAsync -> check InstructorId.
+            // If GetById includes Section, we need it.
+            // Based on previous code, CloseSession used GetById which included Section? No context based.
+            // Integration UoW usually includes details.
+            
             await _context.AttendanceSessions.AddAsync(session);
             await _context.SaveChangesAsync();
 
@@ -148,8 +157,8 @@ namespace SMARTCAMPUS.Tests.Managers
 
             // Assert
             result.IsSuccessful.Should().BeTrue();
-            session.Status.Should().Be(AttendanceSessionStatus.Closed);
-            _mockSessionDal.Verify(x => x.Update(session), Times.Once);
+            var dbSession = await _context.AttendanceSessions.FindAsync(1);
+            dbSession!.Status.Should().Be(AttendanceSessionStatus.Closed);
         }
 
         #endregion
@@ -187,7 +196,11 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task CheckInAsync_ShouldSucceed_WhenValid()
         {
             // Arrange
-            var session = new AttendanceSession { Id = 1, SectionId = 1, Status = AttendanceSessionStatus.Open, Latitude = 0, Longitude = 0, GeofenceRadius = 100 };
+            var session = new AttendanceSession { Id = 1, SectionId = 1, Status = AttendanceSessionStatus.Open, Latitude = 0, Longitude = 0, GeofenceRadius = 100, StartTime = TimeSpan.Zero, EndTime = TimeSpan.FromHours(24) };
+            // Ensure session is active time-wise if logic checks it. 
+            // AttendanceManager logic: if (session.Status != Open) return fail. 
+            // Also geolocation check.
+            
             await _context.AttendanceSessions.AddAsync(session);
 
             var enrollment = new Enrollment { StudentId = 1, SectionId = 1, Status = EnrollmentStatus.Enrolled };
@@ -195,15 +208,13 @@ namespace SMARTCAMPUS.Tests.Managers
 
             await _context.SaveChangesAsync();
 
-            _mockRecordDal.Setup(x => x.HasStudentCheckedInAsync(1, 1)).ReturnsAsync(false);
-            _mockRecordDal.Setup(x => x.AddAsync(It.IsAny<AttendanceRecord>())).Returns(Task.CompletedTask);
-
             // Act
             var result = await _manager.CheckInAsync(1, 1, new CheckInDto { Latitude = 0, Longitude = 0 });
 
             // Assert
             result.IsSuccessful.Should().BeTrue();
-            _mockRecordDal.Verify(x => x.AddAsync(It.IsAny<AttendanceRecord>()), Times.Once);
+            var record = await _context.AttendanceRecords.FirstOrDefaultAsync(r => r.StudentId == 1 && r.SessionId == 1);
+            record.Should().NotBeNull();
         }
 
         #endregion
@@ -214,6 +225,33 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task GetMyAttendanceAsync_ShouldReturnAttendance()
         {
             // Arrange
+            // Needs User -> Student -> Enrollment -> Section -> Course
+            // Manager: GetUserAsync(User) -> GetByUserId -> StudentId -> ...
+            // We need to Mock UserManager? 
+            // Wait, AttendanceManager DOES NOT use UserManager directly anymore?
+            // Let's check. 
+            // Refactoring: "var user = await _userManager.GetUserAsync(User);" line 258.
+            // AttendanceManager DOES use UserManager!
+            // I removed _context, but _userManager is still there?
+            // I need to check if I removed _userManager.
+            // If I did NOT remove _userManager, checking GetMyAttendanceAsync in tests is tricky because _userManager is usually Mocked.
+            // But I initialized AttendanceManager with `new AttendanceManager(new UnitOfWork(_context))`. 
+            // Does AttendanceManager constructor take UserManager?
+            // Refactoring Step 325 or so said: "Constructor now injects IUnitOfWork only."
+            // If I removed UserManager injection, how does it get current user?
+            // Maybe it takes ClaimsPrincipal? No, usually Service doesn't take ClaimsPrincipal directly.
+            // Usually Controller passes userId.
+            // Check `AttendanceManager` signature.
+            // Methods like `GetMyAttendanceAsync(int studentId)`?
+            // If the method signature takes `studentId`, good.
+            // Old Test `GetMyAttendanceAsync` passed `1`. `GetMyAttendanceAsync(1)`.
+            // So it takes `studentId`.
+            // So no UserManager needed?
+            // Wait, old test `GetMyAttendanceAsync` calls `_manager.GetMyAttendanceAsync(1)`.
+            // Code view (Step 358) showed: `r.StudentId == studentId`.
+            // So it relies on the argument.
+            // Excellent.
+            
             var course = new Course { Id = 1, Code = "C1", Name = "C1" };
             var section = new CourseSection { Id = 1, Course = course, SectionNumber = "1", Semester = "F", Year = 2024 };
             var enrollment = new Enrollment { StudentId = 1, SectionId = 1, Section = section, Status = EnrollmentStatus.Enrolled };
@@ -242,14 +280,19 @@ namespace SMARTCAMPUS.Tests.Managers
             // Arrange
             var course = new Course { Id = 1, Code = "C1", Name = "C1" };
             var section = new CourseSection { Id = 1, Course = course, SectionNumber = "1", Semester = "F", Year = 2024 };
-            var session = new AttendanceSession { Id = 1, Section = section };
+            var session = new AttendanceSession { Id = 1, Section = section, SectionId = 1 };
+            
+            // Need Student?
+            // CreateExcuseRequestAsync logic might check Student existence or Enrollment?
+            // Step 325: "GetStudentWithDetailsAsync(studentId)".
+            // So we need Student in DB.
+            var student = new Student { Id = 1, StudentNumber = "123", UserId = "u1" };
 
             await _context.Courses.AddAsync(course);
             await _context.CourseSections.AddAsync(section);
             await _context.AttendanceSessions.AddAsync(session);
+            await _context.Students.AddAsync(student);
             await _context.SaveChangesAsync();
-
-            _mockExcuseDal.Setup(x => x.AddAsync(It.IsAny<ExcuseRequest>())).Returns(Task.CompletedTask);
 
             // Act
             var result = await _manager.CreateExcuseRequestAsync(1, new CreateExcuseRequestDto { SessionId = 1, Reason = "Sick" }, "url");
@@ -257,7 +300,10 @@ namespace SMARTCAMPUS.Tests.Managers
             // Assert
             result.IsSuccessful.Should().BeTrue();
             result.StatusCode.Should().Be(201);
-            _mockExcuseDal.Verify(x => x.AddAsync(It.IsAny<ExcuseRequest>()), Times.Once);
+            
+            var req = await _context.ExcuseRequests.FirstOrDefaultAsync();
+            req.Should().NotBeNull();
+            req!.Reason.Should().Be("Sick");
         }
 
         #endregion
@@ -268,11 +314,14 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task GetMySessionsAsync_ShouldReturnSessions()
         {
             // Arrange
-            var sessions = new List<AttendanceSession>
-            {
-                new AttendanceSession { Id = 1, Section = new CourseSection { Course = new Course { Code = "C1", Name = "C1" }, SectionNumber = "1" } }
-            };
-            _mockSessionDal.Setup(x => x.GetSessionsByInstructorAsync(1)).ReturnsAsync(sessions);
+            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
+            var section = new CourseSection { Id = 1, Course = course, SectionNumber = "1" };
+            var session = new AttendanceSession { Id = 1, Section = section, InstructorId = 1 };
+            
+            await _context.Courses.AddAsync(course);
+            await _context.CourseSections.AddAsync(section);
+            await _context.AttendanceSessions.AddAsync(session);
+            await _context.SaveChangesAsync();
 
             // Act
             var result = await _manager.GetMySessionsAsync(1);
@@ -290,11 +339,16 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task GetSessionRecordsAsync_ShouldReturnRecords()
         {
             // Arrange
-            var records = new List<AttendanceRecord>
-            {
-                new AttendanceRecord { Id = 1, Student = new Student { StudentNumber = "S1", User = new User { FullName = "Student" } } }
-            };
-            _mockRecordDal.Setup(x => x.GetRecordsBySessionAsync(1)).ReturnsAsync(records);
+            var student = new Student { Id = 1, StudentNumber = "S1", UserId = "u1" };
+            var user = new User { Id = "u1", FullName = "Student" }; // Student -> User
+            student.User = user;
+            
+            var record = new AttendanceRecord { Id = 1, StudentId = 1, Student = student, SessionId = 1 };
+            
+            await _context.Users.AddAsync(user);
+            await _context.Students.AddAsync(student);
+            await _context.AttendanceRecords.AddAsync(record);
+            await _context.SaveChangesAsync();
 
             // Act
             var result = await _manager.GetSessionRecordsAsync(1);
@@ -353,9 +407,23 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task ApproveExcuseRequestAsync_ShouldSucceed()
         {
             // Arrange
+            var user = new User { Id = "u1", FullName = "Student" };
+            var student = new Student { Id = 1, StudentNumber = "S1", UserId = "u1", User = user };
+            // Need session to verify instructor permission
             var session = new AttendanceSession { Id = 1, InstructorId = 1 };
-            var request = new ExcuseRequest { Id = 1, SessionId = 1, Session = session, Status = ExcuseRequestStatus.Pending, Reason = "Sick" };
+            var request = new ExcuseRequest 
+            { 
+                Id = 1, 
+                SessionId = 1, 
+                Session = session, 
+                StudentId = 1,
+                Student = student,
+                Status = ExcuseRequestStatus.Pending, 
+                Reason = "Sick" 
+            };
 
+            await _context.Users.AddAsync(user);
+            await _context.Students.AddAsync(student);
             await _context.AttendanceSessions.AddAsync(session);
             await _context.ExcuseRequests.AddAsync(request);
             await _context.SaveChangesAsync();
@@ -365,8 +433,8 @@ namespace SMARTCAMPUS.Tests.Managers
 
             // Assert
             result.IsSuccessful.Should().BeTrue();
-            request.Status.Should().Be(ExcuseRequestStatus.Approved);
-            _mockExcuseDal.Verify(x => x.Update(request), Times.Once);
+            var dbReq = await _context.ExcuseRequests.FindAsync(1);
+            dbReq!.Status.Should().Be(ExcuseRequestStatus.Approved);
         }
 
         #endregion
@@ -377,9 +445,22 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task RejectExcuseRequestAsync_ShouldSucceed()
         {
             // Arrange
+            var user = new User { Id = "u1", FullName = "Student" };
+            var student = new Student { Id = 1, StudentNumber = "S1", UserId = "u1", User = user };
             var session = new AttendanceSession { Id = 1, InstructorId = 1 };
-            var request = new ExcuseRequest { Id = 1, SessionId = 1, Session = session, Status = ExcuseRequestStatus.Pending, Reason = "Sick" };
+            var request = new ExcuseRequest 
+            { 
+                Id = 1, 
+                SessionId = 1, 
+                Session = session, 
+                StudentId = 1,
+                Student = student,
+                Status = ExcuseRequestStatus.Pending, 
+                Reason = "Sick" 
+            };
 
+            await _context.Users.AddAsync(user);
+            await _context.Students.AddAsync(student);
             await _context.AttendanceSessions.AddAsync(session);
             await _context.ExcuseRequests.AddAsync(request);
             await _context.SaveChangesAsync();
@@ -389,8 +470,8 @@ namespace SMARTCAMPUS.Tests.Managers
 
             // Assert
             result.IsSuccessful.Should().BeTrue();
-            request.Status.Should().Be(ExcuseRequestStatus.Rejected);
-            _mockExcuseDal.Verify(x => x.Update(request), Times.Once);
+            var dbReq = await _context.ExcuseRequests.FindAsync(1);
+            dbReq!.Status.Should().Be(ExcuseRequestStatus.Rejected);
         }
 
         #endregion

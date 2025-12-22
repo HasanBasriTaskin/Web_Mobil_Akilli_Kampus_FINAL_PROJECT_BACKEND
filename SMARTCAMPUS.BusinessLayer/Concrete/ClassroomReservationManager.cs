@@ -26,7 +26,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<List<ClassroomReservationDto>>> GetPendingReservationsAsync()
         {
-            var reservations = await _unitOfWork.ClassroomReservations.GetPendingReservationsAsync();
+            var reservations = await _unitOfWork.ClassroomReservations.GetPendingAsync();
             var result = reservations.Select(r => MapToDto(r)).ToList();
             return Response<List<ClassroomReservationDto>>.Success(result, 200);
         }

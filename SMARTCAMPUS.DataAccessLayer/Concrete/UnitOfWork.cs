@@ -15,6 +15,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
         public IRefreshTokenDal RefreshTokens { get; }
         public IPasswordResetTokenDal PasswordResetTokens { get; }
         public IEmailVerificationTokenDal EmailVerificationTokens { get; }
+        public IUserDal Users { get; }
         
         // Part 2 - Academic Management
         public ICourseDal Courses { get; }
@@ -60,6 +61,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
             RefreshTokens = new EfRefreshTokenDal(_context);
             PasswordResetTokens = new EfPasswordResetTokenDal(_context);
             EmailVerificationTokens = new EfEmailVerificationTokenDal(_context);
+            Users = new EfUserDal(_context);
             
             // Part 2 - Academic Management Repositories
             Courses = new EfCourseDal(_context);

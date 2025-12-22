@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
 using SMARTCAMPUS.DataAccessLayer.Abstract;

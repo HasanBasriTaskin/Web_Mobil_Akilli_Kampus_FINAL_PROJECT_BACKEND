@@ -9,7 +9,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
         Task<List<ClassroomReservation>> GetByUserIdAsync(string userId);
         Task<List<ClassroomReservation>> GetByDateAsync(DateTime date, int? classroomId = null);
         Task<List<ClassroomReservation>> GetPendingAsync();
-        Task<List<ClassroomReservation>> GetPendingReservationsAsync();
+
         Task<List<ClassroomReservation>> GetConflictsAsync(int classroomId, DateTime date, TimeSpan startTime, TimeSpan endTime, int? excludeId = null);
         Task<bool> HasConflictAsync(int classroomId, DateTime date, TimeSpan startTime, TimeSpan endTime, int? excludeId = null);
     }
