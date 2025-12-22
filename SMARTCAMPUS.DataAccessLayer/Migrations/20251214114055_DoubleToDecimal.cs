@@ -140,35 +140,30 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "CoursePrerequisites",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    CourseId = table.Column<int>(type: "int", nullable: false),
-                    PrerequisiteCourseId = table.Column<int>(type: "int", nullable: false),
-                    CreatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    UpdatedDate = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    IsActive = table.Column<bool>(type: "tinyint(1)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_CoursePrerequisites", x => x.Id);
-                    table.CheckConstraint("CK_CoursePrerequisite_NoSelfReference", "CourseId != PrerequisiteCourseId");
-                    table.ForeignKey(
-                        name: "FK_CoursePrerequisites_Courses_CourseId",
-                        column: x => x.CourseId,
-                        principalTable: "Courses",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_CoursePrerequisites_Courses_PrerequisiteCourseId",
-                        column: x => x.PrerequisiteCourseId,
-                        principalTable: "Courses",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
+    name: "CoursePrerequisites",
+    columns: table => new
+    {
+        CourseId = table.Column<int>(type: "int", nullable: false),
+        PrerequisiteCourseId = table.Column<int>(type: "int", nullable: false)
+    },
+    constraints: table =>
+    {
+        table.PrimaryKey("PK_CoursePrerequisites", x => new { x.CourseId, x.PrerequisiteCourseId });
+        table.CheckConstraint("CK_CoursePrerequisite_NoSelfReference", "CourseId != PrerequisiteCourseId");
+        table.ForeignKey(
+            name: "FK_CoursePrerequisites_Courses_CourseId",
+            column: x => x.CourseId,
+            principalTable: "Courses",
+            principalColumn: "Id",
+            onDelete: ReferentialAction.Cascade);
+        table.ForeignKey(
+            name: "FK_CoursePrerequisites_Courses_PrerequisiteCourseId",
+            column: x => x.PrerequisiteCourseId,
+            principalTable: "Courses",
+            principalColumn: "Id",
+            onDelete: ReferentialAction.Restrict);
+    })
+    .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "CourseSections",
@@ -422,12 +417,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                 name: "IX_Classroom_Unique",
                 table: "Classrooms",
                 columns: new[] { "Building", "RoomNumber" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_CoursePrerequisite_Unique",
-                table: "CoursePrerequisites",
-                columns: new[] { "CourseId", "PrerequisiteCourseId" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
