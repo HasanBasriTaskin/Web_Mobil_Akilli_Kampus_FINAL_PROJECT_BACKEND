@@ -20,3 +20,4 @@ namespace SMARTCAMPUS.EntityLayer.DTOs.Scheduling
         public DateTime CreatedAt { get; set; }
     }
 }
+
