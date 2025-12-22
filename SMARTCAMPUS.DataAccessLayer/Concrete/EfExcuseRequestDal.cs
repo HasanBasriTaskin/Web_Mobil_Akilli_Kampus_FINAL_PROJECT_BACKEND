@@ -8,11 +8,15 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
 {
     public class EfExcuseRequestDal : GenericRepository<ExcuseRequest>, IExcuseRequestDal
     {
-        private readonly CampusContext _context;
-
         public EfExcuseRequestDal(CampusContext context) : base(context)
         {
-            _context = context;
+        }
+
+        public async Task<ExcuseRequest?> GetRequestWithDetailsAsync(int requestId, int instructorId)
+        {
+            return await _context.ExcuseRequests
+                .Include(r => r.Session)
+                .FirstOrDefaultAsync(r => r.Id == requestId && r.Session.InstructorId == instructorId);
         }
 
         public async Task<IEnumerable<ExcuseRequest>> GetRequestsByStudentAsync(int studentId)
@@ -46,6 +50,21 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
                         .ThenInclude(sec => sec.Course)
                 .OrderBy(r => r.CreatedDate)
                 .ToListAsync();
+        }
+        public async Task<IEnumerable<ExcuseRequest>> GetRequestsByInstructorAsync(int instructorId, int? sectionId)
+        {
+            var query = _context.ExcuseRequests
+                .Include(r => r.Student)
+                    .ThenInclude(s => s.User)
+                .Include(r => r.Session)
+                    .ThenInclude(s => s.Section)
+                        .ThenInclude(sec => sec.Course)
+                .Where(r => r.Session.InstructorId == instructorId);
+
+            if (sectionId.HasValue)
+                query = query.Where(r => r.Session.SectionId == sectionId.Value);
+
+            return await query.OrderByDescending(r => r.CreatedDate).ToListAsync();
         }
     }
 }

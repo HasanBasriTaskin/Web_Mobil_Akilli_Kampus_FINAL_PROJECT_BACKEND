@@ -1,8 +1,8 @@
-using Microsoft.EntityFrameworkCore;
+
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
+using System.Linq;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
-using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Attendance;
 using SMARTCAMPUS.EntityLayer.Enums;
@@ -12,31 +12,19 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 {
     public class AttendanceManager : IAttendanceService
     {
-        private readonly IAttendanceSessionDal _sessionDal;
-        private readonly IAttendanceRecordDal _recordDal;
-        private readonly IExcuseRequestDal _excuseDal;
-        private readonly CampusContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public AttendanceManager(
-            IAttendanceSessionDal sessionDal,
-            IAttendanceRecordDal recordDal,
-            IExcuseRequestDal excuseDal,
-            CampusContext context)
+        public AttendanceManager(IUnitOfWork unitOfWork)
         {
-            _sessionDal = sessionDal;
-            _recordDal = recordDal;
-            _excuseDal = excuseDal;
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Response<AttendanceSessionDto>> CreateSessionAsync(int instructorId, CreateSessionDto dto)
         {
             // Verify instructor owns this section
-            var section = await _context.CourseSections
-                .Include(s => s.Course)
-                .FirstOrDefaultAsync(s => s.Id == dto.SectionId && s.InstructorId == instructorId);
-
-            if (section == null)
+            var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(dto.SectionId);
+            
+            if (section == null || section.InstructorId != instructorId)
                 return Response<AttendanceSessionDto>.Fail("Section not found or access denied", 404);
 
             // Generate QR Code (simple unique identifier)
@@ -56,11 +44,18 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 Status = AttendanceSessionStatus.Open
             };
 
-            await _sessionDal.AddAsync(session);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.AttendanceSessions.AddAsync(session);
+            await _unitOfWork.CommitAsync();
 
-            var enrolledCount = await _context.Enrollments
-                .CountAsync(e => e.SectionId == dto.SectionId && e.Status == EnrollmentStatus.Enrolled);
+            var enrolledCount = section.EnrolledCount; // Was CountAsync on Enrollments, but Section usually holds this count.
+            // Or count manually if needed? 
+            // Better to use DAL if EnrolledCount might be out of sync? 
+            // But we trust EnrolledCount usually. 
+            // Let's use Enrollments DAL to be safe as per original logic.
+            // var enrolledCount = await _context.Enrollments.CountAsync...
+            // UoW Enrollments usually inherits GenericRepository.
+            // I can use Where().CountAsync() via Repository.
+            var enrolledCountSafe = await _unitOfWork.Enrollments.CountAsync(e => e.SectionId == dto.SectionId && e.Status == EnrollmentStatus.Enrolled);
 
             var result = new AttendanceSessionDto
             {
@@ -77,9 +72,9 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 CourseCode = section.Course.Code,
                 CourseName = section.Course.Name,
                 SectionNumber = section.SectionNumber,
-                TotalStudents = enrolledCount,
+                TotalStudents = enrolledCountSafe,
                 PresentCount = 0,
-                AbsentCount = enrolledCount
+                AbsentCount = enrolledCountSafe
             };
 
             return Response<AttendanceSessionDto>.Success(result, 201);
@@ -87,11 +82,11 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<AttendanceSessionDto>> GetSessionByIdAsync(int sessionId)
         {
-            var session = await _sessionDal.GetSessionWithRecordsAsync(sessionId);
+            var session = await _unitOfWork.AttendanceSessions.GetSessionWithRecordsAsync(sessionId);
             if (session == null)
                 return Response<AttendanceSessionDto>.Fail("Session not found", 404);
 
-            var enrolledCount = await _context.Enrollments
+            var enrolledCount = await _unitOfWork.Enrollments
                 .CountAsync(e => e.SectionId == session.SectionId && e.Status == EnrollmentStatus.Enrolled);
 
             var result = new AttendanceSessionDto
@@ -119,25 +114,24 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<NoDataDto>> CloseSessionAsync(int instructorId, int sessionId)
         {
-            var session = await _context.AttendanceSessions
-                .FirstOrDefaultAsync(s => s.Id == sessionId && s.InstructorId == instructorId);
+            var session = await _unitOfWork.AttendanceSessions.GetByIdAsync(sessionId);
 
-            if (session == null)
+            if (session == null || session.InstructorId != instructorId)
                 return Response<NoDataDto>.Fail("Session not found or access denied", 404);
 
             if (session.Status != AttendanceSessionStatus.Open)
                 return Response<NoDataDto>.Fail("Session is not open", 400);
 
             session.Status = AttendanceSessionStatus.Closed;
-            _sessionDal.Update(session);
-            await _context.SaveChangesAsync();
+            _unitOfWork.AttendanceSessions.Update(session);
+            await _unitOfWork.CommitAsync();
 
             return Response<NoDataDto>.Success(200);
         }
 
         public async Task<Response<IEnumerable<AttendanceSessionDto>>> GetMySessionsAsync(int instructorId)
         {
-            var sessions = await _sessionDal.GetSessionsByInstructorAsync(instructorId);
+            var sessions = await _unitOfWork.AttendanceSessions.GetSessionsByInstructorAsync(instructorId);
 
             var result = sessions.Select(s => new AttendanceSessionDto
             {
@@ -157,7 +151,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<IEnumerable<AttendanceRecordDto>>> GetSessionRecordsAsync(int sessionId)
         {
-            var records = await _recordDal.GetRecordsBySessionAsync(sessionId);
+            var records = await _unitOfWork.AttendanceRecords.GetRecordsBySessionAsync(sessionId);
 
             var result = records.Select(r => new AttendanceRecordDto
             {
@@ -178,7 +172,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<CheckInResultDto>> CheckInAsync(int studentId, int sessionId, CheckInDto dto)
         {
-            var session = await _context.AttendanceSessions.FindAsync(sessionId);
+            var session = await _unitOfWork.AttendanceSessions.GetByIdAsync(sessionId);
             if (session == null)
                 return Response<CheckInResultDto>.Fail("Session not found", 404);
 
@@ -186,14 +180,14 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 return Response<CheckInResultDto>.Fail("Session is not open", 400);
 
             // Check if student is enrolled in this section
-            var isEnrolled = await _context.Enrollments
+            var isEnrolled = await _unitOfWork.Enrollments
                 .AnyAsync(e => e.StudentId == studentId && e.SectionId == session.SectionId && e.Status == EnrollmentStatus.Enrolled);
 
             if (!isEnrolled)
                 return Response<CheckInResultDto>.Fail("Not enrolled in this course", 403);
 
             // Check if already checked in
-            var alreadyCheckedIn = await _recordDal.HasStudentCheckedInAsync(sessionId, studentId);
+            var alreadyCheckedIn = await _unitOfWork.AttendanceRecords.HasStudentCheckedInAsync(sessionId, studentId);
             if (alreadyCheckedIn)
                 return Response<CheckInResultDto>.Fail("Already checked in", 400);
 
@@ -229,8 +223,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 FlagReason = flagReason
             };
 
-            await _recordDal.AddAsync(record);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.AttendanceRecords.AddAsync(record);
+            await _unitOfWork.CommitAsync();
 
             var result = new CheckInResultDto
             {
@@ -247,29 +241,30 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
         public async Task<Response<IEnumerable<StudentAttendanceDto>>> GetMyAttendanceAsync(int studentId)
         {
             // Get all enrollments for the student
-            var enrollments = await _context.Enrollments
-                .Where(e => e.StudentId == studentId && e.Status == EnrollmentStatus.Enrolled)
-                .Include(e => e.Section)
-                    .ThenInclude(s => s.Course)
-                .ToListAsync();
+            var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(studentId);
+            // The method GetEnrollmentsByStudentAsync likely doesn't filter by Enrolled status inside DAL, so filter here.
+            var activeEnrollments = enrollments.Where(e => e.Status == EnrollmentStatus.Enrolled).ToList();
 
             var result = new List<StudentAttendanceDto>();
 
-            foreach (var enrollment in enrollments)
+            foreach (var enrollment in activeEnrollments)
             {
-                var sessions = await _context.AttendanceSessions
-                    .Where(s => s.SectionId == enrollment.SectionId)
-                    .ToListAsync();
+                // Note: GetById on Session Dal might not be efficient for listing. 
+                // But we need sessions for this section.
+                // UoW.AttendanceSessions should support getting by section if possible. 
+                // Repository has Where.
+                var sessions = await _unitOfWork.AttendanceSessions
+                    .GetListAsync(s => s.SectionId == enrollment.SectionId);
 
-                var attendedCount = await _context.AttendanceRecords
+                var attendedCount = await _unitOfWork.AttendanceRecords
                     .CountAsync(r => r.StudentId == studentId && r.Session.SectionId == enrollment.SectionId);
 
-                var excusedCount = await _context.ExcuseRequests
-                    .CountAsync(er => er.StudentId == studentId 
+                var excusedCount = await _unitOfWork.ExcuseRequests
+                    .CountAsync((ExcuseRequest er) => er.StudentId == studentId 
                         && er.Session.SectionId == enrollment.SectionId 
                         && er.Status == ExcuseRequestStatus.Approved);
 
-                var totalSessions = sessions.Count;
+                var totalSessions = sessions.Count();
                 var effectiveAttendance = totalSessions > 0 
                     ? (attendedCount + excusedCount) * 100.0 / totalSessions 
                     : 100;
@@ -298,10 +293,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<ExcuseRequestDto>> CreateExcuseRequestAsync(int studentId, CreateExcuseRequestDto dto, string? documentUrl)
         {
-            var session = await _context.AttendanceSessions
-                .Include(s => s.Section)
-                    .ThenInclude(sec => sec.Course)
-                .FirstOrDefaultAsync(s => s.Id == dto.SessionId);
+            var session = await _unitOfWork.AttendanceSessions.GetSessionWithRecordsAsync(dto.SessionId);
 
             if (session == null)
                 return Response<ExcuseRequestDto>.Fail("Session not found", 404);
@@ -312,15 +304,25 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 SessionId = dto.SessionId,
                 Reason = dto.Reason,
                 DocumentUrl = documentUrl,
-                Status = ExcuseRequestStatus.Pending
+                Status = ExcuseRequestStatus.Pending,
+                CreatedDate = DateTime.UtcNow // Ensure created date is set
             };
 
-            await _excuseDal.AddAsync(excuseRequest);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.ExcuseRequests.AddAsync(excuseRequest);
+            await _unitOfWork.CommitAsync();
 
-            var student = await _context.Students
-                .Include(s => s.User)
-                .FirstOrDefaultAsync(s => s.Id == studentId);
+            var student = await _unitOfWork.Students.GetByIdAsync(studentId); // Assuming GetById handles loading User if lazy loading enabled? 
+            // GenericRepository GetByIdAsync usually just Finds. 
+            // We might need GetWithDetails.
+            // But let's assume standard behavior for now. 
+            // Actually, we can just use the Student object if we had it.
+            // Let's assume lazy loading or we fetch it.
+            // EF Core default GenericRepository might not Include User.
+            // Safe bet: Fetch student with details or just use known data.
+            // For now, let's look up via UoW.Students.GetByUserIdAsync if we had userId, but we have studentId.
+            // Let's use Where + Include via repository.
+            // Use Repository Method
+            var studentWithUser = await _unitOfWork.Students.GetStudentWithDetailsAsync(studentId);
 
             var result = new ExcuseRequestDto
             {
@@ -330,8 +332,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 Status = excuseRequest.Status,
                 CreatedDate = excuseRequest.CreatedDate,
                 StudentId = studentId,
-                StudentNumber = student?.StudentNumber ?? "",
-                StudentName = student?.User.FullName ?? "",
+                StudentNumber = studentWithUser?.StudentNumber ?? "",
+                StudentName = studentWithUser?.User.FullName ?? "",
                 SessionId = dto.SessionId,
                 SessionDate = session.Date,
                 CourseCode = session.Section.Course.Code,
@@ -343,18 +345,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<IEnumerable<ExcuseRequestDto>>> GetExcuseRequestsAsync(int instructorId, int? sectionId = null)
         {
-            var query = _context.ExcuseRequests
-                .Include(r => r.Student)
-                    .ThenInclude(s => s.User)
-                .Include(r => r.Session)
-                    .ThenInclude(s => s.Section)
-                        .ThenInclude(sec => sec.Course)
-                .Where(r => r.Session.InstructorId == instructorId);
-
-            if (sectionId.HasValue)
-                query = query.Where(r => r.Session.SectionId == sectionId.Value);
-
-            var requests = await query.OrderByDescending(r => r.CreatedDate).ToListAsync();
+            var requests = await _unitOfWork.ExcuseRequests.GetRequestsByInstructorAsync(instructorId, sectionId);
 
             var result = requests.Select(r => new ExcuseRequestDto
             {
@@ -379,9 +370,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<NoDataDto>> ApproveExcuseRequestAsync(int instructorId, int requestId, ReviewExcuseRequestDto dto)
         {
-            var request = await _context.ExcuseRequests
-                .Include(r => r.Session)
-                .FirstOrDefaultAsync(r => r.Id == requestId && r.Session.InstructorId == instructorId);
+            // Use Repository Method
+            var request = await _unitOfWork.ExcuseRequests.GetRequestWithDetailsAsync(requestId, instructorId);
 
             if (request == null)
                 return Response<NoDataDto>.Fail("Request not found or access denied", 404);
@@ -391,17 +381,15 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             request.ReviewedById = instructorId.ToString();
             request.Notes = dto.Notes;
 
-            _excuseDal.Update(request);
-            await _context.SaveChangesAsync();
+            _unitOfWork.ExcuseRequests.Update(request);
+            await _unitOfWork.CommitAsync();
 
             return Response<NoDataDto>.Success(200);
         }
 
         public async Task<Response<NoDataDto>> RejectExcuseRequestAsync(int instructorId, int requestId, ReviewExcuseRequestDto dto)
         {
-            var request = await _context.ExcuseRequests
-                .Include(r => r.Session)
-                .FirstOrDefaultAsync(r => r.Id == requestId && r.Session.InstructorId == instructorId);
+            var request = await _unitOfWork.ExcuseRequests.GetRequestWithDetailsAsync(requestId, instructorId);
 
             if (request == null)
                 return Response<NoDataDto>.Fail("Request not found or access denied", 404);
@@ -411,8 +399,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             request.ReviewedById = instructorId.ToString();
             request.Notes = dto.Notes;
 
-            _excuseDal.Update(request);
-            await _context.SaveChangesAsync();
+            _unitOfWork.ExcuseRequests.Update(request);
+            await _unitOfWork.CommitAsync();
 
             return Response<NoDataDto>.Success(200);
         }

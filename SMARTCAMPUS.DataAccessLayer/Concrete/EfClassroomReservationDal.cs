@@ -52,10 +52,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
                 .ToListAsync();
         }
 
-        public async Task<List<ClassroomReservation>> GetPendingReservationsAsync()
-        {
-            return await GetPendingAsync();
-        }
+
 
         public async Task<List<ClassroomReservation>> GetConflictsAsync(int classroomId, DateTime date, TimeSpan startTime, TimeSpan endTime, int? excludeId = null)
         {

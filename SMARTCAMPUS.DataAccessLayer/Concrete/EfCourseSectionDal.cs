@@ -30,6 +30,17 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
 
         public async Task IncrementEnrolledCountAsync(int sectionId)
         {
+            if (_context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+            {
+                var section = await _context.CourseSections.FindAsync(sectionId);
+                if (section != null && section.EnrolledCount < section.Capacity)
+                {
+                    section.EnrolledCount++;
+                    await _context.SaveChangesAsync();
+                }
+                return;
+            }
+
             // Atomic update with capacity check to prevent over-enrollment
             await _context.Database.ExecuteSqlRawAsync(
                 "UPDATE CourseSections SET EnrolledCount = EnrolledCount + 1 WHERE Id = {0} AND EnrolledCount < Capacity",
@@ -38,6 +49,17 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
 
         public async Task DecrementEnrolledCountAsync(int sectionId)
         {
+            if (_context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+            {
+                var section = await _context.CourseSections.FindAsync(sectionId);
+                if (section != null && section.EnrolledCount > 0)
+                {
+                    section.EnrolledCount--;
+                    await _context.SaveChangesAsync();
+                }
+                return;
+            }
+
             await _context.Database.ExecuteSqlRawAsync(
                 "UPDATE CourseSections SET EnrolledCount = EnrolledCount - 1 WHERE Id = {0} AND EnrolledCount > 0",
                 sectionId);

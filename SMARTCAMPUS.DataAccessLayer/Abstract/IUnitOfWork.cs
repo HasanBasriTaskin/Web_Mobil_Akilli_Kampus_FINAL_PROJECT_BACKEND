@@ -12,6 +12,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
         IRefreshTokenDal RefreshTokens { get; }
         IPasswordResetTokenDal PasswordResetTokens { get; }
         IEmailVerificationTokenDal EmailVerificationTokens { get; }
+        IUserDal Users { get; }
         
         // Part 2 - Academic Management
         ICourseDal Courses { get; }
