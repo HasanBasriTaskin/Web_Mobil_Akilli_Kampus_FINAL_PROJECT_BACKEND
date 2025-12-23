@@ -299,16 +299,6 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<NoDataDto>> CheckPrerequisitesAsync(int studentId, int courseId)
         {
-            // Recursive prerequisite check handled by _prerequisiteDal using pure keys usually.
-            // But we need to use UoW.
-            // Assuming ICoursePrerequisiteDal has `GetAllPrerequisiteIdsRecursiveAsync`
-            // and I added it to implementation?
-            // Wait, I haven't added GetAllPrerequisiteIdsRecursiveAsync to ICoursePrerequisiteDal in THIS task.
-            // It might already exist in Part 2.
-            // I should assume it exists if I am just refactoring.
-            // But if it doesn't, I need it.
-            // Let's assume it exists (Standard Part 2 feature).
-            
             var prerequisiteIds = await _unitOfWork.CoursePrerequisites.GetAllPrerequisiteIdsRecursiveAsync(courseId);
 
             if (!prerequisiteIds.Any())
@@ -321,19 +311,6 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
             if (missingPrerequisites.Any())
             {
-                // We need Course Names for error message
-                // Fetch course names for missing IDs. Can be done via CourseDal or generic Where.
-                // Using generic Where for now.
-                var missingCourses = await _unitOfWork.Courses.GetCoursesByDepartmentAsync(0); // This is not efficient.
-                // We need `GetCoursesByIdsAsync`.
-                // Or just loop GetById (bad).
-                // Or use GenericRepository Where(c => ids.Contains(c.Id)).
-                
-                // Since user wants us to avoid LINQ in Manager:
-                // I'll stick to a simple generic Where here as it's allowed by Repository pattern commonly.
-                // Or add `GetCoursesByIds` to DAL.
-                // Doing `GetById` loop for now as it's efficient enough for few prereqs.
-                
                 var missingNames = new List<string>();
                 foreach(var id in missingPrerequisites)
                 {
