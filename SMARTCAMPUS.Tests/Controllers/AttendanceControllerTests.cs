@@ -270,7 +270,7 @@ namespace SMARTCAMPUS.Tests.Controllers
             _mockService.Setup(x => x.CreateExcuseRequestAsync(1, dto, null)).ReturnsAsync(response);
 
             // Act
-            var result = await _controller.CreateExcuseRequest(dto) as ObjectResult;
+            var result = await _controller.CreateExcuseRequest(dto, null) as ObjectResult;
 
             // Assert
             result.Should().NotBeNull();
@@ -284,7 +284,7 @@ namespace SMARTCAMPUS.Tests.Controllers
             SetupEmptyUser();
 
             // Act
-            var result = await _controller.CreateExcuseRequest(new CreateExcuseRequestDto()) as UnauthorizedObjectResult;
+            var result = await _controller.CreateExcuseRequest(new CreateExcuseRequestDto(), null) as UnauthorizedObjectResult;
 
             // Assert
             result.Should().NotBeNull();

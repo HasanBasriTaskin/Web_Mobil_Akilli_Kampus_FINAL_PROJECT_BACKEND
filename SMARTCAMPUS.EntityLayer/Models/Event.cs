@@ -44,6 +44,10 @@ namespace SMARTCAMPUS.EntityLayer.Models
         [ForeignKey("CreatedByUserId")]
         public User CreatedBy { get; set; } = null!;
         
+        // Optimistic Locking için RowVersion
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = null!;
+        
         // Navigation Properties
         public ICollection<EventRegistration> Registrations { get; set; } = new List<EventRegistration>();
         public ICollection<EventWaitlist> Waitlists { get; set; } = new List<EventWaitlist>();
