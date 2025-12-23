@@ -257,6 +257,59 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             return Response<NoDataDto>.Success(200);
         }
 
+        public async Task<Response<TopUpResultDto>> AddBalanceAsync(string userId, decimal amount, string transactionId)
+        {
+            // ACID Transaction başlat
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var wallet = await GetOrCreateWalletAsync(userId);
+
+                if (!wallet.IsActive)
+                    return Response<TopUpResultDto>.Fail("Cüzdan aktif değil", 400);
+
+                // Transaction ID string olduğu için Description içinde arıyoruz
+                var recentTransactions = await _unitOfWork.WalletTransactions.GetByWalletIdPagedAsync(wallet.Id, 1, 10);
+                if (recentTransactions.Any(t => t.Description != null && t.Description.Contains(transactionId)))
+                     return Response<TopUpResultDto>.Fail("Bu işlem daha önce işlenmiş", 400);
+
+                wallet.Balance += amount;
+                wallet.UpdatedDate = DateTime.UtcNow;
+                _unitOfWork.Wallets.Update(wallet);
+
+                var walletTransaction = new WalletTransaction
+                {
+                    WalletId = wallet.Id,
+                    Type = TransactionType.Credit,
+                    Amount = amount,
+                    BalanceAfter = wallet.Balance,
+                    ReferenceType = ReferenceType.TopUp,
+                    ReferenceId = null, // Iyzico transaction ID farklı formatta ise Description'da tutuyoruz
+                    Description = $"Iyzico Ödeme - {transactionId}",
+                    TransactionDate = DateTime.UtcNow,
+                    IsActive = true,
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                await _unitOfWork.WalletTransactions.AddAsync(walletTransaction);
+                await _unitOfWork.CommitAsync();
+                await transaction.CommitAsync();
+
+                var result = new TopUpResultDto
+                {
+                    NewBalance = wallet.Balance,
+                    TransactionId = walletTransaction.Id
+                };
+
+                return Response<TopUpResultDto>.Success(result, 200);
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
         private async Task<Wallet> GetOrCreateWalletAsync(string userId)
         {
             var wallet = await _unitOfWork.Wallets.GetByUserIdAsync(userId);

@@ -19,5 +19,8 @@ namespace SMARTCAMPUS.BusinessLayer.Abstract
         // Admin işlemleri
         Task<Response<WalletDto>> GetWalletByUserIdAsync(string userId);
         Task<Response<NoDataDto>> SetWalletStatusAsync(string userId, bool isActive);
+
+        // Webhook tarafından kullanılır
+        Task<Response<TopUpResultDto>> AddBalanceAsync(string userId, decimal amount, string transactionId);
     }
 }

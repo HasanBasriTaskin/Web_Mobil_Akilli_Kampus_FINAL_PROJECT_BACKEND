@@ -6,5 +6,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
     public interface IUserDal
     {
         Task<(List<UserListDto> Users, int TotalCount)> GetUsersWithRolesAsync(UserQueryParameters queryParams);
+        Task<User?> GetByIdAsync(string id);
     }
 }
