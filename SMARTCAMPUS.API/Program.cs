@@ -105,6 +105,22 @@ builder.Services.AddScoped<IAttendanceRecordDal, EfAttendanceRecordDal>();
 builder.Services.AddScoped<IExcuseRequestDal, EfExcuseRequestDal>();
 builder.Services.AddScoped<IClassroomDal, EfClassroomDal>();
 
+// Part 3 Repositories
+builder.Services.AddScoped<ICafeteriaDal, EfCafeteriaDal>();
+builder.Services.AddScoped<IFoodItemDal, EfFoodItemDal>();
+builder.Services.AddScoped<IMealMenuDal, EfMealMenuDal>();
+builder.Services.AddScoped<IMealMenuItemDal, EfMealMenuItemDal>();
+builder.Services.AddScoped<IMealNutritionDal, EfMealNutritionDal>();
+builder.Services.AddScoped<IMealReservationDal, EfMealReservationDal>();
+builder.Services.AddScoped<IWalletDal, EfWalletDal>();
+builder.Services.AddScoped<IWalletTransactionDal, EfWalletTransactionDal>();
+builder.Services.AddScoped<IEventCategoryDal, EfEventCategoryDal>();
+builder.Services.AddScoped<IEventDal, EfEventDal>();
+builder.Services.AddScoped<IEventRegistrationDal, EfEventRegistrationDal>();
+builder.Services.AddScoped<IEventWaitlistDal, EfEventWaitlistDal>();
+builder.Services.AddScoped<IScheduleDal, EfScheduleDal>();
+builder.Services.AddScoped<IClassroomReservationDal, EfClassroomReservationDal>();
+
 // 5. Business Layer Services (AutoMapper & FluentValidation & Tools)
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddScoped<JwtTokenGenerator>();
@@ -118,6 +134,19 @@ builder.Services.AddScoped<ICourseService, CourseManager>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentManager>();
 builder.Services.AddScoped<IAttendanceService, AttendanceManager>();
 
+// Part 3 Services
+builder.Services.AddScoped<IQRCodeService, QRCodeManager>();
+builder.Services.AddScoped<ICafeteriaService, CafeteriaManager>();
+builder.Services.AddScoped<IFoodItemService, FoodItemManager>();
+builder.Services.AddScoped<IMealMenuService, MealMenuManager>();
+    builder.Services.AddScoped<IMockPaymentService, MockPaymentManager>();
+    builder.Services.AddScoped<IPaymentService, IyzicoPaymentManager>();
+    builder.Services.AddScoped<IWalletService, WalletManager>();
+builder.Services.AddScoped<IMealReservationService, MealReservationManager>();
+builder.Services.AddScoped<IEventCategoryService, EventCategoryManager>();
+builder.Services.AddScoped<IEventService, EventManager>();
+builder.Services.AddScoped<IScheduleService, ScheduleManager>();
+builder.Services.AddScoped<IClassroomReservationService, ClassroomReservationManager>();
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>(); // Scans assembly for all AbstractValidator<T>

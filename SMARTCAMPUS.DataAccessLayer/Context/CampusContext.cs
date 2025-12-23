@@ -30,6 +30,28 @@ namespace SMARTCAMPUS.DataAccessLayer.Context
         public DbSet<AttendanceSession> AttendanceSessions { get; set; }
         public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
         public DbSet<ExcuseRequest> ExcuseRequests { get; set; }
+        
+        // Part 3 - Meal & Cafeteria
+        public DbSet<Cafeteria> Cafeterias { get; set; }
+        public DbSet<FoodItem> FoodItems { get; set; }
+        public DbSet<MealMenu> MealMenus { get; set; }
+        public DbSet<MealMenuItem> MealMenuItems { get; set; }
+        public DbSet<MealNutrition> MealNutritions { get; set; }
+        public DbSet<MealReservation> MealReservations { get; set; }
+        
+        // Part 3 - Wallet
+        public DbSet<Wallet> Wallets { get; set; }
+        public DbSet<WalletTransaction> WalletTransactions { get; set; }
+        
+        // Part 3 - Events
+        public DbSet<EventCategory> EventCategories { get; set; }
+        public DbSet<Event> Events { get; set; }
+        public DbSet<EventRegistration> EventRegistrations { get; set; }
+        public DbSet<EventWaitlist> EventWaitlists { get; set; }
+        
+        // Part 3 - Scheduling
+        public DbSet<Schedule> Schedules { get; set; }
+        public DbSet<ClassroomReservation> ClassroomReservations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
