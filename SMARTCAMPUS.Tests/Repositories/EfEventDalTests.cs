@@ -37,7 +37,7 @@ namespace SMARTCAMPUS.Tests.Repositories
             // Arrange
             var cat = new EventCategory { Name = "Music" };
             var user = new User { Id = "u1", FullName = "Organizer" };
-            var evt = new Event { Title = "Concert", Description = "Desc", Location = "Hall", Category = cat, CreatedBy = user, CreatedById = "u1" };
+            var evt = new Event { Title = "Concert", Description = "Desc", Location = "Hall", Category = cat, CreatedBy = user, CreatedByUserId = "u1", StartDate = DateTime.Now, EndDate = DateTime.Now.AddHours(2) };
 
             _context.EventCategories.Add(cat);
             _context.Users.Add(user);
