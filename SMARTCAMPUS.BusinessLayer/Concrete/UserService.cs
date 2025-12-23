@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
-using SMARTCAMPUS.DataAccessLayer.Context;
+using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Auth;
 using SMARTCAMPUS.EntityLayer.DTOs.User;
@@ -16,87 +16,20 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
     {
         private readonly UserManager<User> _userManager;
         private readonly IMapper _mapper;
-        private readonly CampusContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
         // Note: Using 'UserManager' here refers to Identity's UserManager
-        public UserService(UserManager<User> userManager, IMapper mapper, CampusContext context)
+        public UserService(UserManager<User> userManager, IMapper mapper, IUnitOfWork unitOfWork)
         {
             _userManager = userManager;
             _mapper = mapper;
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Response<PagedResponse<UserListDto>>> GetUsersAsync(UserQueryParameters queryParams)
         {
-            // Base query
-            var usersQuery = _context.Users.AsQueryable();
-
-            // Search filter (name veya email)
-            if (!string.IsNullOrWhiteSpace(queryParams.Search))
-            {
-                var searchLower = queryParams.Search.ToLower();
-                usersQuery = usersQuery.Where(u => 
-                    u.FullName.ToLower().Contains(searchLower) || 
-                    u.Email!.ToLower().Contains(searchLower));
-            }
-
-            // Department filter
-            if (queryParams.DepartmentId.HasValue)
-            {
-                var departmentId = queryParams.DepartmentId.Value;
-                // Student veya Faculty departmanına göre filtrele
-                var studentUserIds = _context.Students
-                    .Where(s => s.DepartmentId == departmentId)
-                    .Select(s => s.UserId);
-                var facultyUserIds = _context.Faculties
-                    .Where(f => f.DepartmentId == departmentId)
-                    .Select(f => f.UserId);
-                
-                usersQuery = usersQuery.Where(u => 
-                    studentUserIds.Contains(u.Id) || facultyUserIds.Contains(u.Id));
-            }
-
-            // Role filter
-            if (!string.IsNullOrWhiteSpace(queryParams.Role))
-            {
-                var roleId = await _context.Roles
-                    .Where(r => r.Name == queryParams.Role)
-                    .Select(r => r.Id)
-                    .FirstOrDefaultAsync();
-                
-                if (!string.IsNullOrEmpty(roleId))
-                {
-                    var userIdsWithRole = _context.UserRoles
-                        .Where(ur => ur.RoleId == roleId)
-                        .Select(ur => ur.UserId);
-                    
-                    usersQuery = usersQuery.Where(u => userIdsWithRole.Contains(u.Id));
-                }
-            }
-
-            // Projection with roles
-            var query = from u in usersQuery
-                        select new UserListDto
-                        {
-                            Id = u.Id,
-                            FullName = u.FullName,
-                            Email = u.Email!,
-                            PhoneNumber = u.PhoneNumber,
-                            IsActive = u.IsActive,
-                            Roles = (from ur in _context.UserRoles
-                                     join r in _context.Roles on ur.RoleId equals r.Id
-                                     where ur.UserId == u.Id
-                                     select r.Name!).ToList()
-                        };
-
-            var totalRecords = await query.CountAsync();
-            
-            var userDtos = await query
-                .Skip((queryParams.Page - 1) * queryParams.Limit)
-                .Take(queryParams.Limit)
-                .ToListAsync();
-
-            var pagedResponse = new PagedResponse<UserListDto>(userDtos, queryParams.Page, queryParams.Limit, totalRecords);
+            var (users, totalRecords) = await _unitOfWork.Users.GetUsersWithRolesAsync(queryParams);
+            var pagedResponse = new PagedResponse<UserListDto>(users, queryParams.Page, queryParams.Limit, totalRecords);
             return Response<PagedResponse<UserListDto>>.Success(pagedResponse, 200);
         }
 
@@ -126,7 +59,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             // Fetch Student or Faculty info based on role
             if (primaryRole == "Student")
             {
-                var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == user.Id);
+                var student = await _unitOfWork.Students.GetByUserIdAsync(user.Id);
                 if (student != null)
                 {
                     userDto.Student = new StudentInfoDto
@@ -139,7 +72,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
             else if (primaryRole == "Faculty")
             {
-                var faculty = await _context.Faculties.FirstOrDefaultAsync(f => f.UserId == user.Id);
+                var faculty = await _unitOfWork.Faculties.GetByUserIdAsync(user.Id);
                 if (faculty != null)
                 {
                     userDto.Faculty = new FacultyInfoDto
@@ -183,17 +116,15 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             user.IsActive = false;
             
             // Invalidate all refresh tokens for this user
-            var activeTokens = await _context.RefreshTokens.Where(x => x.UserId == userId && x.Revoked == null).ToListAsync();
-            foreach (var token in activeTokens)
+            var tokens = await _unitOfWork.RefreshTokens.Where(x => x.UserId == userId && x.Revoked == null).ToListAsync();
+            foreach (var token in tokens)
             {
                 token.Revoked = DateTime.UtcNow;
                 token.ReasonRevoked = "User deleted (Soft Delete)";
+                _unitOfWork.RefreshTokens.Update(token);
             }
             
-            // Persist token changes
-            await _context.SaveChangesAsync();
-            
-            await _context.SaveChangesAsync();
+            await _unitOfWork.CommitAsync();
             
             var result = await _userManager.UpdateAsync(user);
              if (!result.Succeeded)

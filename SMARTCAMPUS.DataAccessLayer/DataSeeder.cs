@@ -30,6 +30,11 @@ namespace SMARTCAMPUS.DataAccessLayer
             await SeedClassroomsAsync(context);
             await SeedCoursesAsync(context);
             await SeedCourseSectionsAsync(context);
+            
+            // Part 3 Seed Data
+            await SeedCafeteriasAsync(context);
+            await SeedFoodItemsAsync(context);
+            await SeedEventCategoriesAsync(context);
         }
 
         private static async Task SeedRolesAsync(RoleManager<Role> roleManager)
@@ -262,12 +267,92 @@ namespace SMARTCAMPUS.DataAccessLayer
                         Semester = "Fall",
                         Year = 2024,
                         Capacity = 40,
-                        EnrolledCount = 0,
-                        ScheduleJson = "[{\"day\":\"Monday\",\"startTime\":\"09:00\",\"endTime\":\"10:50\"},{\"day\":\"Wednesday\",\"startTime\":\"09:00\",\"endTime\":\"10:50\"}]"
+                        EnrolledCount = 0
                     });
                 }
 
                 await context.CourseSections.AddRangeAsync(sections);
+                await context.SaveChangesAsync();
+            }
+        }
+        
+        // Part 3 - Seed Cafeterias
+        private static async Task SeedCafeteriasAsync(CampusContext context)
+        {
+            if (!await context.Cafeterias.AnyAsync())
+            {
+                var cafeterias = new List<Cafeteria>
+                {
+                    new Cafeteria { Name = "Ana Yemekhane", Location = "Merkez Kampüs, A Blok", Capacity = 500 },
+                    new Cafeteria { Name = "Mühendislik Kantini", Location = "Mühendislik Fakültesi, B Blok", Capacity = 200 },
+                    new Cafeteria { Name = "Kütüphane Kafeteryası", Location = "Merkez Kütüphane, Zemin Kat", Capacity = 100 }
+                };
+                await context.Cafeterias.AddRangeAsync(cafeterias);
+                await context.SaveChangesAsync();
+            }
+        }
+        
+        // Part 3 - Seed FoodItems
+        private static async Task SeedFoodItemsAsync(CampusContext context)
+        {
+            if (!await context.FoodItems.AnyAsync())
+            {
+                var foodItems = new List<FoodItem>
+                {
+                    // Çorbalar
+                    new FoodItem { Name = "Mercimek Çorbası", Category = EntityLayer.Enums.MealItemCategory.Soup, Calories = 150 },
+                    new FoodItem { Name = "Ezogelin Çorbası", Category = EntityLayer.Enums.MealItemCategory.Soup, Calories = 140 },
+                    new FoodItem { Name = "Domates Çorbası", Category = EntityLayer.Enums.MealItemCategory.Soup, Calories = 120 },
+                    new FoodItem { Name = "Tarhana Çorbası", Category = EntityLayer.Enums.MealItemCategory.Soup, Calories = 130 },
+                    
+                    // Ana Yemekler
+                    new FoodItem { Name = "Tavuk Sote", Category = EntityLayer.Enums.MealItemCategory.MainCourse, Calories = 350 },
+                    new FoodItem { Name = "Etli Kuru Fasulye", Category = EntityLayer.Enums.MealItemCategory.MainCourse, Calories = 400 },
+                    new FoodItem { Name = "İzmir Köfte", Category = EntityLayer.Enums.MealItemCategory.MainCourse, Calories = 380 },
+                    new FoodItem { Name = "Fırın Tavuk", Category = EntityLayer.Enums.MealItemCategory.MainCourse, Calories = 320 },
+                    new FoodItem { Name = "Etli Nohut", Category = EntityLayer.Enums.MealItemCategory.MainCourse, Calories = 380 },
+                    
+                    // Yan Yemekler
+                    new FoodItem { Name = "Pirinç Pilavı", Category = EntityLayer.Enums.MealItemCategory.SideDish, Calories = 200 },
+                    new FoodItem { Name = "Bulgur Pilavı", Category = EntityLayer.Enums.MealItemCategory.SideDish, Calories = 180 },
+                    new FoodItem { Name = "Makarna", Category = EntityLayer.Enums.MealItemCategory.SideDish, Calories = 220 },
+                    new FoodItem { Name = "Patates Püresi", Category = EntityLayer.Enums.MealItemCategory.SideDish, Calories = 190 },
+                    
+                    // Salatalar
+                    new FoodItem { Name = "Mevsim Salatası", Category = EntityLayer.Enums.MealItemCategory.Salad, Calories = 50 },
+                    new FoodItem { Name = "Çoban Salatası", Category = EntityLayer.Enums.MealItemCategory.Salad, Calories = 60 },
+                    new FoodItem { Name = "Cacık", Category = EntityLayer.Enums.MealItemCategory.Salad, Calories = 80 },
+                    
+                    // İçecekler
+                    new FoodItem { Name = "Ayran", Category = EntityLayer.Enums.MealItemCategory.Beverage, Calories = 70 },
+                    new FoodItem { Name = "Komposto", Category = EntityLayer.Enums.MealItemCategory.Beverage, Calories = 90 },
+                    new FoodItem { Name = "Limonata", Category = EntityLayer.Enums.MealItemCategory.Beverage, Calories = 100 },
+                    
+                    // Tatlılar
+                    new FoodItem { Name = "Sütlaç", Category = EntityLayer.Enums.MealItemCategory.Dessert, Calories = 200 },
+                    new FoodItem { Name = "Puding", Category = EntityLayer.Enums.MealItemCategory.Dessert, Calories = 180 },
+                    new FoodItem { Name = "Meyve", Category = EntityLayer.Enums.MealItemCategory.Dessert, Calories = 80 }
+                };
+                await context.FoodItems.AddRangeAsync(foodItems);
+                await context.SaveChangesAsync();
+            }
+        }
+        
+        // Part 3 - Seed EventCategories
+        private static async Task SeedEventCategoriesAsync(CampusContext context)
+        {
+            if (!await context.EventCategories.AnyAsync())
+            {
+                var categories = new List<EventCategory>
+                {
+                    new EventCategory { Name = "Kültürel Etkinlikler", Description = "Konserler, tiyatro, sergi ve kültürel organizasyonlar", IconName = "cultural" },
+                    new EventCategory { Name = "Spor Etkinlikleri", Description = "Turnuvalar, maçlar ve spor aktiviteleri", IconName = "sports" },
+                    new EventCategory { Name = "Akademik Etkinlikler", Description = "Konferanslar, seminerler ve akademik sunumlar", IconName = "academic" },
+                    new EventCategory { Name = "Sosyal Etkinlikler", Description = "Öğrenci toplantıları, partiler ve sosyal organizasyonlar", IconName = "social" },
+                    new EventCategory { Name = "Kariyer Etkinlikleri", Description = "Kariyer fuarları, iş görüşmeleri ve staj tanıtımları", IconName = "career" },
+                    new EventCategory { Name = "Atölye Çalışmaları", Description = "Workshop, eğitim ve uygulamalı çalışmalar", IconName = "workshop" }
+                };
+                await context.EventCategories.AddRangeAsync(categories);
                 await context.SaveChangesAsync();
             }
         }

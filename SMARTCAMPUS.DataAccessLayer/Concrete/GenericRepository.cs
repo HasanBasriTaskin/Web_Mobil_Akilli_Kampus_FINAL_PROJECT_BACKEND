@@ -32,6 +32,16 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
             return await _dbSet.AnyAsync(expression);
         }
 
+        public async Task<int> CountAsync(Expression<Func<T, bool>> expression)
+        {
+            return await _dbSet.CountAsync(expression);
+        }
+
+        public async Task<IEnumerable<T>> GetListAsync(Expression<Func<T, bool>> expression)
+        {
+            return await _dbSet.Where(expression).ToListAsync();
+        }
+
         public async Task<IEnumerable<T>> GetAllAsync()
         {
             return await _dbSet.ToListAsync();
