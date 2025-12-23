@@ -220,11 +220,15 @@ namespace SMARTCAMPUS.Tests.Managers
         [Fact]
         public async Task GetPrerequisitesAsync_ShouldReturnPrereqs()
         {
-            // Arrange
+            // Arrange - Need to properly seed courses first, then create prerequisite relationship
             var c1 = new Course { Id = 1, Code = "C1", Name = "C1" };
             var c2 = new Course { Id = 2, Code = "C2", Name = "C2" };
             await _context.Courses.AddRangeAsync(c1, c2);
-            await _context.CoursePrerequisites.AddAsync(new CoursePrerequisite { CourseId = 1, PrerequisiteCourseId = 2, PrerequisiteCourse = c2 });
+            await _context.SaveChangesAsync();
+
+            // Add prerequisite after courses are saved
+            var prereq = new CoursePrerequisite { CourseId = 1, PrerequisiteCourseId = 2 };
+            await _context.CoursePrerequisites.AddAsync(prereq);
             await _context.SaveChangesAsync();
 
             // Act
