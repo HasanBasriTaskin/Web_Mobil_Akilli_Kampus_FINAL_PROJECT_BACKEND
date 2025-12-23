@@ -30,9 +30,9 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
             builder.Property(x => x.CreatedByUserId)
                 .IsRequired();
 
-            // Optimistic Locking - RowVersion
-            builder.Property(x => x.RowVersion)
-                .IsRowVersion();
+            // Optimistic Locking - Version (MySQL uyumlu)
+            builder.Property(x => x.Version)
+                .IsConcurrencyToken();
 
             // Index for quick lookup by date
             builder.HasIndex(x => x.StartDate);
@@ -54,3 +54,4 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
         }
     }
 }
+

@@ -178,7 +178,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AcademicCalendar");
+                    b.ToTable("AcademicCalendar", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Announcement", b =>
@@ -238,7 +238,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("DepartmentId");
 
-                    b.ToTable("Announcement");
+                    b.ToTable("Announcement", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.AttendanceRecord", b =>
@@ -290,7 +290,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("SessionId", "StudentId")
                         .IsUnique();
 
-                    b.ToTable("AttendanceRecords");
+                    b.ToTable("AttendanceRecords", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.AttendanceSession", b =>
@@ -348,7 +348,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("SectionId");
 
-                    b.ToTable("AttendanceSessions");
+                    b.ToTable("AttendanceSessions", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Cafeteria", b =>
@@ -386,7 +386,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Cafeterias");
+                    b.ToTable("Cafeterias", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Classroom", b =>
@@ -433,7 +433,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("Building", "RoomNumber")
                         .IsUnique();
 
-                    b.ToTable("Classrooms");
+                    b.ToTable("Classrooms", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.ClassroomReservation", b =>
@@ -490,7 +490,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("ClassroomId", "ReservationDate", "StartTime", "EndTime");
 
-                    b.ToTable("ClassroomReservations");
+                    b.ToTable("ClassroomReservations", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Course", b =>
@@ -544,7 +544,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("DepartmentId");
 
-                    b.ToTable("Courses");
+                    b.ToTable("Courses", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.CoursePrerequisite", b =>
@@ -559,7 +559,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("PrerequisiteCourseId");
 
-                    b.ToTable("CoursePrerequisites");
+                    b.ToTable("CoursePrerequisites", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.CourseSection", b =>
@@ -611,7 +611,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("CourseId", "SectionNumber", "Semester", "Year")
                         .IsUnique();
 
-                    b.ToTable("CourseSections");
+                    b.ToTable("CourseSections", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Department", b =>
@@ -650,7 +650,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Departments");
+                    b.ToTable("Departments", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.EmailVerificationToken", b =>
@@ -691,7 +691,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("EmailVerificationTokens");
+                    b.ToTable("EmailVerificationTokens", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Enrollment", b =>
@@ -744,7 +744,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("StudentId", "SectionId")
                         .IsUnique();
 
-                    b.ToTable("Enrollments");
+                    b.ToTable("Enrollments", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Event", b =>
@@ -793,11 +793,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<int>("RegisteredCount")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("timestamp(6)");
-
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime(6)");
 
@@ -809,6 +804,10 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
@@ -819,7 +818,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("StartDate");
 
-                    b.ToTable("Events");
+                    b.ToTable("Events", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.EventCategory", b =>
@@ -857,7 +856,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("EventCategories");
+                    b.ToTable("EventCategories", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.EventRegistration", b =>
@@ -908,7 +907,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("EventId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("EventRegistrations");
+                    b.ToTable("EventRegistrations", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.EventWaitlist", b =>
@@ -953,7 +952,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("EventId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("EventWaitlists");
+                    b.ToTable("EventWaitlists", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.ExcuseRequest", b =>
@@ -1009,7 +1008,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("ExcuseRequests");
+                    b.ToTable("ExcuseRequests", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Faculty", b =>
@@ -1057,7 +1056,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Faculties");
+                    b.ToTable("Faculties", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.FoodItem", b =>
@@ -1100,7 +1099,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("FoodItems");
+                    b.ToTable("FoodItems", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealMenu", b =>
@@ -1141,7 +1140,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("CafeteriaId", "Date", "MealType")
                         .IsUnique();
 
-                    b.ToTable("MealMenus");
+                    b.ToTable("MealMenus", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealMenuItem", b =>
@@ -1177,7 +1176,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("MenuId", "FoodItemId")
                         .IsUnique();
 
-                    b.ToTable("MealMenuItems");
+                    b.ToTable("MealMenuItems", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealNutrition", b =>
@@ -1223,7 +1222,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("MenuId")
                         .IsUnique();
 
-                    b.ToTable("MealNutritions");
+                    b.ToTable("MealNutritions", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealReservation", b =>
@@ -1286,7 +1285,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("UserId", "Date", "MealType")
                         .IsUnique();
 
-                    b.ToTable("MealReservations");
+                    b.ToTable("MealReservations", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.PasswordResetToken", b =>
@@ -1324,7 +1323,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PasswordResetTokens");
+                    b.ToTable("PasswordResetTokens", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.RefreshToken", b =>
@@ -1371,7 +1370,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Role", b =>
@@ -1443,7 +1442,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("ClassroomId", "DayOfWeek", "StartTime", "EndTime");
 
-                    b.ToTable("Schedules");
+                    b.ToTable("Schedules", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Student", b =>
@@ -1494,7 +1493,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Students");
+                    b.ToTable("Students", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.User", b =>
@@ -1615,7 +1614,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Wallets");
+                    b.ToTable("Wallets", (string)null);
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.WalletTransaction", b =>
@@ -1668,7 +1667,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.HasIndex("WalletId");
 
-                    b.ToTable("WalletTransactions");
+                    b.ToTable("WalletTransactions", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

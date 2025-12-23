@@ -240,6 +240,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 {
                     await _unitOfWork.EventRegistrations.AddAsync(registration);
                     ev.RegisteredCount++;
+                    ev.Version++; // Optimistic locking için version artır
                     _unitOfWork.Events.Update(ev);
                     await _unitOfWork.CommitAsync();
 
