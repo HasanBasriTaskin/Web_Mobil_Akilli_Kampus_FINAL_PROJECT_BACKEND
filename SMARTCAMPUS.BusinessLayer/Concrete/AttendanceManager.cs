@@ -47,14 +47,6 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             await _unitOfWork.AttendanceSessions.AddAsync(session);
             await _unitOfWork.CommitAsync();
 
-            var enrolledCount = section.EnrolledCount; // Was CountAsync on Enrollments, but Section usually holds this count.
-            // Or count manually if needed? 
-            // Better to use DAL if EnrolledCount might be out of sync? 
-            // But we trust EnrolledCount usually. 
-            // Let's use Enrollments DAL to be safe as per original logic.
-            // var enrolledCount = await _context.Enrollments.CountAsync...
-            // UoW Enrollments usually inherits GenericRepository.
-            // I can use Where().CountAsync() via Repository.
             var enrolledCountSafe = await _unitOfWork.Enrollments.CountAsync(e => e.SectionId == dto.SectionId && e.Status == EnrollmentStatus.Enrolled);
 
             var result = new AttendanceSessionDto
@@ -311,17 +303,6 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             await _unitOfWork.ExcuseRequests.AddAsync(excuseRequest);
             await _unitOfWork.CommitAsync();
 
-            var student = await _unitOfWork.Students.GetByIdAsync(studentId); // Assuming GetById handles loading User if lazy loading enabled? 
-            // GenericRepository GetByIdAsync usually just Finds. 
-            // We might need GetWithDetails.
-            // But let's assume standard behavior for now. 
-            // Actually, we can just use the Student object if we had it.
-            // Let's assume lazy loading or we fetch it.
-            // EF Core default GenericRepository might not Include User.
-            // Safe bet: Fetch student with details or just use known data.
-            // For now, let's look up via UoW.Students.GetByUserIdAsync if we had userId, but we have studentId.
-            // Let's use Where + Include via repository.
-            // Use Repository Method
             var studentWithUser = await _unitOfWork.Students.GetStudentWithDetailsAsync(studentId);
 
             var result = new ExcuseRequestDto

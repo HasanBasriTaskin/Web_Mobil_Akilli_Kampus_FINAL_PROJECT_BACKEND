@@ -116,11 +116,6 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             user.IsActive = false;
             
             // Invalidate all refresh tokens for this user
-            // We need to implement a Revoke method in DAL if not exists, OR use generic Update loop.
-            // But DAL usually has access to context.
-            // Let's see what RefreshTokenDal has. It likely has GetByUserId.
-            // Since we moved to UoW, let's use the UoW repositories.
-            
             var tokens = await _unitOfWork.RefreshTokens.Where(x => x.UserId == userId && x.Revoked == null).ToListAsync();
             foreach (var token in tokens)
             {
