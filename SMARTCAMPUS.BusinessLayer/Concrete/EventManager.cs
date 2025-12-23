@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
@@ -195,64 +196,97 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<EventRegistrationDto>> RegisterAsync(string userId, int eventId)
         {
-            var ev = await _unitOfWork.Events.GetByIdWithDetailsAsync(eventId);
-            if (ev == null || !ev.IsActive)
-                return Response<EventRegistrationDto>.Fail("Etkinlik bulunamadı veya kayıt yapılamaz", 404);
+            const int maxRetries = 3;
+            int retryCount = 0;
 
-            var existingReg = await _unitOfWork.EventRegistrations.IsUserRegisteredAsync(eventId, userId);
-            if (existingReg)
-                return Response<EventRegistrationDto>.Fail("Bu etkinliğe zaten kayıtlısınız", 400);
-
-            if (ev.RegisteredCount >= ev.Capacity)
-                return Response<EventRegistrationDto>.Fail("Etkinlik kapasitesi dolu. Bekleme listesine katılabilirsiniz.", 400);
-
-            if (ev.Price > 0)
+            while (retryCount < maxRetries)
             {
-                var deductResult = await _walletService.DeductAsync(
-                    userId,
-                    ev.Price,
-                    ReferenceType.EventRegistration,
-                    null,
-                    $"Etkinlik kaydı: {ev.Title}");
+                var ev = await _unitOfWork.Events.GetByIdWithDetailsAsync(eventId);
+                if (ev == null || !ev.IsActive)
+                    return Response<EventRegistrationDto>.Fail("Etkinlik bulunamadı veya kayıt yapılamaz", 404);
 
-                if (!deductResult.IsSuccessful)
-                    return Response<EventRegistrationDto>.Fail(deductResult.Errors?.FirstOrDefault() ?? "Ödeme başarısız", 400);
+                var existingReg = await _unitOfWork.EventRegistrations.IsUserRegisteredAsync(eventId, userId);
+                if (existingReg)
+                    return Response<EventRegistrationDto>.Fail("Bu etkinliğe zaten kayıtlısınız", 400);
+
+                if (ev.RegisteredCount >= ev.Capacity)
+                    return Response<EventRegistrationDto>.Fail("Etkinlik kapasitesi dolu. Bekleme listesine katılabilirsiniz.", 400);
+
+                if (ev.Price > 0)
+                {
+                    var deductResult = await _walletService.DeductAsync(
+                        userId,
+                        ev.Price,
+                        ReferenceType.EventRegistration,
+                        null,
+                        $"Etkinlik kaydı: {ev.Title}");
+
+                    if (!deductResult.IsSuccessful)
+                        return Response<EventRegistrationDto>.Fail(deductResult.Errors?.FirstOrDefault() ?? "Ödeme başarısız", 400);
+                }
+
+                var registration = new EventRegistration
+                {
+                    EventId = eventId,
+                    UserId = userId,
+                    RegistrationDate = DateTime.UtcNow,
+                    QRCode = _qrCodeService.GenerateQRCode("EVENT", 0),
+                    CheckedIn = false,
+                    IsActive = true,
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                try
+                {
+                    await _unitOfWork.EventRegistrations.AddAsync(registration);
+                    ev.RegisteredCount++;
+                    _unitOfWork.Events.Update(ev);
+                    await _unitOfWork.CommitAsync();
+
+                    // Kayıt başarılı, QR kodu güncelle
+                    registration.QRCode = _qrCodeService.GenerateQRCode("EVENT", registration.Id);
+                    _unitOfWork.EventRegistrations.Update(registration);
+                    await _unitOfWork.CommitAsync();
+
+                    var user = await _userManager.FindByIdAsync(userId);
+
+                    return Response<EventRegistrationDto>.Success(new EventRegistrationDto
+                    {
+                        Id = registration.Id,
+                        EventId = eventId,
+                        EventTitle = ev.Title,
+                        UserId = userId,
+                        UserName = user?.UserName ?? "Bilinmeyen",
+                        RegistrationDate = registration.RegistrationDate,
+                        QRCode = registration.QRCode,
+                        CheckedIn = registration.CheckedIn,
+                        CheckedInAt = registration.CheckedInAt
+                    }, 201);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Optimistic Locking çakışması - yeniden dene
+                    retryCount++;
+                    if (retryCount >= maxRetries)
+                    {
+                        // Ödeme yapıldıysa iade et
+                        if (ev.Price > 0)
+                        {
+                            await _walletService.RefundAsync(
+                                userId,
+                                ev.Price,
+                                ReferenceType.EventRegistration,
+                                null,
+                                $"Etkinlik kaydı başarısız (eşzamanlılık hatası): {ev.Title}");
+                        }
+                        return Response<EventRegistrationDto>.Fail("Yoğun talep nedeniyle kayıt yapılamadı. Lütfen tekrar deneyin.", 409);
+                    }
+                    // Kısa bekleme ve yeniden deneme
+                    await Task.Delay(100 * retryCount);
+                }
             }
 
-            var registration = new EventRegistration
-            {
-                EventId = eventId,
-                UserId = userId,
-                RegistrationDate = DateTime.UtcNow,
-                QRCode = _qrCodeService.GenerateQRCode("EVENT", 0),
-                CheckedIn = false,
-                IsActive = true,
-                CreatedDate = DateTime.UtcNow
-            };
-
-            await _unitOfWork.EventRegistrations.AddAsync(registration);
-            ev.RegisteredCount++;
-            _unitOfWork.Events.Update(ev);
-            await _unitOfWork.CommitAsync();
-
-            registration.QRCode = _qrCodeService.GenerateQRCode("EVENT", registration.Id);
-            _unitOfWork.EventRegistrations.Update(registration);
-            await _unitOfWork.CommitAsync();
-
-            var user = await _userManager.FindByIdAsync(userId);
-
-            return Response<EventRegistrationDto>.Success(new EventRegistrationDto
-            {
-                Id = registration.Id,
-                EventId = eventId,
-                EventTitle = ev.Title,
-                UserId = userId,
-                UserName = user?.UserName ?? "Bilinmeyen",
-                RegistrationDate = registration.RegistrationDate,
-                QRCode = registration.QRCode,
-                CheckedIn = registration.CheckedIn,
-                CheckedInAt = registration.CheckedInAt
-            }, 201);
+            return Response<EventRegistrationDto>.Fail("Kayıt işlemi başarısız", 500);
         }
 
         public async Task<Response<NoDataDto>> CancelRegistrationAsync(string userId, int eventId)

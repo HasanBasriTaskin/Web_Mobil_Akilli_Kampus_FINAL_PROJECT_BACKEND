@@ -30,6 +30,10 @@ namespace SMARTCAMPUS.DataAccessLayer.Configurations
             builder.Property(x => x.CreatedByUserId)
                 .IsRequired();
 
+            // Optimistic Locking - RowVersion
+            builder.Property(x => x.RowVersion)
+                .IsRowVersion();
+
             // Index for quick lookup by date
             builder.HasIndex(x => x.StartDate);
             builder.HasIndex(x => x.EndDate);

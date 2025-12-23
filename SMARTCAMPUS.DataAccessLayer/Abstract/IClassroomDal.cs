@@ -5,5 +5,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
     public interface IClassroomDal : IGenericDal<Classroom>
     {
         Task<Classroom?> GetByBuildingAndRoomAsync(string building, string roomNumber);
+        Task<List<Classroom>> GetAllActiveAsync();
     }
 }

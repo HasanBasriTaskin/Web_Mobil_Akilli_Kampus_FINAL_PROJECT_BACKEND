@@ -64,5 +64,19 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
                 "UPDATE CourseSections SET EnrolledCount = EnrolledCount - 1 WHERE Id = {0} AND EnrolledCount > 0",
                 sectionId);
         }
+
+        public async Task<List<CourseSection>> GetSectionsBySemesterAsync(string semester, int year)
+        {
+            return await _context.CourseSections
+                .Where(s => s.Semester == semester && s.Year == year && s.IsActive)
+                .Include(s => s.Course)
+                    .ThenInclude(c => c.Department)
+                .Include(s => s.Instructor)
+                    .ThenInclude(i => i.User)
+                .Include(s => s.Schedules)
+                .OrderBy(s => s.Course.Code)
+                .ThenBy(s => s.SectionNumber)
+                .ToListAsync();
+        }
     }
 }
