@@ -88,5 +88,10 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
 
             return (userDtos, totalRecords);
         }
+
+        public async Task<User?> GetByIdAsync(string id)
+        {
+            return await _context.Users.FindAsync(id);
+        }
     }
 }

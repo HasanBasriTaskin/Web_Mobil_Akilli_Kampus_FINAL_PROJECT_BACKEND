@@ -7,11 +7,8 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
 {
     public class EfAttendanceSessionDal : GenericRepository<AttendanceSession>, IAttendanceSessionDal
     {
-        private readonly CampusContext _context;
-
         public EfAttendanceSessionDal(CampusContext context) : base(context)
         {
-            _context = context;
         }
 
         public async Task<AttendanceSession?> GetSessionWithRecordsAsync(int id)

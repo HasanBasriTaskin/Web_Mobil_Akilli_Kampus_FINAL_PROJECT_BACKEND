@@ -25,7 +25,8 @@ namespace SMARTCAMPUS.EntityLayer.Models
         [MaxLength(500)]
         public string? SyllabusUrl { get; set; }
         
-        public bool IsActive { get; set; } = true;
+        
+        // Foreign Keys
         
         // Foreign Keys
         public int DepartmentId { get; set; }

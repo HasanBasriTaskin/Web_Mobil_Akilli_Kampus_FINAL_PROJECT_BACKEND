@@ -7,11 +7,8 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
 {
     public class EfAttendanceRecordDal : GenericRepository<AttendanceRecord>, IAttendanceRecordDal
     {
-        private readonly CampusContext _context;
-
         public EfAttendanceRecordDal(CampusContext context) : base(context)
         {
-            _context = context;
         }
 
         public async Task<IEnumerable<AttendanceRecord>> GetRecordsByStudentAsync(int studentId)
