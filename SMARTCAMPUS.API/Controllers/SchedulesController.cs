@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SMARTCAMPUS.BusinessLayer.Abstract;
@@ -103,5 +104,67 @@ namespace SMARTCAMPUS.API.Controllers
             var result = await _scheduleService.CheckConflictsAsync(dto, excludeId);
             return StatusCode(result.StatusCode, result);
         }
+
+        /// <summary>
+        /// Otomatik ders programı oluşturur (CSP/Backtracking algoritması)
+        /// </summary>
+        /// <remarks>
+        /// Bu endpoint, belirtilen dönem için tüm ders bölümlerini otomatik olarak programlar.
+        /// Backtracking algoritması ile MRV ve LCV heuristikleri kullanır.
+        /// 
+        /// Hard Constraints:
+        /// - Sınıf çakışması olmamalı
+        /// - Eğitmen çakışması olmamalı
+        /// 
+        /// Soft Constraints:
+        /// - Sabah saatleri tercih edilir
+        /// - Büyük kapasiteli dersler öncelikli yerleştirilir
+        /// </remarks>
+        [HttpPost("generate")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GenerateAutomaticSchedule([FromBody] AutoScheduleRequestDto dto)
+        {
+            var result = await _scheduleService.GenerateAutomaticScheduleAsync(dto);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        /// <summary>
+        /// Bir ders bölümünün programını iCal formatında dışa aktarır
+        /// </summary>
+        [HttpGet("section/{sectionId}/ical")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ExportSectionToICal(int sectionId)
+        {
+            var result = await _scheduleService.ExportSectionToICalAsync(sectionId);
+            if (!result.IsSuccessful)
+                return StatusCode(result.StatusCode, result);
+
+            return File(
+                System.Text.Encoding.UTF8.GetBytes(result.Data!), 
+                "text/calendar", 
+                $"section_{sectionId}_schedule.ics");
+        }
+
+        /// <summary>
+        /// Giriş yapan öğrencinin ders programını iCal formatında dışa aktarır
+        /// </summary>
+        [HttpGet("my-schedule/ical")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> ExportMyScheduleToICal()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var result = await _scheduleService.ExportStudentScheduleToICalAsync(userId);
+            if (!result.IsSuccessful)
+                return StatusCode(result.StatusCode, result);
+
+            return File(
+                System.Text.Encoding.UTF8.GetBytes(result.Data!), 
+                "text/calendar", 
+                "my_schedule.ics");
+        }
     }
 }
+

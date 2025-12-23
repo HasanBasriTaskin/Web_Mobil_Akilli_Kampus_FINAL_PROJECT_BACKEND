@@ -19,5 +19,12 @@ namespace SMARTCAMPUS.BusinessLayer.Abstract
         
         // Çakışma kontrolü
         Task<Response<List<ScheduleConflictDto>>> CheckConflictsAsync(ScheduleCreateDto dto, int? excludeId = null);
+        
+        // Otomatik ders programı oluşturma (CSP/Backtracking)
+        Task<Response<AutoScheduleResultDto>> GenerateAutomaticScheduleAsync(AutoScheduleRequestDto dto);
+        
+        // iCal formatında dışa aktarma
+        Task<Response<string>> ExportSectionToICalAsync(int sectionId);
+        Task<Response<string>> ExportStudentScheduleToICalAsync(string userId);
     }
 }

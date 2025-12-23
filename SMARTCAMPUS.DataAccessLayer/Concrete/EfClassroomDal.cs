@@ -19,5 +19,14 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
             return await _context.Classrooms
                 .FirstOrDefaultAsync(c => c.Building == building && c.RoomNumber == roomNumber);
         }
+
+        public async Task<List<Classroom>> GetAllActiveAsync()
+        {
+            return await _context.Classrooms
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Building)
+                .ThenBy(c => c.RoomNumber)
+                .ToListAsync();
+        }
     }
 }
