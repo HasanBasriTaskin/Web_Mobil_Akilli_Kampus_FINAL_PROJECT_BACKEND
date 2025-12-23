@@ -79,38 +79,49 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 return Response<TopUpResultDto>.Fail($"Ödeme başarısız: {paymentResult.ErrorMessage}", 400);
             }
 
-            var wallet = await GetOrCreateWalletAsync(userId);
-
-            if (!wallet.IsActive)
-                return Response<TopUpResultDto>.Fail("Cüzdan aktif değil", 400);
-
-            wallet.Balance += paymentDto.Amount;
-            wallet.UpdatedDate = DateTime.UtcNow;
-            _unitOfWork.Wallets.Update(wallet);
-
-            var transaction = new WalletTransaction
+            // ACID Transaction başlat
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                WalletId = wallet.Id,
-                Type = TransactionType.Credit,
-                Amount = paymentDto.Amount,
-                BalanceAfter = wallet.Balance,
-                ReferenceType = ReferenceType.TopUp,
-                Description = $"Bakiye yükleme - {paymentResult.TransactionId}",
-                TransactionDate = DateTime.UtcNow,
-                IsActive = true,
-                CreatedDate = DateTime.UtcNow
-            };
+                var wallet = await GetOrCreateWalletAsync(userId);
 
-            await _unitOfWork.WalletTransactions.AddAsync(transaction);
-            await _unitOfWork.CommitAsync();
+                if (!wallet.IsActive)
+                    return Response<TopUpResultDto>.Fail("Cüzdan aktif değil", 400);
 
-            var result = new TopUpResultDto
+                wallet.Balance += paymentDto.Amount;
+                wallet.UpdatedDate = DateTime.UtcNow;
+                _unitOfWork.Wallets.Update(wallet);
+
+                var walletTransaction = new WalletTransaction
+                {
+                    WalletId = wallet.Id,
+                    Type = TransactionType.Credit,
+                    Amount = paymentDto.Amount,
+                    BalanceAfter = wallet.Balance,
+                    ReferenceType = ReferenceType.TopUp,
+                    Description = $"Bakiye yükleme - {paymentResult.TransactionId}",
+                    TransactionDate = DateTime.UtcNow,
+                    IsActive = true,
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                await _unitOfWork.WalletTransactions.AddAsync(walletTransaction);
+                await _unitOfWork.CommitAsync();
+                await transaction.CommitAsync();
+
+                var result = new TopUpResultDto
+                {
+                    NewBalance = wallet.Balance,
+                    TransactionId = walletTransaction.Id
+                };
+
+                return Response<TopUpResultDto>.Success(result, 200);
+            }
+            catch (Exception)
             {
-                NewBalance = wallet.Balance,
-                TransactionId = transaction.Id
-            };
-
-            return Response<TopUpResultDto>.Success(result, 200);
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<Response<WalletTransactionDto>> DeductAsync(string userId, decimal amount, ReferenceType referenceType, int? referenceId, string? description = null)
@@ -125,41 +136,52 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             if (wallet.Balance < amount)
                 return Response<WalletTransactionDto>.Fail("Yetersiz bakiye", 400);
 
-            wallet.Balance -= amount;
-            wallet.UpdatedDate = DateTime.UtcNow;
-            _unitOfWork.Wallets.Update(wallet);
-
-            var transaction = new WalletTransaction
+            // ACID Transaction başlat
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                WalletId = wallet.Id,
-                Type = TransactionType.Debit,
-                Amount = amount,
-                BalanceAfter = wallet.Balance,
-                ReferenceType = referenceType,
-                ReferenceId = referenceId,
-                Description = description ?? $"{referenceType} ödemesi",
-                TransactionDate = DateTime.UtcNow,
-                IsActive = true,
-                CreatedDate = DateTime.UtcNow
-            };
+                wallet.Balance -= amount;
+                wallet.UpdatedDate = DateTime.UtcNow;
+                _unitOfWork.Wallets.Update(wallet);
 
-            await _unitOfWork.WalletTransactions.AddAsync(transaction);
-            await _unitOfWork.CommitAsync();
+                var walletTransaction = new WalletTransaction
+                {
+                    WalletId = wallet.Id,
+                    Type = TransactionType.Debit,
+                    Amount = amount,
+                    BalanceAfter = wallet.Balance,
+                    ReferenceType = referenceType,
+                    ReferenceId = referenceId,
+                    Description = description ?? $"{referenceType} ödemesi",
+                    TransactionDate = DateTime.UtcNow,
+                    IsActive = true,
+                    CreatedDate = DateTime.UtcNow
+                };
 
-            var dto = new WalletTransactionDto
+                await _unitOfWork.WalletTransactions.AddAsync(walletTransaction);
+                await _unitOfWork.CommitAsync();
+                await transaction.CommitAsync();
+
+                var dto = new WalletTransactionDto
+                {
+                    Id = walletTransaction.Id,
+                    WalletId = walletTransaction.WalletId,
+                    Type = walletTransaction.Type,
+                    Amount = walletTransaction.Amount,
+                    BalanceAfter = walletTransaction.BalanceAfter,
+                    ReferenceType = walletTransaction.ReferenceType,
+                    ReferenceId = walletTransaction.ReferenceId,
+                    Description = walletTransaction.Description,
+                    TransactionDate = walletTransaction.TransactionDate
+                };
+
+                return Response<WalletTransactionDto>.Success(dto, 200);
+            }
+            catch (Exception)
             {
-                Id = transaction.Id,
-                WalletId = transaction.WalletId,
-                Type = transaction.Type,
-                Amount = transaction.Amount,
-                BalanceAfter = transaction.BalanceAfter,
-                ReferenceType = transaction.ReferenceType,
-                ReferenceId = transaction.ReferenceId,
-                Description = transaction.Description,
-                TransactionDate = transaction.TransactionDate
-            };
-
-            return Response<WalletTransactionDto>.Success(dto, 200);
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<Response<WalletTransactionDto>> RefundAsync(string userId, decimal amount, ReferenceType referenceType, int? referenceId, string? description = null)
@@ -168,41 +190,52 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             if (wallet == null)
                 return Response<WalletTransactionDto>.Fail("Cüzdan bulunamadı", 404);
 
-            wallet.Balance += amount;
-            wallet.UpdatedDate = DateTime.UtcNow;
-            _unitOfWork.Wallets.Update(wallet);
-
-            var transaction = new WalletTransaction
+            // ACID Transaction başlat
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                WalletId = wallet.Id,
-                Type = TransactionType.Credit,
-                Amount = amount,
-                BalanceAfter = wallet.Balance,
-                ReferenceType = ReferenceType.Refund,
-                ReferenceId = referenceId,
-                Description = description ?? $"{referenceType} iadesi",
-                TransactionDate = DateTime.UtcNow,
-                IsActive = true,
-                CreatedDate = DateTime.UtcNow
-            };
+                wallet.Balance += amount;
+                wallet.UpdatedDate = DateTime.UtcNow;
+                _unitOfWork.Wallets.Update(wallet);
 
-            await _unitOfWork.WalletTransactions.AddAsync(transaction);
-            await _unitOfWork.CommitAsync();
+                var walletTransaction = new WalletTransaction
+                {
+                    WalletId = wallet.Id,
+                    Type = TransactionType.Credit,
+                    Amount = amount,
+                    BalanceAfter = wallet.Balance,
+                    ReferenceType = ReferenceType.Refund,
+                    ReferenceId = referenceId,
+                    Description = description ?? $"{referenceType} iadesi",
+                    TransactionDate = DateTime.UtcNow,
+                    IsActive = true,
+                    CreatedDate = DateTime.UtcNow
+                };
 
-            var dto = new WalletTransactionDto
+                await _unitOfWork.WalletTransactions.AddAsync(walletTransaction);
+                await _unitOfWork.CommitAsync();
+                await transaction.CommitAsync();
+
+                var dto = new WalletTransactionDto
+                {
+                    Id = walletTransaction.Id,
+                    WalletId = walletTransaction.WalletId,
+                    Type = walletTransaction.Type,
+                    Amount = walletTransaction.Amount,
+                    BalanceAfter = walletTransaction.BalanceAfter,
+                    ReferenceType = walletTransaction.ReferenceType,
+                    ReferenceId = walletTransaction.ReferenceId,
+                    Description = walletTransaction.Description,
+                    TransactionDate = walletTransaction.TransactionDate
+                };
+
+                return Response<WalletTransactionDto>.Success(dto, 200);
+            }
+            catch (Exception)
             {
-                Id = transaction.Id,
-                WalletId = transaction.WalletId,
-                Type = transaction.Type,
-                Amount = transaction.Amount,
-                BalanceAfter = transaction.BalanceAfter,
-                ReferenceType = transaction.ReferenceType,
-                ReferenceId = transaction.ReferenceId,
-                Description = transaction.Description,
-                TransactionDate = transaction.TransactionDate
-            };
-
-            return Response<WalletTransactionDto>.Success(dto, 200);
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<Response<WalletDto>> GetWalletByUserIdAsync(string userId)
