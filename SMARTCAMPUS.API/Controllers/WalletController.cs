@@ -62,6 +62,35 @@ namespace SMARTCAMPUS.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
+        /// <summary>
+        /// Iyzico ile ödeme başlatır (Gerçek Ödeme)
+        /// </summary>
+        [HttpPost("topup/iyzico")]
+        public async Task<IActionResult> TopUpWithIyzico([FromBody] IyzicoPaymentDto dto)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized("User ID not found");
+
+            // IP adresi al
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+            // Sadece IPaymentService inject etmemiz lazım, ctor'a ekleyeceğiz.
+            // Ancak WalletController zaten IWalletService alıyor.
+            // Bu metot için IServiceProvider'dan resolve edebiliriz veya ctor'u güncelleyebiliriz.
+            // Ctor güncellemek daha temiz.
+            
+            // HATA: WalletController'da IPaymentService yok.
+            // Çözüm: Hizmeti HttpContext üzerinden al veya Controller'ı güncelle. 
+            // Burada HttpContext.RequestServices kullanmak hızlı çözüm.
+            var paymentService = HttpContext.RequestServices.GetService<IPaymentService>();
+            if (paymentService == null)
+                return StatusCode(500, "Payment service not configured");
+
+            var result = await paymentService.InitializePaymentAsync(userId, dto, ipAddress);
+            return StatusCode(result.StatusCode, result);
+        }
+
         #region Admin Operations
 
         /// <summary>
