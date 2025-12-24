@@ -141,6 +141,40 @@ Exceeding limits returns HTTP 429 (Too Many Requests).
 
 ---
 
+## IoT Sensor Monitoring
+
+### Sensor Dashboard
+```http
+GET /api/v1/sensors/dashboard
+```
+Returns real-time sensor data including:
+- Temperature readings (°C)
+- Classroom occupancy (%)
+- Environment summary (avg, min, max)
+
+### List All Sensors
+```http
+GET /api/v1/sensors
+```
+
+### Sensor Reading History
+```http
+GET /api/v1/sensors/{sensorId}/readings?limit=50
+```
+
+### Real-time Sensor Updates (SignalR)
+```javascript
+connection.on("SensorUpdate", (data) => {
+  console.log("Sensor data:", data);
+  // data.latestReadings - Array of sensor readings
+  // data.environment - Temperature/occupancy summary
+});
+```
+
+**Update Frequency**: Every 10 seconds (simulated)
+
+---
+
 ## Frontend Integration Notes
 
 > ⚠️ **Section to be completed by frontend developer**
@@ -150,8 +184,10 @@ Exceeding limits returns HTTP 429 (Too Many Requests).
 - [ ] Notification bell with unread count badge
 - [ ] Notification preferences settings page
 - [ ] Report download buttons
+- [ ] IoT Sensor dashboard with real-time gauges
 
 ### SignalR Setup
 - Connect on login, disconnect on logout
 - Handle reconnection on connection loss
 - Update UI immediately on notification receive
+- Listen for `SensorUpdate` events for IoT dashboard

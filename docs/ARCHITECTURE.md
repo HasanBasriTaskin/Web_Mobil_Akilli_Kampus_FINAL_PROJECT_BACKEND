@@ -161,6 +161,7 @@ SMARTCAMPUS.sln
 | Analytics | `/api/v1/analytics` | AnalyticsController |
 | Reports | `/api/v1/reports` | ReportsController |
 | Notifications | `/api/v1/notifications` | NotificationsController |
+| IoT Sensors | `/api/v1/sensors` | SensorsController |
 
 ---
 
@@ -187,6 +188,7 @@ SMARTCAMPUS.sln
 |---------|----------|---------|
 | AttendanceWarningService | Daily 08:00 | Warn students with 20%+ absenteeism |
 | EventReminderService | Every 30 min | Send 24h and 1h event reminders |
+| SensorSimulationService | Every 10 sec | Simulate IoT sensor data and broadcast via SignalR |
 
 ---
 
