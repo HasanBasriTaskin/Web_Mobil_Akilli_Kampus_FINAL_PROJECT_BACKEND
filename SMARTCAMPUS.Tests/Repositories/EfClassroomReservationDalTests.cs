@@ -37,7 +37,7 @@ namespace SMARTCAMPUS.Tests.Repositories
         {
             // Arrange
             var room = new Classroom { Building = "A", RoomNumber = "101" };
-            var res1 = new ClassroomReservation { Classroom = room, RequestedByUserId = "u1", StartTime = TimeSpan.Zero, EndTime = TimeSpan.FromHours(1), Title = "Meeting 1" };
+            var res1 = new ClassroomReservation { Classroom = room, RequestedByUserId = "u1", StartTime = TimeSpan.Zero, EndTime = TimeSpan.FromHours(1), Purpose = "Meeting 1", ReservationDate = DateTime.Today };
 
             _context.ClassroomReservations.Add(res1);
             await _context.SaveChangesAsync();

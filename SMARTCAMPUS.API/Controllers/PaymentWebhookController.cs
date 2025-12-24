@@ -4,7 +4,7 @@ using Iyzipay.Model;
 
 namespace SMARTCAMPUS.API.Controllers
 {
-    [Route("api/[controller]")] // Dökümanlarda /api/v1/... denmiş ama webhook genelde versionless olabilir, yine de standarda uyalım.
+    [Route("api/v1/[controller]")]
     // Iyzico bazen post verisini karmaşık gönderir, basit tutuyoruz.
     [ApiController]
     public class PaymentWebhookController : ControllerBase

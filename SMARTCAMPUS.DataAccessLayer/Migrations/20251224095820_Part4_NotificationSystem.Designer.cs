@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SMARTCAMPUS.DataAccessLayer.Context;
 
@@ -11,9 +12,11 @@ using SMARTCAMPUS.DataAccessLayer.Context;
 namespace SMARTCAMPUS.DataAccessLayer.Migrations
 {
     [DbContext(typeof(CampusContext))]
-    partial class CampusContextModelSnapshot : ModelSnapshot
+    [Migration("20251224095820_Part4_NotificationSystem")]
+    partial class Part4_NotificationSystem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1539,92 +1542,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.ToTable("Schedules");
                 });
 
-            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Sensor", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("ClassroomId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("IsOnline")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<DateTime?>("LastReading")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Location")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("SensorId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClassroomId");
-
-                    b.ToTable("Sensors");
-                });
-
-            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.SensorReading", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<int>("SensorId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Unit")
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime?>("UpdatedDate")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<double>("Value")
-                        .HasColumnType("double");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SensorId");
-
-                    b.ToTable("SensorReadings");
-                });
-
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Student", b =>
                 {
                     b.Property<int>("Id")
@@ -2285,26 +2202,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("Classroom");
 
                     b.Navigation("Section");
-                });
-
-            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Sensor", b =>
-                {
-                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Classroom", "Classroom")
-                        .WithMany()
-                        .HasForeignKey("ClassroomId");
-
-                    b.Navigation("Classroom");
-                });
-
-            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.SensorReading", b =>
-                {
-                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Sensor", "Sensor")
-                        .WithMany()
-                        .HasForeignKey("SensorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Sensor");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Student", b =>
