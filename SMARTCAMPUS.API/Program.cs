@@ -169,6 +169,7 @@ builder.Services.AddSignalR();
 // Background Services
 builder.Services.AddHostedService<SMARTCAMPUS.API.BackgroundServices.AttendanceWarningService>();
 builder.Services.AddHostedService<SMARTCAMPUS.API.BackgroundServices.EventReminderService>();
+builder.Services.AddHostedService<SMARTCAMPUS.API.BackgroundServices.SensorSimulationService>();
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>(); // Scans assembly for all AbstractValidator<T>

@@ -57,6 +57,10 @@ namespace SMARTCAMPUS.DataAccessLayer.Context
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<NotificationPreference> NotificationPreferences { get; set; }
 
+        // Part 4 - IoT Sensors
+        public DbSet<Sensor> Sensors { get; set; }
+        public DbSet<SensorReading> SensorReadings { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
