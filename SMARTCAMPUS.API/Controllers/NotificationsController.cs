@@ -9,7 +9,7 @@ namespace SMARTCAMPUS.API.Controllers
     /// <summary>
     /// Bildirim yönetimi endpoint'leri
     /// </summary>
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     [Authorize]
     public class NotificationsController : ControllerBase

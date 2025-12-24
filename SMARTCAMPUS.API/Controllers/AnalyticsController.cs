@@ -7,7 +7,7 @@ namespace SMARTCAMPUS.API.Controllers
     /// <summary>
     /// Analitik ve raporlama endpoint'leri
     /// </summary>
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     [Authorize(Roles = "Admin")]
     public class AnalyticsController : ControllerBase
