@@ -2,7 +2,7 @@
 
 ## Overview
 
-Part 4 introduces notification and preference tables for the real-time notification system.
+Part 4 introduces notification tables for real-time notifications and IoT sensor tables for campus monitoring.
 
 ---
 
@@ -139,3 +139,71 @@ Part 4 analytics queries use these existing tables:
 - `CourseSections` - Occupancy rates
 - `AttendanceSessions` / `AttendanceRecords` - Attendance stats
 - `Events` / `EventRegistrations` - Event reminders
+
+---
+
+## IoT Sensor Tables
+
+### Sensors Table
+
+```sql
+CREATE TABLE Sensors (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    SensorId VARCHAR(50) NOT NULL,
+    Name VARCHAR(100) NOT NULL,
+    Type INT NOT NULL DEFAULT 0,           -- SensorType enum
+    Location VARCHAR(100) NULL,
+    ClassroomId INT NULL,
+    IsOnline TINYINT(1) NOT NULL DEFAULT 1,
+    LastReading DATETIME NULL,
+    CreatedDate DATETIME NOT NULL,
+    UpdatedDate DATETIME NULL,
+    IsActive TINYINT(1) NOT NULL DEFAULT 1,
+    
+    FOREIGN KEY (ClassroomId) REFERENCES Classrooms(Id),
+    UNIQUE KEY uk_sensor_id (SensorId),
+    INDEX idx_sensor_type (Type)
+);
+```
+
+### SensorReadings Table
+
+```sql
+CREATE TABLE SensorReadings (
+    Id INT AUTO_INCREMENT PRIMARY KEY,
+    SensorId INT NOT NULL,
+    Value DOUBLE NOT NULL,
+    Unit VARCHAR(20) NULL,
+    Timestamp DATETIME NOT NULL,
+    CreatedDate DATETIME NOT NULL,
+    UpdatedDate DATETIME NULL,
+    IsActive TINYINT(1) NOT NULL DEFAULT 1,
+    
+    FOREIGN KEY (SensorId) REFERENCES Sensors(Id) ON DELETE CASCADE,
+    INDEX idx_reading_sensor_time (SensorId, Timestamp DESC)
+);
+```
+
+### SensorType Enum
+| Value | Name | Description |
+|-------|------|-------------|
+| 0 | Temperature | Temperature sensors (°C) |
+| 1 | Humidity | Humidity sensors (%) |
+| 2 | Occupancy | Room occupancy (%) |
+| 3 | Energy | Energy consumption |
+| 4 | AirQuality | Air quality index |
+| 5 | Light | Light level (lux) |
+
+---
+
+## IoT Sensor Migration
+
+```bash
+dotnet ef migrations add IoT_Sensors \
+  --project SMARTCAMPUS.DataAccessLayer \
+  --startup-project SMARTCAMPUS.API
+
+dotnet ef database update \
+  --project SMARTCAMPUS.DataAccessLayer \
+  --startup-project SMARTCAMPUS.API
+```
