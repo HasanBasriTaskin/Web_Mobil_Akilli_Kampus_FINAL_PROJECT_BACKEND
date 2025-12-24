@@ -7,7 +7,7 @@ namespace SMARTCAMPUS.API.Controllers
     /// <summary>
     /// Rapor dışa aktarma endpoint'leri (Excel ve PDF)
     /// </summary>
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     [Authorize]
     public class ReportsController : ControllerBase
