@@ -7,3 +7,6 @@
 Dockerfile
 docker-compose*
 *.md
+SMARTCAMPUS.Tests/
+TestResults/
+coverage-report/
