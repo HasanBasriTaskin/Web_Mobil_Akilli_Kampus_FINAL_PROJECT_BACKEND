@@ -35,7 +35,8 @@ namespace SMARTCAMPUS.EntityLayer.Enums
         Humidity = 1,
         Occupancy = 2,
         Energy = 3,
-        AirQuality = 4
+        AirQuality = 4,
+        Light = 5
     }
 
     /// <summary>
