@@ -20,6 +20,9 @@ using SMARTCAMPUS.API.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SMARTCAMPUS.API.Services;
+using SMARTCAMPUS.API.Hubs;
+using AspNetCoreRateLimit;
 using System.Text; 
 
 // Bootstrap logger for catching startup errors
@@ -38,6 +41,13 @@ try
         configuration.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddHttpContextAccessor();
+
+// Rate Limiting Configuration
+builder.Services.AddMemoryCache();
+builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
+builder.Services.Configure<IpRateLimitPolicies>(builder.Configuration.GetSection("IpRateLimitPolicies"));
+builder.Services.AddInMemoryRateLimiting();
+builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
 
 // Add services to the container.
 
@@ -148,6 +158,18 @@ builder.Services.AddScoped<IEventService, EventManager>();
 builder.Services.AddScoped<IScheduleService, ScheduleManager>();
 builder.Services.AddScoped<IClassroomReservationService, ClassroomReservationManager>();
 
+// Part 4 Services
+builder.Services.AddScoped<IAnalyticsService, AnalyticsManager>();
+builder.Services.AddScoped<IReportExportService, ReportExportManager>();
+builder.Services.AddScoped<IAdvancedNotificationService, AdvancedNotificationManager>();
+
+// SignalR Configuration
+builder.Services.AddSignalR();
+
+// Background Services
+builder.Services.AddHostedService<SMARTCAMPUS.API.BackgroundServices.AttendanceWarningService>();
+builder.Services.AddHostedService<SMARTCAMPUS.API.BackgroundServices.EventReminderService>();
+
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>(); // Scans assembly for all AbstractValidator<T>
 
@@ -241,6 +263,9 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseCors("AllowClient");
 
+// Rate Limiting Middleware
+app.UseIpRateLimiting();
+
 // Enable Serilog request logging
 app.UseSerilogRequestLogging();
 
@@ -251,6 +276,9 @@ app.UseAuthentication(); // Must be before Authorization
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map SignalR Hub
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 // Run Seeder
 using (var scope = app.Services.CreateScope())
