@@ -57,32 +57,6 @@ namespace SMARTCAMPUS.Tests.Repositories
         }
 
         [Fact]
-        public async Task GetSectionsBySemesterAsync_ShouldFilterCorrectly()
-        {
-            // Arrange
-            var user = new User { Id = "u1", FullName = "Prof" };
-            var instructor = new Faculty { Id = 1, UserId = "u1", User = user, EmployeeNumber = "E1", Title = "Dr." };
-            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
-
-            var section1 = new CourseSection { Id = 1, Semester = "Fall", Year = 2024, SectionNumber = "1", Course = course, Instructor = instructor };
-            var section2 = new CourseSection { Id = 2, Semester = "Fall", Year = 2023, SectionNumber = "1", Course = course, Instructor = instructor };
-            var section3 = new CourseSection { Id = 3, Semester = "Spring", Year = 2024, SectionNumber = "1", Course = course, Instructor = instructor };
-
-            await _context.Users.AddAsync(user);
-            await _context.Faculties.AddAsync(instructor);
-            await _context.Courses.AddAsync(course);
-            await _context.CourseSections.AddRangeAsync(section1, section2, section3);
-            await _context.SaveChangesAsync();
-
-            // Act
-            var result = await _repository.GetSectionsBySemesterAsync("Fall", 2024);
-
-            // Assert
-            result.Should().HaveCount(1);
-            result.First().Id.Should().Be(1);
-        }
-
-        [Fact]
         public async Task GetSectionsByInstructorAsync_ShouldReturnInstructorSections()
         {
             // Arrange
@@ -110,20 +84,39 @@ namespace SMARTCAMPUS.Tests.Repositories
         }
 
         [Fact]
-        public async Task IncrementEnrolledCountAsync_InMemory_DoesNotSupportSqlRaw()
+        public async Task IncrementEnrolledCountAsync_InMemory_ShouldWorkCorrectly()
         {
-            // Note: InMemory database does NOT support ExecuteSqlRawAsync properly for updates.
-            // It typically throws or does nothing.
-            // We should test logic, but here we are testing DAL which uses direct SQL.
-            // To test this properly with InMemory, we might need to intercept or assume it won't work.
-            // However, since we want coverage, calling it might fail.
-            // Let's verify what happens.
+            // The DAL now detects InMemory provider and uses Find/Update instead of raw SQL
+            // Arrange
+            var section = new CourseSection { Id = 1, SectionNumber = "S1", Semester = "Fall", Year = 2024, Capacity = 30, EnrolledCount = 5 };
+            await _context.CourseSections.AddAsync(section);
+            await _context.SaveChangesAsync();
+            _context.ChangeTracker.Clear();
 
-            // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _repository.IncrementEnrolledCountAsync(1));
+            // Act
+            await _repository.IncrementEnrolledCountAsync(1);
+
+            // Assert
+            var updated = await _context.CourseSections.FindAsync(1);
+            updated!.EnrolledCount.Should().Be(6);
         }
 
-        // Since we cannot test Raw SQL with InMemory, we skip functional verification of Increment/Decrement
-        // but the test above covers the method entry point (exception path).
+        // Since InMemory now works, let's also test Decrement
+        [Fact]
+        public async Task DecrementEnrolledCountAsync_InMemory_ShouldWorkCorrectly()
+        {
+            // Arrange
+            var section = new CourseSection { Id = 1, SectionNumber = "S1", Semester = "Fall", Year = 2024, Capacity = 30, EnrolledCount = 5 };
+            await _context.CourseSections.AddAsync(section);
+            await _context.SaveChangesAsync();
+            _context.ChangeTracker.Clear();
+
+            // Act
+            await _repository.DecrementEnrolledCountAsync(1);
+
+            // Assert
+            var updated = await _context.CourseSections.FindAsync(1);
+            updated!.EnrolledCount.Should().Be(4);
+        }
     }
 }

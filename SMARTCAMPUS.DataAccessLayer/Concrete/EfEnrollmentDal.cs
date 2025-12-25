@@ -8,11 +8,8 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
 {
     public class EfEnrollmentDal : GenericRepository<Enrollment>, IEnrollmentDal
     {
-        private readonly CampusContext _context;
-
         public EfEnrollmentDal(CampusContext context) : base(context)
         {
-            _context = context;
         }
 
         public async Task<IEnumerable<Enrollment>> GetEnrollmentsByStudentAsync(int studentId)
@@ -49,9 +46,57 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
         public async Task<bool> HasStudentCompletedCourseAsync(int studentId, int courseId)
         {
             return await _context.Enrollments
+                .Include(e => e.Section)
                 .AnyAsync(e => e.StudentId == studentId 
                     && e.Section.CourseId == courseId 
                     && e.Status == EnrollmentStatus.Completed);
+        }
+
+        public async Task<List<Enrollment>> GetPendingEnrollmentsAsync(int sectionId)
+        {
+            return await _context.Enrollments
+                .Include(e => e.Student)
+                    .ThenInclude(s => s.User)
+                .Include(e => e.Section)
+                    .ThenInclude(sec => sec.Course)
+                .Where(e => e.SectionId == sectionId && e.Status == EnrollmentStatus.Pending)
+                .ToListAsync();
+        }
+
+        public async Task<Enrollment?> GetByStudentAndSectionAsync(int studentId, int sectionId)
+        {
+             return await _context.Enrollments
+                .Include(e => e.Section)
+                .Include(e => e.Section.Course)
+                .Include(e => e.Section.Instructor)
+                    .ThenInclude(i => i.User)
+                .FirstOrDefaultAsync(e => e.StudentId == studentId && e.SectionId == sectionId);
+        }
+        
+        public async Task<bool> IsEnrolledInOtherSectionAsync(int studentId, int courseId)
+        {
+             return await _context.Enrollments
+                .Include(e => e.Section)
+                .AnyAsync(e => e.StudentId == studentId 
+                    && e.Section.CourseId == courseId
+                    && (e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.Enrolled));
+        }
+
+        public async Task<List<int>> GetCompletedCourseIdsAsync(int studentId) 
+        {
+             return await _context.Enrollments
+                .Include(e => e.Section)
+                .Where(e => e.StudentId == studentId && e.Status == EnrollmentStatus.Completed)
+                .Select(e => e.Section.CourseId)
+                .ToListAsync();
+        }
+        
+        public async Task<List<int>> GetEnrolledSectionIdsAsync(int studentId) 
+        {
+             return await _context.Enrollments
+                .Where(e => e.StudentId == studentId && e.Status == EnrollmentStatus.Enrolled)
+                .Select(e => e.SectionId)
+                .ToListAsync();
         }
     }
 }

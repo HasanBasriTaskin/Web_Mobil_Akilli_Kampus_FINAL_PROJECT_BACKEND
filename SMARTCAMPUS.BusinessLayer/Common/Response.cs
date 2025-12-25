@@ -22,7 +22,7 @@ namespace SMARTCAMPUS.BusinessLayer.Common
 
         public static Response<T> Success(int statusCode)
         {
-            T data = default;
+            T data = default!;
             if (typeof(T) == typeof(NoDataDto))
             {
                 data = (T)(object)new NoDataDto();

@@ -4,9 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Moq;
 using SMARTCAMPUS.BusinessLayer.Concrete;
-using SMARTCAMPUS.DataAccessLayer.Abstract;
+using SMARTCAMPUS.DataAccessLayer.Concrete;
 using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.DTOs.Course;
 using SMARTCAMPUS.EntityLayer.Models;
@@ -16,8 +15,6 @@ namespace SMARTCAMPUS.Tests.Managers
 {
     public class CourseManagerTests : IDisposable
     {
-        private readonly Mock<ICourseDal> _mockCourseDal;
-        private readonly Mock<ICoursePrerequisiteDal> _mockPrereqDal;
         private readonly CampusContext _context;
         private readonly CourseManager _manager;
 
@@ -28,14 +25,12 @@ namespace SMARTCAMPUS.Tests.Managers
                 .Options;
 
             _context = new CampusContext(options);
-            _mockCourseDal = new Mock<ICourseDal>();
-            _mockPrereqDal = new Mock<ICoursePrerequisiteDal>();
-
-            _manager = new CourseManager(_mockCourseDal.Object, _mockPrereqDal.Object, _context);
+            _manager = new CourseManager(new UnitOfWork(_context));
         }
 
         public void Dispose()
         {
+            _context.Database.EnsureDeleted();
             _context.Dispose();
         }
 
@@ -225,11 +220,15 @@ namespace SMARTCAMPUS.Tests.Managers
         [Fact]
         public async Task GetPrerequisitesAsync_ShouldReturnPrereqs()
         {
-            // Arrange
+            // Arrange - Need to properly seed courses first, then create prerequisite relationship
             var c1 = new Course { Id = 1, Code = "C1", Name = "C1" };
             var c2 = new Course { Id = 2, Code = "C2", Name = "C2" };
             await _context.Courses.AddRangeAsync(c1, c2);
-            await _context.CoursePrerequisites.AddAsync(new CoursePrerequisite { CourseId = 1, PrerequisiteCourseId = 2 });
+            await _context.SaveChangesAsync();
+
+            // Add prerequisite after courses are saved
+            var prereq = new CoursePrerequisite { CourseId = 1, PrerequisiteCourseId = 2 };
+            await _context.CoursePrerequisites.AddAsync(prereq);
             await _context.SaveChangesAsync();
 
             // Act
