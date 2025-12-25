@@ -128,6 +128,119 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.AcademicCalendar", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsHoliday")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Semester")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AcademicCalendar");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Announcement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("varchar(5000)");
+
+                    b.Property<string>("CreatedById")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("DepartmentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsImportant")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("PublishDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("TargetAudience")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ViewCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.ToTable("Announcement");
+                });
+
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.AttendanceRecord", b =>
                 {
                     b.Property<int>("Id")
@@ -222,8 +335,9 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<TimeSpan>("StartTime")
                         .HasColumnType("time(6)");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime(6)");
@@ -235,6 +349,44 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.HasIndex("SectionId");
 
                     b.ToTable("AttendanceSessions");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Cafeteria", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Cafeterias");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Classroom", b =>
@@ -282,6 +434,63 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .IsUnique();
 
                     b.ToTable("Classrooms");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.ClassroomReservation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClassroomId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("RequestedByUserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("ReservationDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("StudentLeaderName")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestedByUserId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("ClassroomId", "ReservationDate", "StartTime", "EndTime");
+
+                    b.ToTable("ClassroomReservations");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Course", b =>
@@ -378,9 +587,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("ScheduleJson")
-                        .HasColumnType("longtext");
 
                     b.Property<string>("SectionNumber")
                         .IsRequired()
@@ -521,8 +727,9 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<int>("SectionId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<int>("StudentId")
                         .HasColumnType("int");
@@ -538,6 +745,214 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .IsUnique();
 
                     b.ToTable("Enrollments");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Event", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("RegisteredCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("EndDate");
+
+                    b.HasIndex("StartDate");
+
+                    b.ToTable("Events");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.EventCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("IconName")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("EventCategories");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.EventRegistration", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("CheckedIn")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("CheckedInAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("EventId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("QRCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime>("RegistrationDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QRCode")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("EventId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("EventRegistrations");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.EventWaitlist", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("EventId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsNotified")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("QueuePosition")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("EventId", "QueuePosition");
+
+                    b.HasIndex("EventId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("EventWaitlists");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.ExcuseRequest", b =>
@@ -642,6 +1057,329 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .IsUnique();
 
                     b.ToTable("Faculties");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.FoodItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("Calories")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("FoodItems");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealMenu", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CafeteriaId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("MealType")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CafeteriaId", "Date", "MealType")
+                        .IsUnique();
+
+                    b.ToTable("MealMenus");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealMenuItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("FoodItemId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("MenuId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FoodItemId");
+
+                    b.HasIndex("MenuId", "FoodItemId")
+                        .IsUnique();
+
+                    b.ToTable("MealMenuItems");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealNutrition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Calories")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Carbohydrates")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Fat")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Fiber")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("MenuId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Protein")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Sodium")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MenuId")
+                        .IsUnique();
+
+                    b.ToTable("MealNutritions");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealReservation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CafeteriaId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("MealType")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("MenuId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("QRCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CafeteriaId");
+
+                    b.HasIndex("MenuId");
+
+                    b.HasIndex("QRCode")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId", "Date", "MealType")
+                        .IsUnique();
+
+                    b.ToTable("MealReservations");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Category")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("RelatedEntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelatedEntityType")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.NotificationPreference", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Category")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("EmailEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("InAppEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("NotificationPreferences");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.PasswordResetToken", b =>
@@ -758,6 +1496,135 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.ToTable("Roles", (string)null);
                 });
 
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Schedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClassroomId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DayOfWeek")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("SectionId")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time(6)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SectionId", "DayOfWeek", "StartTime")
+                        .IsUnique();
+
+                    b.HasIndex("ClassroomId", "DayOfWeek", "StartTime", "EndTime");
+
+                    b.ToTable("Schedules");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Sensor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ClassroomId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsOnline")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("LastReading")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("SensorId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassroomId");
+
+                    b.ToTable("Sensors");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.SensorReading", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("SensorId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Unit")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<double>("Value")
+                        .HasColumnType("double");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SensorId");
+
+                    b.ToTable("SensorReadings");
+                });
+
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Student", b =>
                 {
                     b.Property<int>("Id")
@@ -772,11 +1639,17 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<int>("DailyMealQuota")
+                        .HasColumnType("int");
+
                     b.Property<int>("DepartmentId")
                         .HasColumnType("int");
 
                     b.Property<double>("GPA")
                         .HasColumnType("double");
+
+                    b.Property<bool>("HasScholarship")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
@@ -883,6 +1756,100 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Wallet", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Balance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)")
+                        .HasDefaultValue("TRY");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("Wallets");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.WalletTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("ReferenceId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReferenceType")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("WalletId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransactionDate");
+
+                    b.HasIndex("WalletId");
+
+                    b.ToTable("WalletTransactions");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.Role", null)
@@ -934,6 +1901,23 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Announcement", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Department");
+                });
+
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.AttendanceRecord", b =>
                 {
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.AttendanceSession", "Session")
@@ -970,6 +1954,25 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("Instructor");
 
                     b.Navigation("Section");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.ClassroomReservation", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Classroom", "Classroom")
+                        .WithMany()
+                        .HasForeignKey("ClassroomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "RequestedBy")
+                        .WithMany()
+                        .HasForeignKey("RequestedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Classroom");
+
+                    b.Navigation("RequestedBy");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Course", b =>
@@ -1051,6 +2054,63 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Event", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.EventCategory", "Category")
+                        .WithMany("Events")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.EventRegistration", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Event", "Event")
+                        .WithMany("Registrations")
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.EventWaitlist", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Event", "Event")
+                        .WithMany("Waitlists")
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.ExcuseRequest", b =>
                 {
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "ReviewedBy")
@@ -1096,6 +2156,96 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealMenu", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Cafeteria", "Cafeteria")
+                        .WithMany("Menus")
+                        .HasForeignKey("CafeteriaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Cafeteria");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealMenuItem", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.FoodItem", "FoodItem")
+                        .WithMany("MenuItems")
+                        .HasForeignKey("FoodItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.MealMenu", "Menu")
+                        .WithMany("MenuItems")
+                        .HasForeignKey("MenuId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FoodItem");
+
+                    b.Navigation("Menu");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealNutrition", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.MealMenu", "Menu")
+                        .WithOne("Nutrition")
+                        .HasForeignKey("SMARTCAMPUS.EntityLayer.Models.MealNutrition", "MenuId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Menu");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealReservation", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Cafeteria", "Cafeteria")
+                        .WithMany("Reservations")
+                        .HasForeignKey("CafeteriaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.MealMenu", "Menu")
+                        .WithMany("Reservations")
+                        .HasForeignKey("MenuId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Cafeteria");
+
+                    b.Navigation("Menu");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Notification", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.NotificationPreference", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.PasswordResetToken", b =>
                 {
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "User")
@@ -1118,6 +2268,45 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Schedule", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Classroom", "Classroom")
+                        .WithMany()
+                        .HasForeignKey("ClassroomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.CourseSection", "Section")
+                        .WithMany("Schedules")
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Classroom");
+
+                    b.Navigation("Section");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Sensor", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Classroom", "Classroom")
+                        .WithMany()
+                        .HasForeignKey("ClassroomId");
+
+                    b.Navigation("Classroom");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.SensorReading", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Sensor", "Sensor")
+                        .WithMany()
+                        .HasForeignKey("SensorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Sensor");
+                });
+
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Student", b =>
                 {
                     b.HasOne("SMARTCAMPUS.EntityLayer.Models.Department", "Department")
@@ -1137,11 +2326,40 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Wallet", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.WalletTransaction", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Wallet", "Wallet")
+                        .WithMany("Transactions")
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
+                });
+
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.AttendanceSession", b =>
                 {
                     b.Navigation("AttendanceRecords");
 
                     b.Navigation("ExcuseRequests");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Cafeteria", b =>
+                {
+                    b.Navigation("Menus");
+
+                    b.Navigation("Reservations");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Course", b =>
@@ -1158,6 +2376,8 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("AttendanceSessions");
 
                     b.Navigation("Enrollments");
+
+                    b.Navigation("Schedules");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Department", b =>
@@ -1167,11 +2387,37 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("Students");
                 });
 
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Event", b =>
+                {
+                    b.Navigation("Registrations");
+
+                    b.Navigation("Waitlists");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.EventCategory", b =>
+                {
+                    b.Navigation("Events");
+                });
+
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Faculty", b =>
                 {
                     b.Navigation("AttendanceSessions");
 
                     b.Navigation("TeachingSections");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.FoodItem", b =>
+                {
+                    b.Navigation("MenuItems");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealMenu", b =>
+                {
+                    b.Navigation("MenuItems");
+
+                    b.Navigation("Nutrition");
+
+                    b.Navigation("Reservations");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Student", b =>
@@ -1181,6 +2427,11 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("Enrollments");
 
                     b.Navigation("ExcuseRequests");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.Wallet", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }

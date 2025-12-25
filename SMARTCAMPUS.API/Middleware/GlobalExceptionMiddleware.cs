@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SMARTCAMPUS.BusinessLayer.Common;
-using SMARTCAMPUS.EntityLayer.DTOs; // Add this
+using SMARTCAMPUS.EntityLayer.DTOs;
 using System.Net;
 using System.Text.Json;
 
@@ -11,11 +12,13 @@ namespace SMARTCAMPUS.API.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<GlobalExceptionMiddleware> _logger;
+        private readonly IHostEnvironment _environment;
 
-        public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+        public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger, IHostEnvironment environment)
         {
             _next = next;
             _logger = logger;
+            _environment = environment;
         }
 
         public async Task InvokeAsync(HttpContext httpContext)
@@ -36,10 +39,10 @@ namespace SMARTCAMPUS.API.Middleware
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
-            var response = Response<NoDataDto>.Fail($"Internal Server Error: {exception.Message}", 500);
-            
-            // TODO: In Production, don't show exception details
-            // var response = Response<NoDataDto>.Fail("An internal error occurred.", 500);
+            // In Production, don't expose exception details for security
+            var response = _environment.IsDevelopment()
+                ? Response<NoDataDto>.Fail($"Internal Server Error: {exception.Message}", 500)
+                : Response<NoDataDto>.Fail("An internal error occurred. Please try again later.", 500);
 
             var json = JsonSerializer.Serialize(response);
             await context.Response.WriteAsync(json);

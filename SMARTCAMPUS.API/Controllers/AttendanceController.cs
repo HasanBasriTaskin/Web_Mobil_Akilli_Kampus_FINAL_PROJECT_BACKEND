@@ -105,14 +105,46 @@ namespace SMARTCAMPUS.API.Controllers
 
         [HttpPost("excuse-requests")]
         [Authorize(Roles = "Student")]
-        public async Task<IActionResult> CreateExcuseRequest([FromBody] CreateExcuseRequestDto dto)
+        public async Task<IActionResult> CreateExcuseRequest([FromForm] CreateExcuseRequestDto dto, IFormFile? document)
         {
             var studentId = GetCurrentStudentId();
             if (studentId == null)
                 return Unauthorized("Student ID not found");
 
-            // TODO: Handle file upload for document
-            var result = await _attendanceService.CreateExcuseRequestAsync(studentId.Value, dto, null);
+            string? documentUrl = null;
+
+            // Handle file upload for document
+            if (document != null && document.Length > 0)
+            {
+                // Validate file size (max 5MB)
+                const long maxFileSize = 5 * 1024 * 1024;
+                if (document.Length > maxFileSize)
+                    return BadRequest("Document file size must be less than 5MB");
+
+                // Validate file type
+                var allowedExtensions = new[] { ".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx" };
+                var extension = Path.GetExtension(document.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(extension))
+                    return BadRequest("Invalid file type. Allowed: PDF, JPG, PNG, DOC, DOCX");
+
+                // Create uploads directory if not exists
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "excuse-documents");
+                if (!Directory.Exists(uploadsFolder))
+                    Directory.CreateDirectory(uploadsFolder);
+
+                // Generate unique filename
+                var uniqueFileName = $"{studentId}_{DateTime.UtcNow.Ticks}_{Guid.NewGuid():N}{extension}";
+                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await document.CopyToAsync(stream);
+                }
+
+                documentUrl = $"/uploads/excuse-documents/{uniqueFileName}";
+            }
+
+            var result = await _attendanceService.CreateExcuseRequestAsync(studentId.Value, dto, documentUrl);
             return StatusCode(result.StatusCode, result);
         }
 
