@@ -54,5 +54,39 @@ namespace SMARTCAMPUS.Tests.Managers
             result.StatusCode.Should().Be(200);
             result.Data.Should().BeEquivalentTo(departmentDtos);
         }
+
+        [Fact]
+        public async Task GetDepartmentsAsync_ShouldReturnSuccess_WithEmptyList()
+        {
+            // Arrange
+            var emptyList = new List<Department>();
+            var emptyDtos = new List<DepartmentDto>();
+
+            _mockDepartmentDal.Setup(x => x.GetAllAsync()).ReturnsAsync(emptyList);
+            _mockMapper.Setup(m => m.Map<List<DepartmentDto>>(emptyList)).Returns(emptyDtos);
+
+            // Act
+            var result = await _departmentManager.GetDepartmentsAsync();
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.StatusCode.Should().Be(200);
+            result.Data.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task GetDepartmentsAsync_ShouldReturnFail_OnException()
+        {
+            // Arrange
+            _mockDepartmentDal.Setup(x => x.GetAllAsync()).ThrowsAsync(new Exception("Database error"));
+
+            // Act
+            var result = await _departmentManager.GetDepartmentsAsync();
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(500);
+            result.Errors.Should().Contain(e => e.Contains("Database error"));
+        }
     }
 }

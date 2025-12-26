@@ -7,9 +7,7 @@ namespace SMARTCAMPUS.API.Controllers
 {
     [Route("api/v1/[controller]")]
     [ApiController]
-    [Authorize] // Require Auth for all user operations. 
-    // Ideally [Authorize(Roles = "Admin")] for most, but let's stick to basic Auth for now or allow user to see their own?
-    // Let's assume Admin only for List/Delete.
+    [Authorize]
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;

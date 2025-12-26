@@ -5,5 +5,7 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
     public interface IStudentDal : IGenericDal<Student>
     {
         Task<Student?> GetStudentWithDetailsAsync(int id);
+        Task<Student?> GetByUserIdAsync(string userId);
     }
 }
+
