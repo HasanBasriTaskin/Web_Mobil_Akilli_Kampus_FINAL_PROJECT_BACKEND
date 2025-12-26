@@ -62,10 +62,14 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 var student = await _unitOfWork.Students.GetByUserIdAsync(user.Id);
                 if (student != null)
                 {
+                    // Department adını al
+                    var department = await _unitOfWork.Departments.GetByIdAsync(student.DepartmentId);
+                    
                     userDto.Student = new StudentInfoDto
                     {
                         StudentNumber = student.StudentNumber,
                         DepartmentId = student.DepartmentId,
+                        DepartmentName = department?.Name,
                         EnrollmentDate = student.CreatedDate
                     };
                 }
