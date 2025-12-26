@@ -11,6 +11,9 @@
 *.userosscache
 *.sln.docstates
 # *.env
+.env
+.env.dev
+.env.prod
 
 # AppSettings
 # **/appsettings.json
@@ -432,3 +435,5 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+frontend_codes

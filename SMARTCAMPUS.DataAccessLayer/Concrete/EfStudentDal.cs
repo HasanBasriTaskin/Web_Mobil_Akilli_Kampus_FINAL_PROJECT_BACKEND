@@ -18,5 +18,11 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
                 .Include(s => s.Department)
                 .FirstOrDefaultAsync(s => s.Id == id && s.IsActive);
         }
+
+        public async Task<Student?> GetByUserIdAsync(string userId)
+        {
+            return await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
+        }
     }
 }
+

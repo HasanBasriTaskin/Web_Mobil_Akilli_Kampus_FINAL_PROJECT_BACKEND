@@ -32,7 +32,7 @@ namespace SMARTCAMPUS.BusinessLayer.Mappings
                 .ForMember(dest => dest.CourseName, opt => opt.MapFrom(src => src.Section.Course.Name))
                 .ForMember(dest => dest.SectionNumber, opt => opt.MapFrom(src => src.Section.SectionNumber))
                 .ForMember(dest => dest.InstructorName, opt => opt.MapFrom(src => src.Section.Instructor != null && src.Section.Instructor.User != null ? src.Section.Instructor.User.FullName : null))
-                .ForMember(dest => dest.ScheduleJson, opt => opt.MapFrom(src => src.Section.ScheduleJson))
+                .ForMember(dest => dest.ScheduleJson, opt => opt.Ignore())
                 .ForMember(dest => dest.CanDrop, opt => opt.Ignore())
                 .ForMember(dest => dest.DropReason, opt => opt.Ignore())
                 .ForMember(dest => dest.AttendancePercentage, opt => opt.Ignore());
