@@ -168,8 +168,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             if (!allowedExtensions.Contains(extension))
                 return Response<string>.Fail("Geçersiz dosya tipi", 400);
 
-            // Ensure directory exists
-            var uploadsFolder = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profile-pictures");
+            // Ensure directory exists - use uploads folder at ContentRootPath (not wwwroot)
+            var uploadsFolder = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "uploads", "profile-pictures");
             if (!System.IO.Directory.Exists(uploadsFolder))
                 System.IO.Directory.CreateDirectory(uploadsFolder);
 
