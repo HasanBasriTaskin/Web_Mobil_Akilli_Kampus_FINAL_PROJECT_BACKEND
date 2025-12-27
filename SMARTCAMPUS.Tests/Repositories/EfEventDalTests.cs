@@ -94,8 +94,8 @@ namespace SMARTCAMPUS.Tests.Repositories
 
             var fromDate = DateTime.UtcNow.AddDays(1);
             var toDate = DateTime.UtcNow.AddDays(3);
-            var evt1 = new Event { Title = "Event 1", StartDate = fromDate, EndDate = fromDate.AddHours(2), Location = "Hall", CategoryId = cat.Id, CreatedByUserId = "admin1", IsActive = true };
-            var evt2 = new Event { Title = "Event 2", StartDate = DateTime.UtcNow.AddDays(5), EndDate = DateTime.UtcNow.AddDays(5).AddHours(2), Location = "Hall", CategoryId = cat.Id, CreatedByUserId = "admin1", IsActive = true };
+            var evt1 = new Event { Title = "Event 1", Description = "Description 1", StartDate = fromDate, EndDate = fromDate.AddHours(2), Location = "Hall", CategoryId = cat.Id, CreatedByUserId = "admin1", IsActive = true };
+            var evt2 = new Event { Title = "Event 2", Description = "Description 2", StartDate = DateTime.UtcNow.AddDays(5), EndDate = DateTime.UtcNow.AddDays(5).AddHours(2), Location = "Hall", CategoryId = cat.Id, CreatedByUserId = "admin1", IsActive = true };
             _context.Events.AddRange(evt1, evt2);
             await _context.SaveChangesAsync();
 

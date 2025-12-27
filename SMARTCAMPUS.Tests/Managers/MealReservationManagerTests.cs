@@ -63,13 +63,15 @@ namespace SMARTCAMPUS.Tests.Managers
             var user = new User { Id = "user1", UserName = "testuser" };
 
             var testDate = DateTime.UtcNow.Date.AddDays(1);
-            _mockUnitOfWork.Setup(u => u.MealReservations.ExistsForUserDateMealTypeAsync("user1", testDate, MealType.Lunch))
+            _mockUnitOfWork.Setup(u => u.MealReservations.ExistsForUserDateMealTypeAsync("user1", It.IsAny<DateTime>(), MealType.Lunch))
                 .ReturnsAsync(false);
             _mockUnitOfWork.Setup(u => u.MealMenus.GetByIdWithDetailsAsync(1))
                 .ReturnsAsync(menu);
             _mockUnitOfWork.Setup(u => u.Students.GetByUserIdAsync("user1"))
                 .ReturnsAsync(student);
-            _mockUnitOfWork.Setup(u => u.MealReservations.GetDailyReservationCountAsync("user1", testDate))
+            _mockUnitOfWork.Setup(u => u.Wallets.GetByUserIdAsync("user1"))
+                .ReturnsAsync((Wallet?)null);
+            _mockUnitOfWork.Setup(u => u.MealReservations.GetDailyReservationCountAsync("user1", It.IsAny<DateTime>()))
                 .ReturnsAsync(0);
             _mockQRCodeService.Setup(q => q.GenerateQRCode("MEAL", 0))
                 .Returns("QR-123");
@@ -270,6 +272,95 @@ namespace SMARTCAMPUS.Tests.Managers
             // Assert
             result.IsSuccessful.Should().BeTrue();
             result.Data.IsValid.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task GetReservationByIdAsync_ShouldReturnSuccess()
+        {
+            var reservation = new MealReservation
+            {
+                Id = 1,
+                UserId = "user1",
+                MenuId = 1,
+                Menu = new MealMenu { Cafeteria = new Cafeteria { Name = "Main" } },
+                Status = MealReservationStatus.Reserved
+            };
+            var user = new User { Id = "user1", UserName = "testuser" };
+
+            _mockUnitOfWork.Setup(u => u.MealReservations.GetByUserAsync("user1", null, null))
+                .ReturnsAsync(new List<MealReservation> { reservation });
+            _mockUserManager.Setup(u => u.FindByIdAsync("user1"))
+                .ReturnsAsync(user);
+
+            var result = await _manager.GetReservationByIdAsync("user1", 1);
+
+            result.IsSuccessful.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task GetReservationByQRAsync_ShouldReturnSuccess()
+        {
+            var reservation = new MealReservation
+            {
+                Id = 1,
+                QRCode = "QR-123",
+                Menu = new MealMenu { Cafeteria = new Cafeteria { Name = "Main" } }
+            };
+
+            _mockUnitOfWork.Setup(u => u.MealReservations.GetByQRCodeAsync("QR-123"))
+                .ReturnsAsync(reservation);
+
+            var result = await _manager.GetReservationByQRAsync("QR-123");
+
+            result.IsSuccessful.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task GetReservationsByDateAsync_ShouldReturnSuccess()
+        {
+            var reservations = new List<MealReservation>
+            {
+                new MealReservation { Id = 1, Date = DateTime.Today, Menu = new MealMenu { Cafeteria = new Cafeteria { Name = "Main" } } }
+            };
+
+            _mockUnitOfWork.Setup(u => u.MealReservations.GetByDateAsync(DateTime.Today, null, null))
+                .ReturnsAsync(reservations);
+
+            var result = await _manager.GetReservationsByDateAsync(DateTime.Today);
+
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().HaveCount(1);
+        }
+
+        [Fact]
+        public async Task ExpireOldReservationsAsync_ShouldReturnSuccess()
+        {
+            _mockUnitOfWork.Setup(u => u.MealReservations.GetExpiredReservationsAsync())
+                .ReturnsAsync(new List<MealReservation>());
+            _mockUnitOfWork.Setup(u => u.CommitAsync())
+                .Returns(Task.CompletedTask);
+
+            var result = await _manager.ExpireOldReservationsAsync();
+
+            result.IsSuccessful.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task GetMyReservationsAsync_ShouldFilterByDateRange()
+        {
+            var reservations = new List<MealReservation>
+            {
+                new MealReservation { Id = 1, UserId = "user1", Menu = new MealMenu { Cafeteria = new Cafeteria { Name = "Main" } } }
+            };
+
+            var fromDate = DateTime.Today;
+            var toDate = DateTime.Today.AddDays(7);
+            _mockUnitOfWork.Setup(u => u.MealReservations.GetByUserAsync("user1", fromDate, toDate))
+                .ReturnsAsync(reservations);
+
+            var result = await _manager.GetMyReservationsAsync("user1", fromDate, toDate);
+
+            result.IsSuccessful.Should().BeTrue();
         }
     }
 }
