@@ -2,9 +2,12 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Moq;
 using SMARTCAMPUS.BusinessLayer.Abstract;
+using SMARTCAMPUS.BusinessLayer.Common;
 using SMARTCAMPUS.BusinessLayer.Concrete;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
+using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Event;
+using SMARTCAMPUS.EntityLayer.DTOs.Wallet;
 using SMARTCAMPUS.EntityLayer.Enums;
 using SMARTCAMPUS.EntityLayer.Models;
 using Xunit;
@@ -432,6 +435,580 @@ namespace SMARTCAMPUS.Tests.Managers
 
             result.IsSuccessful.Should().BeTrue();
             result.Data.Should().HaveCount(1);
+        }
+
+        [Fact]
+        public async Task CancelEventAsync_ShouldReturnSuccess_WhenEventExists()
+        {
+            // Arrange
+            var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "org1", UserName = "organizer" };
+            var evt = new Event
+            {
+                Id = 1,
+                Title = "Test Event",
+                Description = "Test Description",
+                CategoryId = 1,
+                Category = category,
+                CreatedByUserId = "org1",
+                CreatedBy = user,
+                StartDate = DateTime.UtcNow.AddDays(1),
+                EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
+                Location = "Hall",
+                Price = 0,
+                Capacity = 100,
+                RegisteredCount = 0,
+                IsActive = true,
+                Registrations = new List<EventRegistration>()
+            };
+
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdWithDetailsAsync(1))
+                .ReturnsAsync(evt);
+            _mockUnitOfWork.Setup(u => u.CommitAsync())
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _manager.CancelEventAsync(1, "Test reason");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.StatusCode.Should().Be(200);
+            evt.IsActive.Should().BeFalse();
+            _mockUnitOfWork.Verify(u => u.Events.Update(evt), Times.Once);
+        }
+
+        [Fact]
+        public async Task CancelEventAsync_ShouldReturnFail_WhenEventNotFound()
+        {
+            // Arrange
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdWithDetailsAsync(999))
+                .ReturnsAsync((Event?)null);
+
+            // Act
+            var result = await _manager.CancelEventAsync(999, "Test reason");
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+        }
+
+        [Fact]
+        public async Task CancelEventAsync_ShouldRefundRegistrations_WhenPriceGreaterThanZero()
+        {
+            // Arrange
+            var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "org1", UserName = "organizer" };
+            var evt = new Event
+            {
+                Id = 1,
+                Title = "Test Event",
+                Description = "Test Description",
+                CategoryId = 1,
+                Category = category,
+                CreatedByUserId = "org1",
+                CreatedBy = user,
+                StartDate = DateTime.UtcNow.AddDays(1),
+                EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
+                Location = "Hall",
+                Price = 100,
+                Capacity = 100,
+                RegisteredCount = 2,
+                IsActive = true,
+                Registrations = new List<EventRegistration>
+                {
+                    new EventRegistration { Id = 1, UserId = "user1", EventId = 1, IsActive = true },
+                    new EventRegistration { Id = 2, UserId = "user2", EventId = 1, IsActive = true },
+                    new EventRegistration { Id = 3, UserId = "user3", EventId = 1, IsActive = false } // Inactive
+                }
+            };
+
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdWithDetailsAsync(1))
+                .ReturnsAsync(evt);
+            _mockWalletService.Setup(w => w.RefundAsync(It.IsAny<string>(), It.IsAny<decimal>(), It.IsAny<ReferenceType>(), It.IsAny<int?>(), It.IsAny<string>()))
+                .ReturnsAsync(new Response<WalletTransactionDto> { IsSuccessful = true });
+            _mockUnitOfWork.Setup(u => u.CommitAsync())
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _manager.CancelEventAsync(1, "Test reason");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            _mockWalletService.Verify(w => w.RefundAsync("user1", 100, ReferenceType.EventRegistration, 1, It.IsAny<string>()), Times.Once);
+            _mockWalletService.Verify(w => w.RefundAsync("user2", 100, ReferenceType.EventRegistration, 2, It.IsAny<string>()), Times.Once);
+            _mockWalletService.Verify(w => w.RefundAsync("user3", It.IsAny<decimal>(), It.IsAny<ReferenceType>(), It.IsAny<int?>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task JoinWaitlistAsync_ShouldReturnSuccess_WhenValid()
+        {
+            // Arrange
+            var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "org1", UserName = "organizer" };
+            var evt = new Event
+            {
+                Id = 1,
+                Title = "Test Event",
+                Description = "Test Description",
+                CategoryId = 1,
+                Category = category,
+                CreatedByUserId = "org1",
+                CreatedBy = user,
+                StartDate = DateTime.UtcNow.AddDays(1),
+                EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
+                Location = "Hall",
+                Price = 0,
+                Capacity = 100,
+                RegisteredCount = 100,
+                IsActive = true
+            };
+
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdAsync(1))
+                .ReturnsAsync(evt);
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.IsUserRegisteredAsync(1, "user1"))
+                .ReturnsAsync(false);
+            _mockUnitOfWork.Setup(u => u.EventWaitlists.IsUserInWaitlistAsync(1, "user1"))
+                .ReturnsAsync(false);
+            _mockUnitOfWork.Setup(u => u.EventWaitlists.GetMaxPositionAsync(1))
+                .ReturnsAsync(5);
+            _mockUnitOfWork.Setup(u => u.EventWaitlists.AddAsync(It.IsAny<EventWaitlist>()))
+                .Returns(Task.CompletedTask);
+            _mockUnitOfWork.Setup(u => u.CommitAsync())
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _manager.JoinWaitlistAsync("user1", 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.StatusCode.Should().Be(201);
+            result.Data.QueuePosition.Should().Be(6);
+            result.Data.EventId.Should().Be(1);
+            result.Data.UserId.Should().Be("user1");
+        }
+
+        [Fact]
+        public async Task JoinWaitlistAsync_ShouldReturnFail_WhenEventNotFound()
+        {
+            // Arrange
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdAsync(999))
+                .ReturnsAsync((Event?)null);
+
+            // Act
+            var result = await _manager.JoinWaitlistAsync("user1", 999);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+        }
+
+        [Fact]
+        public async Task JoinWaitlistAsync_ShouldReturnFail_WhenEventInactive()
+        {
+            // Arrange
+            var evt = new Event { Id = 1, Title = "Test Event", IsActive = false };
+
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdAsync(1))
+                .ReturnsAsync(evt);
+
+            // Act
+            var result = await _manager.JoinWaitlistAsync("user1", 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+        }
+
+        [Fact]
+        public async Task JoinWaitlistAsync_ShouldReturnFail_WhenUserAlreadyRegistered()
+        {
+            // Arrange
+            var evt = new Event { Id = 1, Title = "Test Event", IsActive = true };
+
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdAsync(1))
+                .ReturnsAsync(evt);
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.IsUserRegisteredAsync(1, "user1"))
+                .ReturnsAsync(true);
+
+            // Act
+            var result = await _manager.JoinWaitlistAsync("user1", 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+        }
+
+        [Fact]
+        public async Task JoinWaitlistAsync_ShouldReturnFail_WhenUserAlreadyInWaitlist()
+        {
+            // Arrange
+            var evt = new Event { Id = 1, Title = "Test Event", IsActive = true };
+
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdAsync(1))
+                .ReturnsAsync(evt);
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.IsUserRegisteredAsync(1, "user1"))
+                .ReturnsAsync(false);
+            _mockUnitOfWork.Setup(u => u.EventWaitlists.IsUserInWaitlistAsync(1, "user1"))
+                .ReturnsAsync(true);
+
+            // Act
+            var result = await _manager.JoinWaitlistAsync("user1", 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(400);
+        }
+
+        [Fact]
+        public async Task LeaveWaitlistAsync_ShouldReturnSuccess_WhenValid()
+        {
+            // Arrange
+            var waitlist = new EventWaitlist
+            {
+                Id = 1,
+                EventId = 1,
+                UserId = "user1",
+                QueuePosition = 1,
+                IsActive = true,
+                AddedAt = DateTime.UtcNow
+            };
+
+            _mockUnitOfWork.Setup(u => u.EventWaitlists.GetByEventAndUserAsync(1, "user1"))
+                .ReturnsAsync(waitlist);
+            _mockUnitOfWork.Setup(u => u.EventWaitlists.GetByEventIdAsync(1))
+                .ReturnsAsync(new List<EventWaitlist>());
+            _mockUnitOfWork.Setup(u => u.CommitAsync())
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _manager.LeaveWaitlistAsync("user1", 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.StatusCode.Should().Be(200);
+            waitlist.IsActive.Should().BeFalse();
+            _mockUnitOfWork.Verify(u => u.EventWaitlists.Update(waitlist), Times.Once);
+        }
+
+        [Fact]
+        public async Task LeaveWaitlistAsync_ShouldReturnFail_WhenNotInWaitlist()
+        {
+            // Arrange
+            _mockUnitOfWork.Setup(u => u.EventWaitlists.GetByEventAndUserAsync(1, "user1"))
+                .ReturnsAsync((EventWaitlist?)null);
+
+            // Act
+            var result = await _manager.LeaveWaitlistAsync("user1", 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+        }
+
+        [Fact]
+        public async Task LeaveWaitlistAsync_ShouldUpdatePositions_AfterLeaving()
+        {
+            // Arrange
+            var waitlist = new EventWaitlist
+            {
+                Id = 1,
+                EventId = 1,
+                UserId = "user1",
+                QueuePosition = 1,
+                IsActive = true,
+                AddedAt = DateTime.UtcNow.AddMinutes(-10)
+            };
+
+            var otherWaitlist = new EventWaitlist
+            {
+                Id = 2,
+                EventId = 1,
+                UserId = "user2",
+                QueuePosition = 2,
+                IsActive = true,
+                AddedAt = DateTime.UtcNow.AddMinutes(-5)
+            };
+
+            _mockUnitOfWork.Setup(u => u.EventWaitlists.GetByEventAndUserAsync(1, "user1"))
+                .ReturnsAsync(waitlist);
+            _mockUnitOfWork.Setup(u => u.EventWaitlists.GetByEventIdAsync(1))
+                .ReturnsAsync(new List<EventWaitlist> { otherWaitlist });
+            _mockUnitOfWork.Setup(u => u.CommitAsync())
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _manager.LeaveWaitlistAsync("user1", 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            _mockUnitOfWork.Verify(u => u.EventWaitlists.Update(It.IsAny<EventWaitlist>()), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public async Task CheckInAsync_ShouldReturnSuccess_WhenValid()
+        {
+            // Arrange
+            var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "user1", UserName = "testuser" };
+            var evt = new Event
+            {
+                Id = 1,
+                Title = "Test Event",
+                Description = "Test Description",
+                CategoryId = 1,
+                Category = category,
+                StartDate = DateTime.UtcNow.AddHours(-2),
+                EndDate = DateTime.UtcNow.AddHours(2),
+                IsActive = true
+            };
+
+            var registration = new EventRegistration
+            {
+                Id = 1,
+                EventId = 1,
+                Event = evt,
+                UserId = "user1",
+                User = user,
+                QRCode = "QR-123",
+                CheckedIn = false,
+                IsActive = true
+            };
+
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.GetByQRCodeAsync("QR-123"))
+                .ReturnsAsync(registration);
+            _mockUnitOfWork.Setup(u => u.CommitAsync())
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _manager.CheckInAsync("QR-123");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.IsValid.Should().BeTrue();
+            result.Data.Message.Should().Contain("başarılı");
+            registration.CheckedIn.Should().BeTrue();
+            _mockUnitOfWork.Verify(u => u.EventRegistrations.Update(registration), Times.Once);
+        }
+
+        [Fact]
+        public async Task CheckInAsync_ShouldReturnInvalid_WhenQRCodeNotFound()
+        {
+            // Arrange
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.GetByQRCodeAsync("INVALID"))
+                .ReturnsAsync((EventRegistration?)null);
+
+            // Act
+            var result = await _manager.CheckInAsync("INVALID");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.IsValid.Should().BeFalse();
+            result.Data.Message.Should().Contain("Geçersiz");
+        }
+
+        [Fact]
+        public async Task CheckInAsync_ShouldReturnInvalid_WhenRegistrationInactive()
+        {
+            // Arrange
+            var registration = new EventRegistration
+            {
+                Id = 1,
+                EventId = 1,
+                UserId = "user1",
+                QRCode = "QR-123",
+                CheckedIn = false,
+                IsActive = false
+            };
+
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.GetByQRCodeAsync("QR-123"))
+                .ReturnsAsync(registration);
+
+            // Act
+            var result = await _manager.CheckInAsync("QR-123");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.IsValid.Should().BeFalse();
+            result.Data.Message.Should().Contain("Geçersiz");
+        }
+
+        [Fact]
+        public async Task CheckInAsync_ShouldReturnInvalid_WhenAlreadyCheckedIn()
+        {
+            // Arrange
+            var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "user1", UserName = "testuser" };
+            var evt = new Event
+            {
+                Id = 1,
+                Title = "Test Event",
+                CategoryId = 1,
+                Category = category,
+                IsActive = true
+            };
+
+            var registration = new EventRegistration
+            {
+                Id = 1,
+                EventId = 1,
+                Event = evt,
+                UserId = "user1",
+                User = user,
+                QRCode = "QR-123",
+                CheckedIn = true,
+                IsActive = true
+            };
+
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.GetByQRCodeAsync("QR-123"))
+                .ReturnsAsync(registration);
+
+            // Act
+            var result = await _manager.CheckInAsync("QR-123");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.IsValid.Should().BeFalse();
+            result.Data.Message.Should().Contain("zaten yapılmış");
+        }
+
+        [Fact]
+        public async Task CheckInAsync_ShouldReturnInvalid_WhenOutsideEventTime()
+        {
+            // Arrange
+            var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "user1", UserName = "testuser" };
+            var evt = new Event
+            {
+                Id = 1,
+                Title = "Test Event",
+                CategoryId = 1,
+                Category = category,
+                StartDate = DateTime.UtcNow.AddDays(1),
+                EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
+                IsActive = true
+            };
+
+            var registration = new EventRegistration
+            {
+                Id = 1,
+                EventId = 1,
+                Event = evt,
+                UserId = "user1",
+                User = user,
+                QRCode = "QR-123",
+                CheckedIn = false,
+                IsActive = true
+            };
+
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.GetByQRCodeAsync("QR-123"))
+                .ReturnsAsync(registration);
+
+            // Act
+            var result = await _manager.CheckInAsync("QR-123");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.IsValid.Should().BeFalse();
+            result.Data.Message.Should().Contain("saati dışında");
+        }
+
+        [Fact]
+        public async Task CheckInAsync_ShouldReturnInvalid_WhenTooEarly()
+        {
+            // Arrange
+            var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "user1", UserName = "testuser" };
+            var evt = new Event
+            {
+                Id = 1,
+                Title = "Test Event",
+                CategoryId = 1,
+                Category = category,
+                StartDate = DateTime.UtcNow.AddHours(2),
+                EndDate = DateTime.UtcNow.AddHours(4),
+                IsActive = true
+            };
+
+            var registration = new EventRegistration
+            {
+                Id = 1,
+                EventId = 1,
+                Event = evt,
+                UserId = "user1",
+                User = user,
+                QRCode = "QR-123",
+                CheckedIn = false,
+                IsActive = true
+            };
+
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.GetByQRCodeAsync("QR-123"))
+                .ReturnsAsync(registration);
+
+            // Act
+            var result = await _manager.CheckInAsync("QR-123");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.IsValid.Should().BeFalse();
+            result.Data.Message.Should().Contain("saati dışında");
+        }
+
+        [Fact]
+        public async Task GetEventRegistrationsAsync_ShouldReturnRegistrations()
+        {
+            // Arrange
+            var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "user1", UserName = "testuser" };
+            var evt = new Event
+            {
+                Id = 1,
+                Title = "Test Event",
+                CategoryId = 1,
+                Category = category,
+                IsActive = true
+            };
+
+            var registrations = new List<EventRegistration>
+            {
+                new EventRegistration
+                {
+                    Id = 1,
+                    EventId = 1,
+                    Event = evt,
+                    UserId = "user1",
+                    User = user,
+                    RegistrationDate = DateTime.UtcNow,
+                    QRCode = "QR-123",
+                    CheckedIn = false,
+                    IsActive = true
+                },
+                new EventRegistration
+                {
+                    Id = 2,
+                    EventId = 1,
+                    Event = evt,
+                    UserId = "user2",
+                    RegistrationDate = DateTime.UtcNow,
+                    QRCode = "QR-456",
+                    CheckedIn = true,
+                    CheckedInAt = DateTime.UtcNow,
+                    IsActive = true
+                }
+            };
+
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.GetByEventIdAsync(1))
+                .ReturnsAsync(registrations);
+
+            // Act
+            var result = await _manager.GetEventRegistrationsAsync(1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().HaveCount(2);
+            result.Data[0].Id.Should().Be(1);
+            result.Data[0].EventTitle.Should().Be("Test Event");
+            result.Data[0].UserName.Should().Be("testuser");
+            result.Data[1].CheckedIn.Should().BeTrue();
         }
     }
 }
