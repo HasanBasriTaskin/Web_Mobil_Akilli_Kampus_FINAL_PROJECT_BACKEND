@@ -280,6 +280,148 @@ namespace SMARTCAMPUS.Tests.Managers
         }
 
         [Fact]
+        public async Task ScanQRCodeAsync_ShouldReturnInvalid_WhenQRCodeNotFound()
+        {
+            // Arrange
+            _mockUnitOfWork.Setup(u => u.MealReservations.GetByQRCodeAsync("INVALID-QR"))
+                .ReturnsAsync((MealReservation?)null);
+
+            // Act
+            var result = await _manager.ScanQRCodeAsync("INVALID-QR");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.IsValid.Should().BeFalse();
+            result.Data.Message.Should().Contain("Geçersiz");
+        }
+
+        [Fact]
+        public async Task ScanQRCodeAsync_ShouldReturnInvalid_WhenCancelled()
+        {
+            // Arrange
+            var reservation = new MealReservation
+            {
+                Id = 1,
+                Status = MealReservationStatus.Cancelled,
+                QRCode = "QR-123"
+            };
+
+            _mockUnitOfWork.Setup(u => u.MealReservations.GetByQRCodeAsync("QR-123"))
+                .ReturnsAsync(reservation);
+
+            // Act
+            var result = await _manager.ScanQRCodeAsync("QR-123");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.IsValid.Should().BeFalse();
+            result.Data.Message.Should().Contain("iptal");
+        }
+
+        [Fact]
+        public async Task ScanQRCodeAsync_ShouldReturnInvalid_WhenExpired()
+        {
+            // Arrange
+            var reservation = new MealReservation
+            {
+                Id = 1,
+                Status = MealReservationStatus.Expired,
+                QRCode = "QR-123"
+            };
+
+            _mockUnitOfWork.Setup(u => u.MealReservations.GetByQRCodeAsync("QR-123"))
+                .ReturnsAsync(reservation);
+
+            // Act
+            var result = await _manager.ScanQRCodeAsync("QR-123");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.IsValid.Should().BeFalse();
+            result.Data.Message.Should().Contain("süresi dolmuş");
+        }
+
+        [Fact]
+        public async Task ScanQRCodeAsync_ShouldReturnInvalid_WhenWrongDate()
+        {
+            // Arrange
+            var cafeteria = new Cafeteria { Id = 1, Name = "Main" };
+            var menu = new MealMenu
+            {
+                Id = 1,
+                Cafeteria = cafeteria
+            };
+
+            var user = new User { Id = "user1", UserName = "testuser" };
+
+            var reservation = new MealReservation
+            {
+                Id = 1,
+                UserId = "user1",
+                User = user,
+                MenuId = 1,
+                Menu = menu,
+                Date = DateTime.UtcNow.AddDays(-1).Date, // Yesterday
+                MealType = MealType.Lunch,
+                Status = MealReservationStatus.Reserved,
+                QRCode = "QR-123"
+            };
+
+            _mockUnitOfWork.Setup(u => u.MealReservations.GetByQRCodeAsync("QR-123"))
+                .ReturnsAsync(reservation);
+
+            // Act
+            var result = await _manager.ScanQRCodeAsync("QR-123");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.IsValid.Should().BeFalse();
+            result.Data.Message.Should().Contain("tarihi için");
+        }
+
+        [Fact]
+        public async Task ScanQRCodeAsync_ShouldUpdateStatusToUsed_WhenValid()
+        {
+            // Arrange
+            var cafeteria = new Cafeteria { Id = 1, Name = "Main" };
+            var menu = new MealMenu
+            {
+                Id = 1,
+                Cafeteria = cafeteria
+            };
+
+            var user = new User { Id = "user1", UserName = "testuser" };
+
+            var reservation = new MealReservation
+            {
+                Id = 1,
+                UserId = "user1",
+                User = user,
+                MenuId = 1,
+                Menu = menu,
+                Date = DateTime.UtcNow.Date,
+                MealType = MealType.Lunch,
+                Status = MealReservationStatus.Reserved,
+                QRCode = "QR-123"
+            };
+
+            _mockUnitOfWork.Setup(u => u.MealReservations.GetByQRCodeAsync("QR-123"))
+                .ReturnsAsync(reservation);
+            _mockUnitOfWork.Setup(u => u.CommitAsync())
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _manager.ScanQRCodeAsync("QR-123");
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.IsValid.Should().BeTrue();
+            reservation.Status.Should().Be(MealReservationStatus.Used);
+            reservation.UsedAt.Should().NotBeNull();
+            _mockUnitOfWork.Verify(u => u.MealReservations.Update(reservation), Times.Once);
+        }
+
+        [Fact]
         public async Task GetReservationByIdAsync_ShouldReturnSuccess()
         {
             var reservation = new MealReservation

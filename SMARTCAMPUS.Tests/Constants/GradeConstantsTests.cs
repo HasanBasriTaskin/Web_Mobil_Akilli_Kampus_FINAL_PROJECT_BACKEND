@@ -132,6 +132,56 @@ namespace SMARTCAMPUS.Tests.Constants
             GradeConstants.FinalWeight.Should().BeGreaterThan(0);
             GradeConstants.FinalWeight.Should().BeLessThanOrEqualTo(1);
         }
+
+        [Fact]
+        public void LateCheckInGracePeriodMinutes_ShouldBePositive()
+        {
+            GradeConstants.LateCheckInGracePeriodMinutes.Should().BeGreaterThan(0);
+        }
+
+        [Fact]
+        public void LateCheckInGracePeriodMinutes_ShouldBeReasonable()
+        {
+            GradeConstants.LateCheckInGracePeriodMinutes.Should().BeLessThanOrEqualTo(60);
+        }
+
+        [Fact]
+        public void AllGradeConstants_ShouldBeAccessible()
+        {
+            // Test that all constants can be accessed without throwing exceptions
+            var constants = new[]
+            {
+                GradeConstants.MidtermWeight,
+                GradeConstants.FinalWeight,
+                GradeConstants.LateCheckInGracePeriodMinutes,
+                GradeConstants.GradeA,
+                GradeConstants.GradeAMinus,
+                GradeConstants.GradeBPlus,
+                GradeConstants.GradeB,
+                GradeConstants.GradeBMinus,
+                GradeConstants.GradeCPlus,
+                GradeConstants.GradeC,
+                GradeConstants.GradeCMinus,
+                GradeConstants.GradeD
+            };
+
+            constants.Should().NotBeEmpty();
+            constants.Should().OnlyContain(c => c >= 0);
+        }
+
+        [Fact]
+        public void GradeThresholds_ShouldHaveProperSpacing()
+        {
+            // Verify that grade thresholds have consistent spacing (5 points between each)
+            (GradeConstants.GradeA - GradeConstants.GradeAMinus).Should().Be(5);
+            (GradeConstants.GradeAMinus - GradeConstants.GradeBPlus).Should().Be(5);
+            (GradeConstants.GradeBPlus - GradeConstants.GradeB).Should().Be(5);
+            (GradeConstants.GradeB - GradeConstants.GradeBMinus).Should().Be(5);
+            (GradeConstants.GradeBMinus - GradeConstants.GradeCPlus).Should().Be(5);
+            (GradeConstants.GradeCPlus - GradeConstants.GradeC).Should().Be(5);
+            (GradeConstants.GradeC - GradeConstants.GradeCMinus).Should().Be(5);
+            (GradeConstants.GradeCMinus - GradeConstants.GradeD).Should().Be(5);
+        }
     }
 }
 

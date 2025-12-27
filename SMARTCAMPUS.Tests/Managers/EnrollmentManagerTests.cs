@@ -706,6 +706,319 @@ namespace SMARTCAMPUS.Tests.Managers
         }
 
         #endregion
+
+        #region GetMyCoursesAsync Tests
+
+        [Fact]
+        public async Task GetMyCoursesAsync_ShouldReturnEnrolledCourses()
+        {
+            // Arrange
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            await _context.Departments.AddAsync(dept);
+            await _context.SaveChangesAsync();
+
+            var instructorUser = new User { Id = "u1", FullName = "Prof. Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = instructorUser, EmployeeNumber = "EMP001", Title = "Prof.", DepartmentId = 1, Department = dept, IsActive = true };
+            
+            var course1 = new Course { Id = 1, Code = "CS101", Name = "Introduction to CS", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var course2 = new Course { Id = 2, Code = "CS102", Name = "Data Structures", Credits = 4, ECTS = 6, DepartmentId = 1, Department = dept, IsActive = true };
+            
+            var section1 = new CourseSection { Id = 1, CourseId = 1, Course = course1, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+            var section2 = new CourseSection { Id = 2, CourseId = 2, Course = course2, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+
+            var studentUser = new User { Id = "s1", FullName = "Student One", IsActive = true };
+            var student = new Student { Id = 1, UserId = "s1", User = studentUser, StudentNumber = "12345", DepartmentId = 1, Department = dept, IsActive = true };
+
+            var enrollment1 = new Enrollment { Id = 1, StudentId = 1, Student = student, SectionId = 1, Section = section1, Status = EnrollmentStatus.Enrolled, EnrollmentDate = DateTime.UtcNow, MidtermGrade = 85, FinalGrade = 90, LetterGrade = "A", IsActive = true };
+            var enrollment2 = new Enrollment { Id = 2, StudentId = 1, Student = student, SectionId = 2, Section = section2, Status = EnrollmentStatus.Enrolled, EnrollmentDate = DateTime.UtcNow, IsActive = true };
+            var enrollment3 = new Enrollment { Id = 3, StudentId = 1, Student = student, SectionId = 1, Section = section1, Status = EnrollmentStatus.Dropped, EnrollmentDate = DateTime.UtcNow, IsActive = true }; // Should not be included
+
+            await _context.Users.AddRangeAsync(instructorUser, studentUser);
+            await _context.Faculties.AddAsync(instructor);
+            await _context.Courses.AddRangeAsync(course1, course2);
+            await _context.CourseSections.AddRangeAsync(section1, section2);
+            await _context.Students.AddAsync(student);
+            await _context.Enrollments.AddRangeAsync(enrollment1, enrollment2, enrollment3);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.GetMyCoursesAsync(1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().HaveCount(2);
+            result.Data.Should().Contain(c => c.CourseCode == "CS101" && c.MidtermGrade == 85 && c.FinalGrade == 90 && c.LetterGrade == "A");
+            result.Data.Should().Contain(c => c.CourseCode == "CS102");
+            result.Data.Should().NotContain(c => c.Status == EnrollmentStatus.Dropped);
+        }
+
+        [Fact]
+        public async Task GetMyCoursesAsync_ShouldReturnEmpty_WhenNoEnrollments()
+        {
+            // Arrange
+            var studentUser = new User { Id = "s1", FullName = "Student One", IsActive = true };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            var student = new Student { Id = 1, UserId = "s1", User = studentUser, StudentNumber = "12345", DepartmentId = 1, Department = dept, IsActive = true };
+
+            await _context.Departments.AddAsync(dept);
+            await _context.Users.AddAsync(studentUser);
+            await _context.Students.AddAsync(student);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.GetMyCoursesAsync(1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().BeEmpty();
+        }
+
+        #endregion
+
+        #region GetStudentsBySectionAsync Tests
+
+        [Fact]
+        public async Task GetStudentsBySectionAsync_ShouldReturnEnrolledStudents()
+        {
+            // Arrange
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            await _context.Departments.AddAsync(dept);
+            await _context.SaveChangesAsync();
+
+            var instructorUser = new User { Id = "u1", FullName = "Prof. Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = instructorUser, EmployeeNumber = "EMP001", Title = "Prof.", DepartmentId = 1, Department = dept, IsActive = true };
+            
+            var course = new Course { Id = 1, Code = "CS101", Name = "Introduction to CS", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+
+            var student1User = new User { Id = "s1", FullName = "Student One", Email = "student1@test.com", IsActive = true };
+            var student1 = new Student { Id = 1, UserId = "s1", User = student1User, StudentNumber = "12345", DepartmentId = 1, Department = dept, IsActive = true };
+            
+            var student2User = new User { Id = "s2", FullName = "Student Two", Email = "student2@test.com", IsActive = true };
+            var student2 = new Student { Id = 2, UserId = "s2", User = student2User, StudentNumber = "12346", DepartmentId = 1, Department = dept, IsActive = true };
+
+            var enrollment1 = new Enrollment { Id = 1, StudentId = 1, Student = student1, SectionId = 1, Section = section, Status = EnrollmentStatus.Enrolled, EnrollmentDate = DateTime.UtcNow, MidtermGrade = 85, FinalGrade = 90, LetterGrade = "A", IsActive = true };
+            var enrollment2 = new Enrollment { Id = 2, StudentId = 2, Student = student2, SectionId = 1, Section = section, Status = EnrollmentStatus.Enrolled, EnrollmentDate = DateTime.UtcNow, IsActive = true };
+            var enrollment3 = new Enrollment { Id = 3, StudentId = 1, Student = student1, SectionId = 1, Section = section, Status = EnrollmentStatus.Dropped, EnrollmentDate = DateTime.UtcNow, IsActive = true }; // Should not be included
+
+            await _context.Users.AddRangeAsync(instructorUser, student1User, student2User);
+            await _context.Faculties.AddAsync(instructor);
+            await _context.Courses.AddAsync(course);
+            await _context.CourseSections.AddAsync(section);
+            await _context.Students.AddRangeAsync(student1, student2);
+            await _context.Enrollments.AddRangeAsync(enrollment1, enrollment2, enrollment3);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.GetStudentsBySectionAsync(1, 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().HaveCount(2);
+            result.Data.Should().Contain(s => s.StudentNumber == "12345" && s.MidtermGrade == 85 && s.FinalGrade == 90 && s.LetterGrade == "A");
+            result.Data.Should().Contain(s => s.StudentNumber == "12346");
+            result.Data.Should().NotContain(s => s.Status == EnrollmentStatus.Dropped);
+        }
+
+        [Fact]
+        public async Task GetStudentsBySectionAsync_ShouldFail_WhenSectionNotFound()
+        {
+            // Arrange
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            await _context.Departments.AddAsync(dept);
+            await _context.SaveChangesAsync();
+
+            var instructorUser = new User { Id = "u1", FullName = "Prof. Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = instructorUser, EmployeeNumber = "EMP001", Title = "Prof.", DepartmentId = 1, Department = dept, IsActive = true };
+
+            await _context.Users.AddAsync(instructorUser);
+            await _context.Faculties.AddAsync(instructor);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.GetStudentsBySectionAsync(999, 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+            result.Errors.Should().Contain("Section not found or access denied");
+        }
+
+        [Fact]
+        public async Task GetStudentsBySectionAsync_ShouldFail_WhenAccessDenied()
+        {
+            // Arrange
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            await _context.Departments.AddAsync(dept);
+            await _context.SaveChangesAsync();
+
+            var instructor1User = new User { Id = "u1", FullName = "Prof. Instructor 1", IsActive = true };
+            var instructor1 = new Faculty { Id = 1, UserId = "u1", User = instructor1User, EmployeeNumber = "EMP001", Title = "Prof.", DepartmentId = 1, Department = dept, IsActive = true };
+            
+            var instructor2User = new User { Id = "u2", FullName = "Prof. Instructor 2", IsActive = true };
+            var instructor2 = new Faculty { Id = 2, UserId = "u2", User = instructor2User, EmployeeNumber = "EMP002", Title = "Prof.", DepartmentId = 1, Department = dept, IsActive = true };
+            
+            var course = new Course { Id = 1, Code = "CS101", Name = "Introduction to CS", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 2, Instructor = instructor2, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+
+            await _context.Users.AddRangeAsync(instructor1User, instructor2User);
+            await _context.Faculties.AddRangeAsync(instructor1, instructor2);
+            await _context.Courses.AddAsync(course);
+            await _context.CourseSections.AddAsync(section);
+            await _context.SaveChangesAsync();
+
+            // Act - Instructor 1 trying to access Instructor 2's section
+            var result = await _manager.GetStudentsBySectionAsync(1, 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeFalse();
+            result.StatusCode.Should().Be(404);
+            result.Errors.Should().Contain("Section not found or access denied");
+        }
+
+        [Fact]
+        public async Task GetStudentsBySectionAsync_ShouldReturnEmpty_WhenNoEnrolledStudents()
+        {
+            // Arrange
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            await _context.Departments.AddAsync(dept);
+            await _context.SaveChangesAsync();
+
+            var instructorUser = new User { Id = "u1", FullName = "Prof. Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = instructorUser, EmployeeNumber = "EMP001", Title = "Prof.", DepartmentId = 1, Department = dept, IsActive = true };
+            
+            var course = new Course { Id = 1, Code = "CS101", Name = "Introduction to CS", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+
+            await _context.Users.AddAsync(instructorUser);
+            await _context.Faculties.AddAsync(instructor);
+            await _context.Courses.AddAsync(course);
+            await _context.CourseSections.AddAsync(section);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.GetStudentsBySectionAsync(1, 1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().BeEmpty();
+        }
+
+        #endregion
+
+        #region GetMySectionsAsync Tests
+
+        [Fact]
+        public async Task GetMySectionsAsync_ShouldReturnInstructorSections()
+        {
+            // Arrange
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            await _context.Departments.AddAsync(dept);
+            await _context.SaveChangesAsync();
+
+            var instructorUser = new User { Id = "u1", FullName = "Prof. Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = instructorUser, EmployeeNumber = "EMP001", Title = "Prof.", DepartmentId = 1, Department = dept, IsActive = true };
+            
+            var course1 = new Course { Id = 1, Code = "CS101", Name = "Introduction to CS", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var course2 = new Course { Id = 2, Code = "CS102", Name = "Data Structures", Credits = 4, ECTS = 6, DepartmentId = 1, Department = dept, IsActive = true };
+            
+            var section1 = new CourseSection { Id = 1, CourseId = 1, Course = course1, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, EnrolledCount = 10, IsActive = true };
+            var section2 = new CourseSection { Id = 2, CourseId = 2, Course = course2, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 25, EnrolledCount = 5, IsActive = true };
+
+            var studentUser = new User { Id = "s1", FullName = "Student One", IsActive = true };
+            var student = new Student { Id = 1, UserId = "s1", User = studentUser, StudentNumber = "12345", DepartmentId = 1, Department = dept, IsActive = true };
+
+            // Pending enrollments for section1
+            var pendingEnrollment1 = new Enrollment { Id = 1, StudentId = 1, Student = student, SectionId = 1, Section = section1, Status = EnrollmentStatus.Pending, IsActive = true };
+            var pendingEnrollment2 = new Enrollment { Id = 2, StudentId = 1, Student = student, SectionId = 1, Section = section1, Status = EnrollmentStatus.Pending, IsActive = true };
+
+            await _context.Users.AddRangeAsync(instructorUser, studentUser);
+            await _context.Faculties.AddAsync(instructor);
+            await _context.Courses.AddRangeAsync(course1, course2);
+            await _context.CourseSections.AddRangeAsync(section1, section2);
+            await _context.Students.AddAsync(student);
+            await _context.Enrollments.AddRangeAsync(pendingEnrollment1, pendingEnrollment2);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.GetMySectionsAsync(1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().HaveCount(2);
+            result.Data.Should().Contain(s => s.CourseCode == "CS101" && s.EnrolledCount == 10 && s.PendingCount == 2);
+            result.Data.Should().Contain(s => s.CourseCode == "CS102" && s.EnrolledCount == 5 && s.PendingCount == 0);
+        }
+
+        [Fact]
+        public async Task GetMySectionsAsync_ShouldReturnEmpty_WhenNoSections()
+        {
+            // Arrange
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            await _context.Departments.AddAsync(dept);
+            await _context.SaveChangesAsync();
+
+            var instructorUser = new User { Id = "u1", FullName = "Prof. Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = instructorUser, EmployeeNumber = "EMP001", Title = "Prof.", DepartmentId = 1, Department = dept, IsActive = true };
+
+            await _context.Users.AddAsync(instructorUser);
+            await _context.Faculties.AddAsync(instructor);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.GetMySectionsAsync(1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task GetMySectionsAsync_ShouldCalculatePendingCountCorrectly()
+        {
+            // Arrange
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            await _context.Departments.AddAsync(dept);
+            await _context.SaveChangesAsync();
+
+            var instructorUser = new User { Id = "u1", FullName = "Prof. Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = instructorUser, EmployeeNumber = "EMP001", Title = "Prof.", DepartmentId = 1, Department = dept, IsActive = true };
+            
+            var course = new Course { Id = 1, Code = "CS101", Name = "Introduction to CS", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, EnrolledCount = 5, IsActive = true };
+
+            var student1User = new User { Id = "s1", FullName = "Student One", IsActive = true };
+            var student1 = new Student { Id = 1, UserId = "s1", User = student1User, StudentNumber = "12345", DepartmentId = 1, Department = dept, IsActive = true };
+            
+            var student2User = new User { Id = "s2", FullName = "Student Two", IsActive = true };
+            var student2 = new Student { Id = 2, UserId = "s2", User = student2User, StudentNumber = "12346", DepartmentId = 1, Department = dept, IsActive = true };
+
+            // 3 pending enrollments
+            var pending1 = new Enrollment { Id = 1, StudentId = 1, Student = student1, SectionId = 1, Section = section, Status = EnrollmentStatus.Pending, IsActive = true };
+            var pending2 = new Enrollment { Id = 2, StudentId = 2, Student = student2, SectionId = 1, Section = section, Status = EnrollmentStatus.Pending, IsActive = true };
+            var pending3 = new Enrollment { Id = 3, StudentId = 1, Student = student1, SectionId = 1, Section = section, Status = EnrollmentStatus.Pending, IsActive = true };
+            
+            // 1 enrolled (should not count as pending)
+            var enrolled = new Enrollment { Id = 4, StudentId = 1, Student = student1, SectionId = 1, Section = section, Status = EnrollmentStatus.Enrolled, IsActive = true };
+
+            await _context.Users.AddRangeAsync(instructorUser, student1User, student2User);
+            await _context.Faculties.AddAsync(instructor);
+            await _context.Courses.AddAsync(course);
+            await _context.CourseSections.AddAsync(section);
+            await _context.Students.AddRangeAsync(student1, student2);
+            await _context.Enrollments.AddRangeAsync(pending1, pending2, pending3, enrolled);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _manager.GetMySectionsAsync(1);
+
+            // Assert
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().HaveCount(1);
+            result.Data.First().PendingCount.Should().Be(3);
+        }
+
+        #endregion
         
         // Removed tests for CheckPrerequisitesAsync and CheckScheduleConflictAsync as they are covered via EnrollInCourseAsync integration scenarios
         // or effectively tested implicitly. Added specific scenarios in EnrollInCourseAsync above.

@@ -119,6 +119,68 @@ namespace SMARTCAMPUS.Tests.Constants
             GradePoints.D.Should().BeGreaterThanOrEqualTo(0);
             GradePoints.F.Should().BeGreaterThanOrEqualTo(0);
         }
+
+        [Fact]
+        public void AllGradePoints_ShouldBeAccessible()
+        {
+            // Test that all constants can be accessed without throwing exceptions
+            var points = new[]
+            {
+                GradePoints.A,
+                GradePoints.AMinus,
+                GradePoints.BPlus,
+                GradePoints.B,
+                GradePoints.BMinus,
+                GradePoints.CPlus,
+                GradePoints.C,
+                GradePoints.CMinus,
+                GradePoints.D,
+                GradePoints.F
+            };
+
+            points.Should().NotBeEmpty();
+            points.Should().OnlyContain(p => p >= 0 && p <= 4);
+        }
+
+        [Fact]
+        public void GradePoints_ShouldHaveProperSpacing()
+        {
+            // Verify that grade points have consistent spacing
+            (GradePoints.A - GradePoints.AMinus).Should().Be(0.3m);
+            (GradePoints.AMinus - GradePoints.BPlus).Should().Be(0.4m);
+            (GradePoints.BPlus - GradePoints.B).Should().Be(0.3m);
+            (GradePoints.B - GradePoints.BMinus).Should().Be(0.3m);
+            (GradePoints.BMinus - GradePoints.CPlus).Should().Be(0.4m);
+            (GradePoints.CPlus - GradePoints.C).Should().Be(0.3m);
+            (GradePoints.C - GradePoints.CMinus).Should().Be(0.3m);
+            (GradePoints.CMinus - GradePoints.D).Should().Be(0.7m);
+            (GradePoints.D - GradePoints.F).Should().Be(1.0m);
+        }
+
+        [Fact]
+        public void HighestGradePoint_ShouldBeA()
+        {
+            GradePoints.A.Should().Be(4.0m);
+            GradePoints.A.Should().BeGreaterThan(GradePoints.AMinus);
+        }
+
+        [Fact]
+        public void LowestGradePoint_ShouldBeF()
+        {
+            GradePoints.F.Should().Be(0.0m);
+            GradePoints.F.Should().BeLessThan(GradePoints.D);
+        }
+
+        [Fact]
+        public void GradePoints_ShouldMatchStandardGPA()
+        {
+            // Verify standard GPA scale
+            GradePoints.A.Should().Be(4.0m);
+            GradePoints.B.Should().Be(3.0m);
+            GradePoints.C.Should().Be(2.0m);
+            GradePoints.D.Should().Be(1.0m);
+            GradePoints.F.Should().Be(0.0m);
+        }
     }
 }
 
