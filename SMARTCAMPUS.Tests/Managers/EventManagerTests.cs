@@ -207,12 +207,16 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var organizer = new User { Id = "org1", UserName = "organizer" };
             var evt = new Event
             {
                 Id = 1,
                 Title = "Test Event",
+                Description = "Test Description",
                 CategoryId = 1,
                 Category = category,
+                CreatedByUserId = "org1",
+                CreatedBy = organizer,
                 StartDate = DateTime.UtcNow.AddDays(1),
                 EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
                 Location = "Hall",
@@ -251,12 +255,16 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "org1", UserName = "organizer" };
             var evt = new Event
             {
                 Id = 1,
                 Title = "Test Event",
+                Description = "Test Description",
                 CategoryId = 1,
                 Category = category,
+                CreatedByUserId = "org1",
+                CreatedBy = user,
                 StartDate = DateTime.UtcNow.AddDays(1),
                 EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
                 Location = "Hall",
@@ -266,8 +274,11 @@ namespace SMARTCAMPUS.Tests.Managers
                 IsActive = true
             };
 
+            evt.Registrations = new List<EventRegistration>();
             _mockUnitOfWork.Setup(u => u.Events.GetByIdWithDetailsAsync(1))
                 .ReturnsAsync(evt);
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.IsUserRegisteredAsync(1, "user1"))
+                .ReturnsAsync(false);
 
             // Act
             var result = await _manager.RegisterAsync("user1", 1);
@@ -282,14 +293,19 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "org1", UserName = "organizer" };
             var evt = new Event
             {
                 Id = 1,
                 Title = "Test Event",
+                Description = "Test Description",
                 CategoryId = 1,
                 Category = category,
+                CreatedByUserId = "org1",
+                CreatedBy = user,
                 StartDate = DateTime.UtcNow.AddDays(1),
                 EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
+                Location = "Hall",
                 RegisteredCount = 1,
                 IsActive = true
             };
@@ -306,6 +322,10 @@ namespace SMARTCAMPUS.Tests.Managers
 
             _mockUnitOfWork.Setup(u => u.EventRegistrations.GetByEventAndUserAsync(1, "user1"))
                 .ReturnsAsync(registration);
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdAsync(1))
+                .ReturnsAsync(evt);
+            _mockUnitOfWork.Setup(u => u.EventWaitlists.GetNextInQueueAsync(1))
+                .ReturnsAsync((EventWaitlist?)null);
             _mockUnitOfWork.Setup(u => u.CommitAsync())
                 .Returns(Task.CompletedTask);
 
@@ -314,6 +334,104 @@ namespace SMARTCAMPUS.Tests.Managers
 
             // Assert
             result.IsSuccessful.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task UpdateEventAsync_ShouldReturnSuccess()
+        {
+            var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "org1", UserName = "organizer" };
+            var evt = new Event
+            {
+                Id = 1,
+                Title = "Old Title",
+                Description = "Old Description",
+                CategoryId = 1,
+                Category = category,
+                CreatedByUserId = "org1",
+                CreatedBy = user,
+                StartDate = DateTime.UtcNow.AddDays(1),
+                EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
+                Location = "Hall",
+                IsActive = true,
+                Registrations = new List<EventRegistration>()
+            };
+
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdAsync(1))
+                .ReturnsAsync(evt);
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdWithDetailsAsync(1))
+                .ReturnsAsync(evt);
+            _mockUnitOfWork.Setup(u => u.CommitAsync())
+                .Returns(Task.CompletedTask);
+
+            var dto = new EventUpdateDto { Title = "New Title" };
+
+            var result = await _manager.UpdateEventAsync("org1", 1, dto);
+
+            result.IsSuccessful.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task DeleteEventAsync_ShouldReturnSuccess()
+        {
+            var category = new EventCategory { Id = 1, Name = "Conference", IsActive = true };
+            var user = new User { Id = "org1", UserName = "organizer" };
+            var evt = new Event
+            {
+                Id = 1,
+                Title = "Test Event",
+                Description = "Test Description",
+                CategoryId = 1,
+                Category = category,
+                CreatedByUserId = "org1",
+                CreatedBy = user,
+                StartDate = DateTime.UtcNow.AddDays(1),
+                EndDate = DateTime.UtcNow.AddDays(1).AddHours(2),
+                Location = "Hall",
+                IsActive = true,
+                Registrations = new List<EventRegistration>()
+            };
+
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdWithDetailsAsync(1))
+                .ReturnsAsync(evt);
+            _mockUnitOfWork.Setup(u => u.CommitAsync())
+                .Returns(Task.CompletedTask);
+
+            var result = await _manager.DeleteEventAsync("org1", 1);
+
+            result.IsSuccessful.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task PublishEventAsync_ShouldReturnSuccess()
+        {
+            var evt = new Event { Id = 1, Title = "Event", IsActive = false };
+
+            _mockUnitOfWork.Setup(u => u.Events.GetByIdAsync(1))
+                .ReturnsAsync(evt);
+            _mockUnitOfWork.Setup(u => u.CommitAsync())
+                .Returns(Task.CompletedTask);
+
+            var result = await _manager.PublishEventAsync(1);
+
+            result.IsSuccessful.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task GetMyRegistrationsAsync_ShouldReturnRegistrations()
+        {
+            var registrations = new List<EventRegistration>
+            {
+                new EventRegistration { Id = 1, UserId = "user1", EventId = 1, IsActive = true }
+            };
+
+            _mockUnitOfWork.Setup(u => u.EventRegistrations.GetByUserIdAsync("user1"))
+                .ReturnsAsync(registrations);
+
+            var result = await _manager.GetMyRegistrationsAsync("user1");
+
+            result.IsSuccessful.Should().BeTrue();
+            result.Data.Should().HaveCount(1);
         }
     }
 }
