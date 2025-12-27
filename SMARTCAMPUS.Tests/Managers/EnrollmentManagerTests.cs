@@ -96,6 +96,7 @@ namespace SMARTCAMPUS.Tests.Managers
                 Course = course1,
                 SectionNumber = "1",
                 Semester = "Fall",
+                Year = 2024,
                 Instructor = instructor
             };
             await _context.Faculties.AddAsync(instructor);
@@ -122,24 +123,35 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task EnrollInCourseAsync_ShouldFail_WhenScheduleConflict()
         {
             // Arrange
-            var dept = new Department { Name = "Dept", Code = "DEPT" };
-            var course1 = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, Department = dept };
-            var course2 = new Course { Id = 2, Code = "C2", Name = "C2", Credits = 3, ECTS = 5, Department = dept };
+            var dept = new Department { Id = 1, Name = "Dept", Code = "DEPT", IsActive = true };
+            await _context.Departments.AddAsync(dept);
+            await _context.SaveChangesAsync();
+            
+            var course1 = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var course2 = new Course { Id = 2, Code = "C2", Name = "C2", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
 
-            var instructor = new Faculty { User = new User { FullName = "I" }, EmployeeNumber = "EMP001", Title = "Prof" };
-            var section1 = new CourseSection { Id = 1, CourseId = 1, Course = course1, SectionNumber = "1", Semester = "Fall", Year = 2024, Instructor = instructor, Capacity = 30 };
-            var section2 = new CourseSection { Id = 2, CourseId = 2, Course = course2, SectionNumber = "2", Semester = "Fall", Year = 2024, Instructor = instructor, Capacity = 30 };
-            await _context.Faculties.AddAsync(instructor);
+            var user = new User { Id = "u1", FullName = "I", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = user, EmployeeNumber = "EMP001", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
+            var section1 = new CourseSection { Id = 1, CourseId = 1, Course = course1, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+            var section2 = new CourseSection { Id = 2, CourseId = 2, Course = course2, InstructorId = 1, Instructor = instructor, SectionNumber = "2", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+            
+            var stdUser = new User { Id = "s1", FullName = "Student", IsActive = true };
+            var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = 1, Department = dept, IsActive = true };
 
             // Schedules: Same time Monday 10-12
-            var sched1 = new Schedule { SectionId = 1, DayOfWeek = DayOfWeek.Monday, StartTime = new TimeSpan(10, 0, 0), EndTime = new TimeSpan(12, 0, 0) };
-            var sched2 = new Schedule { SectionId = 2, DayOfWeek = DayOfWeek.Monday, StartTime = new TimeSpan(10, 0, 0), EndTime = new TimeSpan(12, 0, 0) };
+            var classroom = new Classroom { Id = 1, Building = "A", RoomNumber = "101", Capacity = 50, IsActive = true };
+            var sched1 = new Schedule { Id = 1, SectionId = 1, Section = section1, ClassroomId = 1, Classroom = classroom, DayOfWeek = DayOfWeek.Monday, StartTime = new TimeSpan(10, 0, 0), EndTime = new TimeSpan(12, 0, 0), IsActive = true };
+            var sched2 = new Schedule { Id = 2, SectionId = 2, Section = section2, ClassroomId = 1, Classroom = classroom, DayOfWeek = DayOfWeek.Monday, StartTime = new TimeSpan(10, 0, 0), EndTime = new TimeSpan(12, 0, 0), IsActive = true };
+            await _context.Classrooms.AddAsync(classroom);
 
             // Enroll student in section 1
-            var existingEnrollment = new Enrollment { StudentId = 1, SectionId = 1, Status = EnrollmentStatus.Enrolled };
+            var existingEnrollment = new Enrollment { Id = 1, StudentId = 1, Student = student, SectionId = 1, Section = section1, Status = EnrollmentStatus.Enrolled, IsActive = true };
 
+            await _context.Users.AddRangeAsync(user, stdUser);
+            await _context.Faculties.AddAsync(instructor);
             await _context.Courses.AddRangeAsync(course1, course2);
             await _context.CourseSections.AddRangeAsync(section1, section2);
+            await _context.Students.AddAsync(student);
             await _context.Schedules.AddRangeAsync(sched1, sched2);
             await _context.Enrollments.AddAsync(existingEnrollment);
             await _context.SaveChangesAsync();
@@ -203,28 +215,32 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task EnrollInCourseAsync_ShouldReactivate_WhenAlreadyExistsAndNotPendingOrEnrolled()
         {
              // Arrange
-            var user = new User { FullName = "Prof" };
-            var instructor = new Faculty { Title = "Dr.", User = user, EmployeeNumber = "E1" };
-            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, Department = new Department { Name = "Dept", Code = "DEPT" } };
-            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30 };
-
-            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
-            var stdUser = new User { Id = "s1", FullName = "Student" };
-            var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", Department = dept };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
             await _context.Departments.AddAsync(dept);
-            await _context.Students.AddAsync(student);
+            await _context.SaveChangesAsync();
+            
+            var user = new User { Id = "u1", FullName = "Prof", IsActive = true };
+            var instructor = new Faculty { Id = 1, Title = "Dr.", UserId = "u1", User = user, EmployeeNumber = "E1", DepartmentId = 1, Department = dept, IsActive = true };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+
+            var stdUser = new User { Id = "s1", FullName = "Student", IsActive = true };
+            var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = 1, Department = dept, IsActive = true };
             var existingEnrollment = new Enrollment 
             { 
+                Id = 1,
                 StudentId = 1, 
                 SectionId = 1, 
                 Status = EnrollmentStatus.Dropped, // Previously dropped
-                EnrollmentDate = DateTime.UtcNow.AddDays(-10) 
+                EnrollmentDate = DateTime.UtcNow.AddDays(-10),
+                IsActive = true
             };
 
-            await _context.Users.AddAsync(user);
+            await _context.Users.AddRangeAsync(user, stdUser);
             await _context.Faculties.AddAsync(instructor);
             await _context.Courses.AddAsync(course);
             await _context.CourseSections.AddAsync(section);
+            await _context.Students.AddAsync(student);
             await _context.Enrollments.AddAsync(existingEnrollment);
             await _context.SaveChangesAsync();
 
@@ -385,25 +401,36 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task ApproveEnrollmentAsync_ShouldFail_WhenAccessDenied()
         {
             // Arrange
-            var dept = new Department { Name = "CS", Code = "CS" };
-            var instructor = new Faculty { User = new User { FullName = "I" }, EmployeeNumber = "EMP001", Title = "Prof" };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
             await _context.Departments.AddAsync(dept);
-            await _context.Faculties.AddAsync(instructor);
             await _context.SaveChangesAsync();
             
-            var section = new CourseSection { InstructorId = instructor.Id + 1, SectionNumber = "1", Semester = "Fall", Year = 2024, Instructor = instructor, Capacity = 30 }; // Different Instructor
-            var stdUser = new User { Id = "s1", FullName = "Student" };
-            var student = new Student { UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = dept.Id };
+            var user1 = new User { Id = "u1", FullName = "I", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = user1, EmployeeNumber = "EMP001", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
+            var user2 = new User { Id = "u2", FullName = "I2", IsActive = true };
+            var instructor2 = new Faculty { Id = 2, UserId = "u2", User = user2, EmployeeNumber = "EMP002", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Users.AddRangeAsync(user1, user2);
+            await _context.Faculties.AddRangeAsync(instructor, instructor2);
+            await _context.SaveChangesAsync();
+            
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Courses.AddAsync(course);
+            await _context.SaveChangesAsync();
+            
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 2, Instructor = instructor2, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+            var stdUser = new User { Id = "s1", FullName = "Student", IsActive = true };
+            var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Users.AddAsync(stdUser);
             await _context.Students.AddAsync(student);
             await _context.CourseSections.AddAsync(section);
             await _context.SaveChangesAsync();
             
-            var enrollment = new Enrollment { StudentId = student.Id, SectionId = section.Id, Section = section };
+            var enrollment = new Enrollment { Id = 1, StudentId = 1, SectionId = 1, Section = section, Status = EnrollmentStatus.Pending, IsActive = true };
             await _context.Enrollments.AddAsync(enrollment);
             await _context.SaveChangesAsync();
 
             // Act
-            var result = await _manager.ApproveEnrollmentAsync(enrollment.Id, instructor.Id); // Instructor doesn't own section
+            var result = await _manager.ApproveEnrollmentAsync(1, 1); // Instructor 1 doesn't own section (instructor 2 owns it)
 
             // Assert
             result.IsSuccessful.Should().BeFalse();
@@ -420,7 +447,9 @@ namespace SMARTCAMPUS.Tests.Managers
             await _context.Faculties.AddAsync(instructor);
             await _context.SaveChangesAsync();
             
-            var section = new CourseSection { InstructorId = instructor.Id, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30 };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = dept.Id, Department = dept };
+            var section = new CourseSection { CourseId = 1, Course = course, InstructorId = instructor.Id, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30 };
+            await _context.Courses.AddAsync(course);
             var stdUser = new User { Id = "s1", FullName = "Student" };
             var student = new Student { UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = dept.Id };
             await _context.Students.AddAsync(student);
@@ -443,25 +472,34 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task ApproveEnrollmentAsync_ShouldFail_WhenSectionFull()
         {
             // Arrange
-            var dept = new Department { Name = "CS", Code = "CS" };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
             await _context.Departments.AddAsync(dept);
-            var instructor = new Faculty { User = new User { FullName = "I" }, EmployeeNumber = "EMP001", Title = "Prof" };
+            await _context.SaveChangesAsync();
+            
+            var user = new User { Id = "u1", FullName = "I", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = user, EmployeeNumber = "EMP001", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Users.AddAsync(user);
             await _context.Faculties.AddAsync(instructor);
             await _context.SaveChangesAsync();
             
-            var section = new CourseSection { InstructorId = instructor.Id, Capacity = 10, EnrolledCount = 10, SectionNumber = "1", Semester = "Fall", Year = 2024, Instructor = instructor };
-            var stdUser = new User { Id = "s1", FullName = "Student" };
-            var student = new Student { UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = dept.Id };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Courses.AddAsync(course);
+            await _context.SaveChangesAsync();
+            
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 1, Instructor = instructor, Capacity = 10, EnrolledCount = 10, SectionNumber = "1", Semester = "Fall", Year = 2024, IsActive = true };
+            var stdUser = new User { Id = "s1", FullName = "Student", IsActive = true };
+            var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Users.AddAsync(stdUser);
             await _context.Students.AddAsync(student);
             await _context.CourseSections.AddAsync(section);
             await _context.SaveChangesAsync();
             
-            var enrollment = new Enrollment { StudentId = student.Id, SectionId = section.Id, Section = section, Status = EnrollmentStatus.Pending };
+            var enrollment = new Enrollment { Id = 1, StudentId = 1, SectionId = 1, Section = section, Status = EnrollmentStatus.Pending, IsActive = true };
             await _context.Enrollments.AddAsync(enrollment);
             await _context.SaveChangesAsync();
 
             // Act
-            var result = await _manager.ApproveEnrollmentAsync(enrollment.Id, instructor.Id);
+            var result = await _manager.ApproveEnrollmentAsync(1, 1);
 
             // Assert
             result.IsSuccessful.Should().BeFalse();
@@ -475,11 +513,13 @@ namespace SMARTCAMPUS.Tests.Managers
             // Arrange
             var dept = new Department { Name = "CS", Code = "CS" };
             await _context.Departments.AddAsync(dept);
-            var instructor = new Faculty { User = new User { FullName = "I" }, EmployeeNumber = "EMP001", Title = "Prof" };
+            var instructor = new Faculty { User = new User { FullName = "I" }, EmployeeNumber = "EMP001", Title = "Prof", DepartmentId = dept.Id, Department = dept };
             await _context.Faculties.AddAsync(instructor);
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = dept.Id, Department = dept };
+            await _context.Courses.AddAsync(course);
             await _context.SaveChangesAsync();
             
-            var section = new CourseSection { InstructorId = instructor.Id, Capacity = 10, EnrolledCount = 0, SectionNumber = "1", Semester = "Fall", Year = 2024, Instructor = instructor };
+            var section = new CourseSection { CourseId = 1, Course = course, InstructorId = instructor.Id, Capacity = 10, EnrolledCount = 0, SectionNumber = "1", Semester = "Fall", Year = 2024, Instructor = instructor };
             var stdUser = new User { Id = "s1", FullName = "Student" };
             var student = new Student { UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = dept.Id };
             await _context.Students.AddAsync(student);
@@ -520,11 +560,13 @@ namespace SMARTCAMPUS.Tests.Managers
             // Arrange
             var dept = new Department { Name = "CS", Code = "CS" };
             await _context.Departments.AddAsync(dept);
-            var instructor = new Faculty { User = new User { FullName = "I" }, EmployeeNumber = "EMP001", Title = "Prof" };
+            var instructor = new Faculty { User = new User { FullName = "I" }, EmployeeNumber = "EMP001", Title = "Prof", DepartmentId = dept.Id, Department = dept };
             await _context.Faculties.AddAsync(instructor);
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = dept.Id, Department = dept };
+            await _context.Courses.AddAsync(course);
             await _context.SaveChangesAsync();
             
-            var section = new CourseSection { InstructorId = instructor.Id + 1, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30 }; // Different Instructor
+            var section = new CourseSection { CourseId = 1, Course = course, InstructorId = instructor.Id + 1, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30 }; // Different Instructor
             var stdUser = new User { Id = "s1", FullName = "Student" };
             var student = new Student { UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = dept.Id };
             await _context.Students.AddAsync(student);
@@ -547,25 +589,34 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task RejectEnrollmentAsync_ShouldFail_WhenNotPending()
         {
              // Arrange
-            var dept = new Department { Name = "CS", Code = "CS" };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
             await _context.Departments.AddAsync(dept);
-            var instructor = new Faculty { User = new User { FullName = "I" }, EmployeeNumber = "EMP001", Title = "Prof" };
+            await _context.SaveChangesAsync();
+            
+            var user = new User { Id = "u1", FullName = "I", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = user, EmployeeNumber = "EMP001", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Users.AddAsync(user);
             await _context.Faculties.AddAsync(instructor);
             await _context.SaveChangesAsync();
             
-            var section = new CourseSection { InstructorId = instructor.Id, SectionNumber = "1", Semester = "Fall", Year = 2024, Instructor = instructor, Capacity = 30 };
-            var stdUser = new User { Id = "s1", FullName = "Student" };
-            var student = new Student { UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = dept.Id };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Courses.AddAsync(course);
+            await _context.SaveChangesAsync();
+            
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+            var stdUser = new User { Id = "s1", FullName = "Student", IsActive = true };
+            var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Users.AddAsync(stdUser);
             await _context.Students.AddAsync(student);
             await _context.CourseSections.AddAsync(section);
             await _context.SaveChangesAsync();
             
-            var enrollment = new Enrollment { StudentId = student.Id, SectionId = section.Id, Section = section, Status = EnrollmentStatus.Enrolled };
+            var enrollment = new Enrollment { Id = 1, StudentId = 1, SectionId = 1, Section = section, Status = EnrollmentStatus.Enrolled, IsActive = true };
             await _context.Enrollments.AddAsync(enrollment);
             await _context.SaveChangesAsync();
 
             // Act
-            var result = await _manager.RejectEnrollmentAsync(enrollment.Id, instructor.Id, null);
+            var result = await _manager.RejectEnrollmentAsync(1, 1, null);
 
             // Assert
             result.IsSuccessful.Should().BeFalse();
@@ -576,17 +627,28 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task RejectEnrollmentAsync_ShouldSucceed()
         {
             // Arrange
-            var instructor = new Faculty { User = new User { FullName = "I" }, EmployeeNumber = "EMP001", Title = "Prof" };
-            var section = new CourseSection { Id = 1, InstructorId = 1, SectionNumber = "1", Semester = "Fall", Year = 2024, Instructor = instructor, Capacity = 30 };
-            await _context.Faculties.AddAsync(instructor);
-            var dept = new Department { Id = 1, Name = "CS" };
-            var stdUser = new User { Id = "s1", FullName = "Student" };
-            var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", Department = dept };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
             await _context.Departments.AddAsync(dept);
-            await _context.Students.AddAsync(student);
-            var enrollment = new Enrollment { Id = 1, SectionId = 1, Section = section, Status = EnrollmentStatus.Pending };
+            await _context.SaveChangesAsync();
             
+            var user = new User { Id = "u1", FullName = "I", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = user, EmployeeNumber = "EMP001", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Users.AddAsync(user);
+            await _context.Faculties.AddAsync(instructor);
+            
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Courses.AddAsync(course);
+            await _context.SaveChangesAsync();
+            
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+            var stdUser = new User { Id = "s1", FullName = "Student", IsActive = true };
+            var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = 1, Department = dept, IsActive = true };
+            await _context.Users.AddAsync(stdUser);
+            await _context.Students.AddAsync(student);
             await _context.CourseSections.AddAsync(section);
+            await _context.SaveChangesAsync();
+            
+            var enrollment = new Enrollment { Id = 1, StudentId = 1, SectionId = 1, Section = section, Status = EnrollmentStatus.Pending, IsActive = true };
             await _context.Enrollments.AddAsync(enrollment);
             await _context.SaveChangesAsync();
 
@@ -595,7 +657,8 @@ namespace SMARTCAMPUS.Tests.Managers
 
             // Assert
             result.IsSuccessful.Should().BeTrue();
-            enrollment.Status.Should().Be(EnrollmentStatus.Rejected);
+            var dbEnrollment = await _context.Enrollments.FindAsync(1);
+            dbEnrollment!.Status.Should().Be(EnrollmentStatus.Rejected);
         }
 
         #endregion
@@ -619,9 +682,11 @@ namespace SMARTCAMPUS.Tests.Managers
             // Arrange
             var user = new User { Id = "u1", FullName = "Student" };
             var student = new Student { Id = 1, UserId = "u1", User = user, StudentNumber = "S1" };
-            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = dept.Id, Department = dept };
             var instructor = new Faculty { User = new User { FullName = "I" }, EmployeeNumber = "EMP001", Title = "Prof" };
-            var section = new CourseSection { Id = 1, InstructorId = 1, Course = course, SectionNumber = "1", Semester = "F", Year = 2024, Instructor = instructor, Capacity = 30 };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 1, SectionNumber = "1", Semester = "Fall", Year = 2024, Instructor = instructor, Capacity = 30 };
+            await _context.Departments.AddAsync(dept);
             await _context.Faculties.AddAsync(instructor);
             var enrollment = new Enrollment { Id = 1, StudentId = 1, SectionId = 1, Status = EnrollmentStatus.Pending, Student = student, Section = section };
 

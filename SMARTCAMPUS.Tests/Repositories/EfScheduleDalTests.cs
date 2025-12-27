@@ -79,31 +79,43 @@ namespace SMARTCAMPUS.Tests.Repositories
         public async Task GetByIdWithDetailsAsync_ShouldIncludeRelations()
         {
             // Arrange
-            var course = new Course { Code = "CS101", Name = "Test Course", Credits = 3, IsActive = true };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            var course = new Course { Id = 1, Code = "CS101", Name = "Test Course", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            _context.Departments.Add(dept);
             _context.Courses.Add(course);
             await _context.SaveChangesAsync();
 
+            var user = new User { Id = "u1", FullName = "Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = user, EmployeeNumber = "E1", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
             var section = new CourseSection 
             { 
+                Id = 1,
                 SectionNumber = "A", 
                 Semester = "Fall", 
                 Year = 2024, 
                 Capacity = 30, 
-                CourseId = course.Id,
+                CourseId = 1,
+                Course = course,
                 InstructorId = 1,
+                Instructor = instructor,
                 IsActive = true
             };
+            _context.Users.Add(user);
+            _context.Faculties.Add(instructor);
             _context.CourseSections.Add(section);
             await _context.SaveChangesAsync();
 
-            var classroom = new Classroom { Building = "A", RoomNumber = "101", Capacity = 50 };
+            var classroom = new Classroom { Id = 1, Building = "A", RoomNumber = "101", Capacity = 50, IsActive = true };
             _context.Classrooms.Add(classroom);
             await _context.SaveChangesAsync();
 
             var schedule = new Schedule 
             { 
-                SectionId = section.Id, 
-                ClassroomId = classroom.Id,
+                Id = 1,
+                SectionId = 1,
+                Section = section,
+                ClassroomId = 1,
+                Classroom = classroom,
                 IsActive = true, 
                 DayOfWeek = DayOfWeek.Monday,
                 StartTime = TimeSpan.FromHours(9),
@@ -113,7 +125,7 @@ namespace SMARTCAMPUS.Tests.Repositories
             await _context.SaveChangesAsync();
 
             // Act
-            var result = await _dal.GetByIdWithDetailsAsync(schedule.Id);
+            var result = await _dal.GetByIdWithDetailsAsync(1);
 
             // Assert
             result.Should().NotBeNull();
