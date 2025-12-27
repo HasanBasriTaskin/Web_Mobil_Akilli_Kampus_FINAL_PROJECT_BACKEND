@@ -139,8 +139,10 @@ namespace SMARTCAMPUS.Tests.Managers
             var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = 1, Department = dept, IsActive = true };
 
             // Schedules: Same time Monday 10-12
-            var sched1 = new Schedule { Id = 1, SectionId = 1, Section = section1, DayOfWeek = DayOfWeek.Monday, StartTime = new TimeSpan(10, 0, 0), EndTime = new TimeSpan(12, 0, 0), IsActive = true };
-            var sched2 = new Schedule { Id = 2, SectionId = 2, Section = section2, DayOfWeek = DayOfWeek.Monday, StartTime = new TimeSpan(10, 0, 0), EndTime = new TimeSpan(12, 0, 0), IsActive = true };
+            var classroom = new Classroom { Id = 1, Building = "A", RoomNumber = "101", Capacity = 50, IsActive = true };
+            var sched1 = new Schedule { Id = 1, SectionId = 1, Section = section1, ClassroomId = 1, Classroom = classroom, DayOfWeek = DayOfWeek.Monday, StartTime = new TimeSpan(10, 0, 0), EndTime = new TimeSpan(12, 0, 0), IsActive = true };
+            var sched2 = new Schedule { Id = 2, SectionId = 2, Section = section2, ClassroomId = 1, Classroom = classroom, DayOfWeek = DayOfWeek.Monday, StartTime = new TimeSpan(10, 0, 0), EndTime = new TimeSpan(12, 0, 0), IsActive = true };
+            await _context.Classrooms.AddAsync(classroom);
 
             // Enroll student in section 1
             var existingEnrollment = new Enrollment { Id = 1, StudentId = 1, Student = student, SectionId = 1, Section = section1, Status = EnrollmentStatus.Enrolled, IsActive = true };
