@@ -16,33 +16,85 @@ namespace SMARTCAMPUS.Tests.Constants
         [Fact]
         public void MidtermWeight_ShouldBe40Percent()
         {
-            GradeConstants.MidtermWeight.Should().Be(0.4m);
+            var weight = GradeConstants.MidtermWeight;
+            weight.Should().Be(0.4m);
         }
 
         [Fact]
         public void FinalWeight_ShouldBe60Percent()
         {
-            GradeConstants.FinalWeight.Should().Be(0.6m);
+            var weight = GradeConstants.FinalWeight;
+            weight.Should().Be(0.6m);
         }
 
         [Fact]
         public void LateCheckInGracePeriodMinutes_ShouldBe15()
         {
-            GradeConstants.LateCheckInGracePeriodMinutes.Should().Be(15);
+            var minutes = GradeConstants.LateCheckInGracePeriodMinutes;
+            minutes.Should().Be(15);
         }
 
         [Fact]
-        public void GradeThresholds_ShouldHaveCorrectValues()
+        public void GradeA_ShouldBe90()
         {
-            GradeConstants.GradeA.Should().Be(90);
-            GradeConstants.GradeAMinus.Should().Be(85);
-            GradeConstants.GradeBPlus.Should().Be(80);
-            GradeConstants.GradeB.Should().Be(75);
-            GradeConstants.GradeBMinus.Should().Be(70);
-            GradeConstants.GradeCPlus.Should().Be(65);
-            GradeConstants.GradeC.Should().Be(60);
-            GradeConstants.GradeCMinus.Should().Be(55);
-            GradeConstants.GradeD.Should().Be(50);
+            var grade = GradeConstants.GradeA;
+            grade.Should().Be(90);
+        }
+
+        [Fact]
+        public void GradeAMinus_ShouldBe85()
+        {
+            var grade = GradeConstants.GradeAMinus;
+            grade.Should().Be(85);
+        }
+
+        [Fact]
+        public void GradeBPlus_ShouldBe80()
+        {
+            var grade = GradeConstants.GradeBPlus;
+            grade.Should().Be(80);
+        }
+
+        [Fact]
+        public void GradeB_ShouldBe75()
+        {
+            var grade = GradeConstants.GradeB;
+            grade.Should().Be(75);
+        }
+
+        [Fact]
+        public void GradeBMinus_ShouldBe70()
+        {
+            var grade = GradeConstants.GradeBMinus;
+            grade.Should().Be(70);
+        }
+
+        [Fact]
+        public void GradeCPlus_ShouldBe65()
+        {
+            var grade = GradeConstants.GradeCPlus;
+            grade.Should().Be(65);
+        }
+
+        [Fact]
+        public void GradeC_ShouldBe60()
+        {
+            var grade = GradeConstants.GradeC;
+            grade.Should().Be(60);
+        }
+
+        [Fact]
+        public void GradeCMinus_ShouldBe55()
+        {
+            var grade = GradeConstants.GradeCMinus;
+            grade.Should().Be(55);
+        }
+
+        [Fact]
+        public void GradeD_ShouldBe50()
+        {
+            var grade = GradeConstants.GradeD;
+            grade.Should().Be(50);
         }
 
         [Fact]

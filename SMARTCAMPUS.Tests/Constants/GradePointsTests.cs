@@ -7,18 +7,73 @@ namespace SMARTCAMPUS.Tests.Constants
     public class GradePointsTests
     {
         [Fact]
-        public void GradePoints_ShouldHaveCorrectValues()
+        public void A_ShouldBe4Point0()
         {
-            GradePoints.A.Should().Be(4.0m);
-            GradePoints.AMinus.Should().Be(3.7m);
-            GradePoints.BPlus.Should().Be(3.3m);
-            GradePoints.B.Should().Be(3.0m);
-            GradePoints.BMinus.Should().Be(2.7m);
-            GradePoints.CPlus.Should().Be(2.3m);
-            GradePoints.C.Should().Be(2.0m);
-            GradePoints.CMinus.Should().Be(1.7m);
-            GradePoints.D.Should().Be(1.0m);
-            GradePoints.F.Should().Be(0.0m);
+            var point = GradePoints.A;
+            point.Should().Be(4.0m);
+        }
+
+        [Fact]
+        public void AMinus_ShouldBe3Point7()
+        {
+            var point = GradePoints.AMinus;
+            point.Should().Be(3.7m);
+        }
+
+        [Fact]
+        public void BPlus_ShouldBe3Point3()
+        {
+            var point = GradePoints.BPlus;
+            point.Should().Be(3.3m);
+        }
+
+        [Fact]
+        public void B_ShouldBe3Point0()
+        {
+            var point = GradePoints.B;
+            point.Should().Be(3.0m);
+        }
+
+        [Fact]
+        public void BMinus_ShouldBe2Point7()
+        {
+            var point = GradePoints.BMinus;
+            point.Should().Be(2.7m);
+        }
+
+        [Fact]
+        public void CPlus_ShouldBe2Point3()
+        {
+            var point = GradePoints.CPlus;
+            point.Should().Be(2.3m);
+        }
+
+        [Fact]
+        public void C_ShouldBe2Point0()
+        {
+            var point = GradePoints.C;
+            point.Should().Be(2.0m);
+        }
+
+        [Fact]
+        public void CMinus_ShouldBe1Point7()
+        {
+            var point = GradePoints.CMinus;
+            point.Should().Be(1.7m);
+        }
+
+        [Fact]
+        public void D_ShouldBe1Point0()
+        {
+            var point = GradePoints.D;
+            point.Should().Be(1.0m);
+        }
+
+        [Fact]
+        public void F_ShouldBe0Point0()
+        {
+            var point = GradePoints.F;
+            point.Should().Be(0.0m);
         }
 
         [Fact]

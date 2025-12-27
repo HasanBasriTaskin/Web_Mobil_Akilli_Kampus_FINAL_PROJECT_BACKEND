@@ -62,7 +62,12 @@ namespace SMARTCAMPUS.Tests.Managers
 
             var user = new User { Id = "user1", UserName = "testuser" };
 
+            // Hafta içi bir gün seç (bugünden sonraki ilk hafta içi)
             var testDate = DateTime.UtcNow.Date.AddDays(1);
+            while (testDate.DayOfWeek == DayOfWeek.Saturday || testDate.DayOfWeek == DayOfWeek.Sunday)
+                testDate = testDate.AddDays(1);
+            
+            menu.Date = testDate;
             _mockUnitOfWork.Setup(u => u.MealReservations.ExistsForUserDateMealTypeAsync("user1", It.IsAny<DateTime>(), MealType.Lunch))
                 .ReturnsAsync(false);
             _mockUnitOfWork.Setup(u => u.MealMenus.GetByIdWithDetailsAsync(1))
@@ -88,7 +93,7 @@ namespace SMARTCAMPUS.Tests.Managers
             {
                 MenuId = 1,
                 CafeteriaId = 1,
-                Date = DateTime.UtcNow.Date.AddDays(1),
+                Date = testDate,
                 MealType = MealType.Lunch
             };
 

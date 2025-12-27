@@ -85,6 +85,8 @@ namespace SMARTCAMPUS.Tests.Repositories
             _context.Courses.Add(course);
             await _context.SaveChangesAsync();
 
+            var user = new User { Id = "u1", FullName = "Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = user, EmployeeNumber = "E1", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
             var section = new CourseSection 
             { 
                 Id = 1,
@@ -95,8 +97,11 @@ namespace SMARTCAMPUS.Tests.Repositories
                 CourseId = 1,
                 Course = course,
                 InstructorId = 1,
+                Instructor = instructor,
                 IsActive = true
             };
+            _context.Users.Add(user);
+            _context.Faculties.Add(instructor);
             _context.CourseSections.Add(section);
             await _context.SaveChangesAsync();
 
