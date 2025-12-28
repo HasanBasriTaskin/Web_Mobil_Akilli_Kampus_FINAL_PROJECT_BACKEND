@@ -70,12 +70,19 @@ namespace SMARTCAMPUS.API.Controllers
         [Authorize(Roles = "Faculty,Admin")]
         public async Task<IActionResult> EnterGrade([FromBody] GradeEntryDto dto)
         {
-            var instructorId = GetCurrentFacultyId();
-            if (instructorId == null)
-                return Unauthorized("Faculty ID not found");
+            try
+            {
+                var instructorId = GetCurrentFacultyId();
+                if (instructorId == null)
+                    return Unauthorized(new { success = false, message = "Faculty ID not found in token" });
 
-            var result = await _gradeService.EnterGradeAsync(instructorId.Value, dto);
-            return StatusCode(result.StatusCode, result);
+                var result = await _gradeService.EnterGradeAsync(instructorId.Value, dto);
+                return StatusCode(result.StatusCode, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message, stackTrace = ex.StackTrace });
+            }
         }
 
         /// <summary>
