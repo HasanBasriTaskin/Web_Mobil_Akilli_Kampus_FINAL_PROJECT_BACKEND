@@ -194,7 +194,20 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<IEnumerable<FacultySectionDto>>> GetMySectionsAsync(int instructorId)
         {
+            // Önce doğrudan atanmış section'ları al
             var sections = await _unitOfWork.CourseSections.GetSectionsByInstructorAsync(instructorId);
+            
+            // Eğer doğrudan atanmış section yoksa, bölümdeki tüm section'ları getir
+            if (!sections.Any())
+            {
+                // Akademisyenin bölümünü bul
+                var faculty = await _unitOfWork.Faculties.GetByIdAsync(instructorId);
+                if (faculty != null)
+                {
+                    // Bölümdeki tüm section'ları getir
+                    sections = await _unitOfWork.CourseSections.GetSectionsByDepartmentAsync(faculty.DepartmentId);
+                }
+            }
 
             var result = new List<FacultySectionDto>();
             foreach(var s in sections)
@@ -221,11 +234,25 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<IEnumerable<PendingEnrollmentDto>>> GetPendingEnrollmentsAsync(int sectionId, int instructorId)
         {
-            // Verify instructor owns this section
+            // Verify instructor owns this section or is in the same department
             var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(sectionId);
 
-            if (section == null || section.InstructorId != instructorId)
-                return Response<IEnumerable<PendingEnrollmentDto>>.Fail("Section not found or access denied", 404);
+            if (section == null)
+                return Response<IEnumerable<PendingEnrollmentDto>>.Fail("Section not found", 404);
+            
+            // Eğer section atanmışsa sadece o kişi görebilir
+            // Eğer atanmamışsa, aynı bölümdeki akademisyenler görebilir
+            var faculty = await _unitOfWork.Faculties.GetByIdAsync(instructorId);
+            var sectionCourse = await _unitOfWork.Courses.GetByIdAsync(section.CourseId);
+            
+            bool hasAccess = section.InstructorId == instructorId;
+            if (!hasAccess && faculty != null && sectionCourse != null)
+            {
+                hasAccess = faculty.DepartmentId == sectionCourse.DepartmentId;
+            }
+            
+            if (!hasAccess)
+                return Response<IEnumerable<PendingEnrollmentDto>>.Fail("Access denied", 403);
 
             var pendingEnrollments = await _unitOfWork.Enrollments.GetPendingEnrollmentsAsync(sectionId);
 
@@ -253,9 +280,18 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             if (enrollment == null)
                 return Response<NoDataDto>.Fail("Enrollment not found", 404);
 
-            // Verify instructor owns the section
-            if (enrollment.Section.InstructorId != instructorId)
-                return Response<NoDataDto>.Fail("Access denied - not your section", 403);
+            // Verify instructor owns the section or is in the same department
+            var faculty = await _unitOfWork.Faculties.GetByIdAsync(instructorId);
+            var sectionCourse = await _unitOfWork.Courses.GetByIdAsync(enrollment.Section.CourseId);
+            
+            bool hasAccess = enrollment.Section.InstructorId == instructorId;
+            if (!hasAccess && faculty != null && sectionCourse != null)
+            {
+                hasAccess = faculty.DepartmentId == sectionCourse.DepartmentId;
+            }
+            
+            if (!hasAccess)
+                return Response<NoDataDto>.Fail("Access denied", 403);
 
             if (enrollment.Status != EnrollmentStatus.Pending)
                 return Response<NoDataDto>.Fail("This enrollment is not pending", 400);
@@ -277,14 +313,23 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<NoDataDto>> RejectEnrollmentAsync(int enrollmentId, int instructorId, string? reason)
         {
-             var enrollment = await _unitOfWork.Enrollments.GetEnrollmentWithDetailsAsync(enrollmentId);
+            var enrollment = await _unitOfWork.Enrollments.GetEnrollmentWithDetailsAsync(enrollmentId);
 
             if (enrollment == null)
                 return Response<NoDataDto>.Fail("Enrollment not found", 404);
 
-            // Verify instructor owns the section
-            if (enrollment.Section.InstructorId != instructorId)
-                return Response<NoDataDto>.Fail("Access denied - not your section", 403);
+            // Verify instructor owns the section or is in the same department
+            var faculty = await _unitOfWork.Faculties.GetByIdAsync(instructorId);
+            var sectionCourse = await _unitOfWork.Courses.GetByIdAsync(enrollment.Section.CourseId);
+            
+            bool hasAccess = enrollment.Section.InstructorId == instructorId;
+            if (!hasAccess && faculty != null && sectionCourse != null)
+            {
+                hasAccess = faculty.DepartmentId == sectionCourse.DepartmentId;
+            }
+            
+            if (!hasAccess)
+                return Response<NoDataDto>.Fail("Access denied", 403);
 
             if (enrollment.Status != EnrollmentStatus.Pending)
                 return Response<NoDataDto>.Fail("This enrollment is not pending", 400);

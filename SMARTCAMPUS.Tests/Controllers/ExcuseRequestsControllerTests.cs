@@ -1,135 +1,189 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using SMARTCAMPUS.API.Controllers;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
+using SMARTCAMPUS.BusinessLayer.Tools;
+using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Academic;
+using SMARTCAMPUS.EntityLayer.Models;
+using SMARTCAMPUS.Tests.TestUtilities;
+using System.Security.Claims;
 using Xunit;
 
 namespace SMARTCAMPUS.Tests.Controllers
 {
-    /// <summary>
-    /// Tests for ExcuseRequestsController.
-    /// Note: This controller uses UserClaimsHelper which has non-virtual methods,
-    /// making direct mocking impossible. These tests focus on service layer mocking.
-    /// Integration tests would be needed for full coverage of auth scenarios.
-    /// </summary>
     public class ExcuseRequestsControllerTests
     {
-        private readonly Mock<IExcuseRequestService> _mockService;
+        private readonly Mock<IExcuseRequestService> _mockExcuseService;
+        private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
+        private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+        private readonly UserClaimsHelper _userClaimsHelper;
+        private readonly ExcuseRequestsController _controller;
 
         public ExcuseRequestsControllerTests()
         {
-            _mockService = new Mock<IExcuseRequestService>();
+            _mockExcuseService = new Mock<IExcuseRequestService>();
+            _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
+            _mockUnitOfWork = new Mock<IUnitOfWork>();
+            _userClaimsHelper = new UserClaimsHelper(_mockHttpContextAccessor.Object, _mockUnitOfWork.Object);
+            _controller = new ExcuseRequestsController(_mockExcuseService.Object, _userClaimsHelper);
+            SetupHttpContext("user1");
         }
 
-        #region Service Integration Tests
-
-        [Fact]
-        public void ExcuseRequestsController_ShouldHaveExpectedMethods()
+        private void SetupHttpContext(string? userId, string? role = null)
         {
-            // Arrange - Verify controller has required endpoints
-            var controllerType = typeof(ExcuseRequestsController);
-            
-            // Assert
-            controllerType.GetMethod("CreateExcuseRequest").Should().NotBeNull();
-            controllerType.GetMethod("GetExcuseRequests").Should().NotBeNull();
-            controllerType.GetMethod("ApproveExcuseRequest").Should().NotBeNull();
-            controllerType.GetMethod("RejectExcuseRequest").Should().NotBeNull();
-        }
-
-        [Fact]
-        public async Task IExcuseRequestService_CreateExcuseRequestAsync_ShouldReturnDto()
-        {
-            // Arrange
-            var createDto = new ExcuseRequestCreateDto { SessionId = 1, Reason = "Medical appointment" };
-            var responseDto = new ExcuseRequestDto { Id = 1, Reason = "Medical appointment" };
-            var response = Response<ExcuseRequestDto>.Success(responseDto, 201);
-            _mockService.Setup(x => x.CreateExcuseRequestAsync(1, createDto)).ReturnsAsync(response);
-
-            // Act
-            var result = await _mockService.Object.CreateExcuseRequestAsync(1, createDto);
-
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeTrue();
-            result.StatusCode.Should().Be(201);
-            result.Data.Should().NotBeNull();
-            result.Data!.Reason.Should().Be("Medical appointment");
-        }
-
-        [Fact]
-        public async Task IExcuseRequestService_GetExcuseRequestsAsync_ShouldReturnList()
-        {
-            // Arrange
-            var requests = new List<ExcuseRequestDto>
+            var claims = new List<Claim>();
+            if (!string.IsNullOrEmpty(userId))
             {
-                new ExcuseRequestDto { Id = 1, Reason = "Reason 1" }
+                claims.Add(new Claim(ClaimTypes.NameIdentifier, userId));
+            }
+            if (!string.IsNullOrEmpty(role))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+            var identity = new ClaimsIdentity(claims, "Test");
+            var principal = new ClaimsPrincipal(identity);
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = principal }
             };
-            var response = Response<IEnumerable<ExcuseRequestDto>>.Success(requests, 200);
-            _mockService.Setup(x => x.GetExcuseRequestsAsync("instructor-1")).ReturnsAsync(response);
-
-            // Act
-            var result = await _mockService.Object.GetExcuseRequestsAsync("instructor-1");
-
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeTrue();
-            result.StatusCode.Should().Be(200);
         }
 
         [Fact]
-        public async Task IExcuseRequestService_ApproveExcuseRequestAsync_ShouldSucceed()
+        public async Task CreateExcuseRequest_ShouldReturnOk()
         {
-            // Arrange
-            var response = Response<NoDataDto>.Success(200);
-            _mockService.Setup(x => x.ApproveExcuseRequestAsync(1, "instructor-1", "Approved")).ReturnsAsync(response);
+            SetupHttpContext("user1");
+            var mockHttpContext = new DefaultHttpContext();
+            mockHttpContext.User = _controller.ControllerContext.HttpContext.User;
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext);
+            
+            
+            var mockStudent = new Mock<IStudentDal>();
+            var students = new List<Student>
+            {
+                new Student { Id = 1, UserId = "user1", IsActive = true }
+            };
+            var asyncEnumerable = new TestAsyncEnumerable<Student>(students);
+            _mockUnitOfWork.Setup(x => x.Students).Returns(mockStudent.Object);
+            mockStudent.Setup(x => x.Where(It.IsAny<System.Linq.Expressions.Expression<Func<Student, bool>>>()))
+                .Returns(asyncEnumerable);
 
-            // Act
-            var result = await _mockService.Object.ApproveExcuseRequestAsync(1, "instructor-1", "Approved");
+            var dto = new ExcuseRequestCreateDto { SessionId = 1, Reason = "Test", DocumentUrl = "url" };
+            _mockExcuseService.Setup(x => x.CreateExcuseRequestAsync(1, dto))
+                .ReturnsAsync(Response<ExcuseRequestDto>.Success(new ExcuseRequestDto(), 201));
 
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeTrue();
-            result.StatusCode.Should().Be(200);
+            var result = await _controller.CreateExcuseRequest(dto);
+
+            result.Should().BeOfType<ObjectResult>();
+            ((ObjectResult)result).StatusCode.Should().Be(201);
         }
 
         [Fact]
-        public async Task IExcuseRequestService_RejectExcuseRequestAsync_ShouldSucceed()
+        public async Task CreateExcuseRequest_ShouldReturnUnauthorized_WhenNotStudent()
         {
-            // Arrange
-            var response = Response<NoDataDto>.Success(200);
-            _mockService.Setup(x => x.RejectExcuseRequestAsync(1, "instructor-1", "Rejected")).ReturnsAsync(response);
+            SetupHttpContext("user1");
+            var mockHttpContext = new DefaultHttpContext();
+            mockHttpContext.User = _controller.ControllerContext.HttpContext.User;
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext);
+            
+            var mockStudent = new Mock<IStudentDal>();
+            var students = new List<Student>();
+            var asyncEnumerable = new TestAsyncEnumerable<Student>(students);
+            _mockUnitOfWork.Setup(x => x.Students).Returns(mockStudent.Object);
+            mockStudent.Setup(x => x.Where(It.IsAny<System.Linq.Expressions.Expression<Func<Student, bool>>>()))
+                .Returns(asyncEnumerable);
 
-            // Act
-            var result = await _mockService.Object.RejectExcuseRequestAsync(1, "instructor-1", "Rejected");
+            var dto = new ExcuseRequestCreateDto { SessionId = 1, Reason = "Test" };
+            var result = await _controller.CreateExcuseRequest(dto);
 
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeTrue();
-            result.StatusCode.Should().Be(200);
+            result.Should().BeOfType<UnauthorizedObjectResult>();
         }
 
         [Fact]
-        public async Task IExcuseRequestService_RejectExcuseRequestAsync_ShouldFail_WhenNotFound()
+        public async Task GetExcuseRequests_ShouldReturnOk()
         {
-            // Arrange
-            var response = Response<NoDataDto>.Fail("Request not found", 404);
-            _mockService.Setup(x => x.RejectExcuseRequestAsync(999, "instructor-1", null)).ReturnsAsync(response);
+            SetupHttpContext("user1", "Faculty");
+            var mockHttpContext = new DefaultHttpContext();
+            mockHttpContext.User = _controller.ControllerContext.HttpContext.User;
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext);
+            
+            _mockExcuseService.Setup(x => x.GetExcuseRequestsAsync("user1"))
+                .ReturnsAsync(Response<IEnumerable<ExcuseRequestDto>>.Success(new List<ExcuseRequestDto>(), 200));
 
-            // Act
-            var result = await _mockService.Object.RejectExcuseRequestAsync(999, "instructor-1", null);
+            var result = await _controller.GetExcuseRequests();
 
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeFalse();
-            result.StatusCode.Should().Be(404);
+            result.Should().BeOfType<ObjectResult>();
+            ((ObjectResult)result).StatusCode.Should().Be(200);
         }
 
-        #endregion
+        [Fact]
+        public async Task ApproveExcuseRequest_ShouldReturnOk()
+        {
+            SetupHttpContext("user1", "Faculty");
+            var mockHttpContext = new DefaultHttpContext();
+            mockHttpContext.User = _controller.ControllerContext.HttpContext.User;
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext);
+            
+            var dto = new ExcuseRequestReviewDto { Notes = "Approved" };
+            _mockExcuseService.Setup(x => x.ApproveExcuseRequestAsync(1, "user1", "Approved"))
+                .ReturnsAsync(Response<NoDataDto>.Success(200));
+
+            var result = await _controller.ApproveExcuseRequest(1, dto);
+
+            result.Should().BeOfType<ObjectResult>();
+            ((ObjectResult)result).StatusCode.Should().Be(200);
+        }
+
+        [Fact]
+        public async Task ApproveExcuseRequest_ShouldReturnUnauthorized_WhenInstructorIdIsNull()
+        {
+            SetupHttpContext(null, "Faculty");
+            var mockHttpContext = new DefaultHttpContext();
+            mockHttpContext.User = _controller.ControllerContext.HttpContext.User;
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext);
+            
+            var dto = new ExcuseRequestReviewDto { Notes = "Approved" };
+
+            var result = await _controller.ApproveExcuseRequest(1, dto);
+
+            result.Should().BeOfType<UnauthorizedObjectResult>();
+        }
+
+        [Fact]
+        public async Task RejectExcuseRequest_ShouldReturnOk()
+        {
+            SetupHttpContext("user1", "Faculty");
+            var mockHttpContext = new DefaultHttpContext();
+            mockHttpContext.User = _controller.ControllerContext.HttpContext.User;
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext);
+            
+            var dto = new ExcuseRequestReviewDto { Notes = "Rejected" };
+            _mockExcuseService.Setup(x => x.RejectExcuseRequestAsync(1, "user1", "Rejected"))
+                .ReturnsAsync(Response<NoDataDto>.Success(200));
+
+            var result = await _controller.RejectExcuseRequest(1, dto);
+
+            result.Should().BeOfType<ObjectResult>();
+            ((ObjectResult)result).StatusCode.Should().Be(200);
+        }
+
+        [Fact]
+        public async Task RejectExcuseRequest_ShouldReturnUnauthorized_WhenInstructorIdIsNull()
+        {
+            SetupHttpContext(null, "Faculty");
+            var mockHttpContext = new DefaultHttpContext();
+            mockHttpContext.User = _controller.ControllerContext.HttpContext.User;
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext);
+            
+            var dto = new ExcuseRequestReviewDto { Notes = "Rejected" };
+
+            var result = await _controller.RejectExcuseRequest(1, dto);
+
+            result.Should().BeOfType<UnauthorizedObjectResult>();
+        }
     }
 }

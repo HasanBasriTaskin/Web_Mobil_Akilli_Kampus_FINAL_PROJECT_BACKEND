@@ -1059,6 +1059,57 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.ToTable("Faculties");
                 });
 
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.FacultyCourseSectionRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AdminNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("FacultyId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("ProcessedByAdminId")
+                        .HasMaxLength(450)
+                        .HasColumnType("varchar(450)");
+
+                    b.Property<DateTime>("RequestDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ResponseDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("SectionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FacultyId");
+
+                    b.HasIndex("SectionId");
+
+                    b.ToTable("FacultyCourseSectionRequests");
+                });
+
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.FoodItem", b =>
                 {
                     b.Property<int>("Id")
@@ -2154,6 +2205,25 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Navigation("Department");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.FacultyCourseSectionRequest", b =>
+                {
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.Faculty", "Faculty")
+                        .WithMany()
+                        .HasForeignKey("FacultyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SMARTCAMPUS.EntityLayer.Models.CourseSection", "Section")
+                        .WithMany()
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Faculty");
+
+                    b.Navigation("Section");
                 });
 
             modelBuilder.Entity("SMARTCAMPUS.EntityLayer.Models.MealMenu", b =>
