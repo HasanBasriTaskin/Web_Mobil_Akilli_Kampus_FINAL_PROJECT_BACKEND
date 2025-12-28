@@ -400,26 +400,27 @@ namespace SMARTCAMPUS.Tests.Managers
         [Fact]
         public async Task ApproveEnrollmentAsync_ShouldFail_WhenAccessDenied()
         {
-            // Arrange
-            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
-            await _context.Departments.AddAsync(dept);
+            // Arrange - Instructor1 is in dept1, but course/section is in dept2
+            var dept1 = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            var dept2 = new Department { Id = 2, Name = "EE", Code = "EE", IsActive = true };
+            await _context.Departments.AddRangeAsync(dept1, dept2);
             await _context.SaveChangesAsync();
             
             var user1 = new User { Id = "u1", FullName = "I", IsActive = true };
-            var instructor = new Faculty { Id = 1, UserId = "u1", User = user1, EmployeeNumber = "EMP001", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = user1, EmployeeNumber = "EMP001", Title = "Prof", DepartmentId = 1, Department = dept1, IsActive = true }; // In dept1
             var user2 = new User { Id = "u2", FullName = "I2", IsActive = true };
-            var instructor2 = new Faculty { Id = 2, UserId = "u2", User = user2, EmployeeNumber = "EMP002", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
+            var instructor2 = new Faculty { Id = 2, UserId = "u2", User = user2, EmployeeNumber = "EMP002", Title = "Prof", DepartmentId = 2, Department = dept2, IsActive = true }; // In dept2
             await _context.Users.AddRangeAsync(user1, user2);
             await _context.Faculties.AddRangeAsync(instructor, instructor2);
             await _context.SaveChangesAsync();
             
-            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 2, Department = dept2, IsActive = true }; // Course in dept2
             await _context.Courses.AddAsync(course);
             await _context.SaveChangesAsync();
             
             var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 2, Instructor = instructor2, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
             var stdUser = new User { Id = "s1", FullName = "Student", IsActive = true };
-            var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = 1, Department = dept, IsActive = true };
+            var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = 2, Department = dept2, IsActive = true };
             await _context.Users.AddAsync(stdUser);
             await _context.Students.AddAsync(student);
             await _context.CourseSections.AddAsync(section);
@@ -429,8 +430,8 @@ namespace SMARTCAMPUS.Tests.Managers
             await _context.Enrollments.AddAsync(enrollment);
             await _context.SaveChangesAsync();
 
-            // Act
-            var result = await _manager.ApproveEnrollmentAsync(1, 1); // Instructor 1 doesn't own section (instructor 2 owns it)
+            // Act - Instructor 1 (dept1) tries to approve enrollment for course in dept2
+            var result = await _manager.ApproveEnrollmentAsync(1, 1);
 
             // Assert
             result.IsSuccessful.Should().BeFalse();
@@ -557,28 +558,38 @@ namespace SMARTCAMPUS.Tests.Managers
         [Fact]
         public async Task RejectEnrollmentAsync_ShouldFail_WhenAccessDenied()
         {
-            // Arrange
-            var dept = new Department { Name = "CS", Code = "CS" };
-            await _context.Departments.AddAsync(dept);
-            var instructor = new Faculty { User = new User { FullName = "I" }, EmployeeNumber = "EMP001", Title = "Prof", DepartmentId = dept.Id, Department = dept };
-            await _context.Faculties.AddAsync(instructor);
-            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = dept.Id, Department = dept };
+            // Arrange - Instructor is in dept1, but course/section is in dept2
+            var dept1 = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            var dept2 = new Department { Id = 2, Name = "EE", Code = "EE", IsActive = true };
+            await _context.Departments.AddRangeAsync(dept1, dept2);
+            await _context.SaveChangesAsync();
+            
+            var user1 = new User { Id = "u1", FullName = "I", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = user1, EmployeeNumber = "EMP001", Title = "Prof", DepartmentId = 1, Department = dept1, IsActive = true }; // In dept1
+            var user2 = new User { Id = "u2", FullName = "I2", IsActive = true };
+            var instructor2 = new Faculty { Id = 2, UserId = "u2", User = user2, EmployeeNumber = "EMP002", Title = "Prof", DepartmentId = 2, Department = dept2, IsActive = true }; // In dept2
+            await _context.Users.AddRangeAsync(user1, user2);
+            await _context.Faculties.AddRangeAsync(instructor, instructor2);
+            await _context.SaveChangesAsync();
+            
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 2, Department = dept2, IsActive = true }; // Course in dept2
             await _context.Courses.AddAsync(course);
             await _context.SaveChangesAsync();
             
-            var section = new CourseSection { CourseId = 1, Course = course, InstructorId = instructor.Id + 1, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30 }; // Different Instructor
-            var stdUser = new User { Id = "s1", FullName = "Student" };
-            var student = new Student { UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = dept.Id };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 2, Instructor = instructor2, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+            var stdUser = new User { Id = "s1", FullName = "Student", IsActive = true };
+            var student = new Student { Id = 1, UserId = "s1", User = stdUser, StudentNumber = "123", DepartmentId = 2, Department = dept2, IsActive = true };
+            await _context.Users.AddAsync(stdUser);
             await _context.Students.AddAsync(student);
             await _context.CourseSections.AddAsync(section);
             await _context.SaveChangesAsync();
             
-            var enrollment = new Enrollment { StudentId = student.Id, SectionId = section.Id, Section = section };
+            var enrollment = new Enrollment { Id = 1, StudentId = 1, SectionId = 1, Section = section, Status = EnrollmentStatus.Pending, IsActive = true };
             await _context.Enrollments.AddAsync(enrollment);
             await _context.SaveChangesAsync();
 
-            // Act
-            var result = await _manager.RejectEnrollmentAsync(enrollment.Id, instructor.Id, null);
+            // Act - Instructor 1 (dept1) tries to reject enrollment for course in dept2
+            var result = await _manager.RejectEnrollmentAsync(1, 1, null);
 
             // Assert
             result.IsSuccessful.Should().BeFalse();
