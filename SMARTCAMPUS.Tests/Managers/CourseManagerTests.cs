@@ -40,7 +40,9 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task CreateCourseAsync_ShouldFail_WhenCodeExists()
         {
             // Arrange
-            var existing = new Course { Code = "C1", Name = "Existing" };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var existing = new Course { Code = "C1", Name = "Existing", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept };
+            await _context.Departments.AddAsync(dept);
             await _context.Courses.AddAsync(existing);
             await _context.SaveChangesAsync();
 
@@ -90,7 +92,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
-            var course = new Course { Id = 1, Code = "C1", Name = "C1", DepartmentId = 1, Department = dept };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept };
             await _context.Departments.AddAsync(dept);
             await _context.Courses.AddAsync(course);
             await _context.SaveChangesAsync();
@@ -112,8 +114,8 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
-            var c1 = new Course { Id = 1, Code = "A", Name = "A", DepartmentId = 1, Department = dept };
-            var c2 = new Course { Id = 2, Code = "B", Name = "B", DepartmentId = 1, Department = dept };
+            var c1 = new Course { Id = 1, Code = "A", Name = "A", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept };
+            var c2 = new Course { Id = 2, Code = "B", Name = "B", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept };
             await _context.Departments.AddAsync(dept);
             await _context.Courses.AddRangeAsync(c1, c2);
             await _context.SaveChangesAsync();
@@ -132,8 +134,8 @@ namespace SMARTCAMPUS.Tests.Managers
             // Arrange
             var dept1 = new Department { Id = 1, Name = "CS", Code = "CS" };
             var dept2 = new Department { Id = 2, Name = "Math", Code = "MTH" };
-            var c1 = new Course { Id = 1, Code = "A", Name = "A", DepartmentId = 1, Department = dept1 };
-            var c2 = new Course { Id = 2, Code = "B", Name = "B", DepartmentId = 2, Department = dept2 };
+            var c1 = new Course { Id = 1, Code = "A", Name = "A", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept1 };
+            var c2 = new Course { Id = 2, Code = "B", Name = "B", Credits = 3, ECTS = 5, DepartmentId = 2, Department = dept2 };
 
             await _context.Departments.AddRangeAsync(dept1, dept2);
             await _context.Courses.AddRangeAsync(c1, c2);
@@ -167,7 +169,9 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task UpdateCourseAsync_ShouldSucceed_WhenValid()
         {
             // Arrange
-            var course = new Course { Id = 1, Code = "C1", Name = "Old", DepartmentId = 1 };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var course = new Course { Id = 1, Code = "C1", Name = "Old", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept };
+            await _context.Departments.AddAsync(dept);
             await _context.Courses.AddAsync(course);
             await _context.SaveChangesAsync();
 
@@ -200,7 +204,9 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task DeleteCourseAsync_ShouldSucceed_WhenValid()
         {
             // Arrange
-            var course = new Course { Id = 1, Code = "C1", Name = "C1", DepartmentId = 1 };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept };
+            await _context.Departments.AddAsync(dept);
             await _context.Courses.AddAsync(course);
             await _context.SaveChangesAsync();
 
@@ -221,8 +227,10 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task GetPrerequisitesAsync_ShouldReturnPrereqs()
         {
             // Arrange - Need to properly seed courses first, then create prerequisite relationship
-            var c1 = new Course { Id = 1, Code = "C1", Name = "C1" };
-            var c2 = new Course { Id = 2, Code = "C2", Name = "C2" };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var c1 = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept };
+            var c2 = new Course { Id = 2, Code = "C2", Name = "C2", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept };
+            await _context.Departments.AddAsync(dept);
             await _context.Courses.AddRangeAsync(c1, c2);
             await _context.SaveChangesAsync();
 
@@ -245,8 +253,8 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
-            var c1 = new Course { Id = 1, Code = "CS101", Name = "Introduction to Programming", DepartmentId = 1, Department = dept };
-            var c2 = new Course { Id = 2, Code = "MTH201", Name = "Calculus", DepartmentId = 1, Department = dept };
+            var c1 = new Course { Id = 1, Code = "CS101", Name = "Introduction to Programming", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept };
+            var c2 = new Course { Id = 2, Code = "MTH201", Name = "Calculus", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept };
             await _context.Departments.AddAsync(dept);
             await _context.Courses.AddRangeAsync(c1, c2);
             await _context.SaveChangesAsync();
@@ -264,7 +272,9 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task UpdateCourseAsync_ShouldUpdateCreditsAndECTS()
         {
             // Arrange
-            var course = new Course { Id = 1, Code = "C1", Name = "Old", Credits = 3, ECTS = 5, DepartmentId = 1 };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var course = new Course { Id = 1, Code = "C1", Name = "Old", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept };
+            await _context.Departments.AddAsync(dept);
             await _context.Courses.AddAsync(course);
             await _context.SaveChangesAsync();
 
