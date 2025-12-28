@@ -12,12 +12,16 @@ namespace SMARTCAMPUS.API.Controllers
         private readonly IPaymentService _paymentService;
         private readonly IWalletService _walletService;
         private readonly ILogger<PaymentWebhookController> _logger;
+        private readonly IConfiguration _configuration;
 
-        public PaymentWebhookController(IPaymentService paymentService, IWalletService walletService, ILogger<PaymentWebhookController> logger)
+        private string ClientUrl => _configuration["ClientSettings:Url"] ?? "http://localhost:3000";
+
+        public PaymentWebhookController(IPaymentService paymentService, IWalletService walletService, ILogger<PaymentWebhookController> logger, IConfiguration configuration)
         {
             _paymentService = paymentService;
             _walletService = walletService;
             _logger = logger;
+            _configuration = configuration;
         }
 
         // Iyzico Callback
@@ -41,7 +45,7 @@ namespace SMARTCAMPUS.API.Controllers
             {
                 _logger.LogError($"Payment Verification Failed: {verificationResult.Errors?.FirstOrDefault()}");
                 // Başarısız sayfasına yönlendir (Frontend URL)
-                return Redirect($"http://localhost:3000/payment/fail?reason={verificationResult.Errors?.FirstOrDefault()}");
+                return Redirect($"{ClientUrl}/payment/fail?reason={Uri.EscapeDataString(verificationResult.Errors?.FirstOrDefault() ?? "Unknown error")}");
             }
 
             // 2. Bakiyeyi güncelle (ACID)
@@ -68,7 +72,8 @@ namespace SMARTCAMPUS.API.Controllers
                 }
             }
 
-            return Redirect("http://localhost:3000/payment/success");
+            return Redirect($"{ClientUrl}/payment/success");
         }
     }
 }
+
