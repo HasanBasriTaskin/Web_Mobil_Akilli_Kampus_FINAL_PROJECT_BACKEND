@@ -11,6 +11,7 @@ using SMARTCAMPUS.EntityLayer.Models;
 using SMARTCAMPUS.Tests.TestUtilities;
 using System.IO;
 using Xunit;
+using SMARTCAMPUS.DataAccessLayer.Concrete;
 
 namespace SMARTCAMPUS.Tests.Managers
 {
@@ -39,7 +40,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync((User?)null);
 
@@ -56,7 +57,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
 
             var user = new User { Id = "1", FullName = "Test", Email = "test@test.com" };
 
@@ -84,7 +85,7 @@ namespace SMARTCAMPUS.Tests.Managers
             await context.Students.AddAsync(student);
             await context.SaveChangesAsync();
 
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
 
             var user = new User { Id = "1", FullName = "Test", Email = "test@test.com" };
 
@@ -111,7 +112,7 @@ namespace SMARTCAMPUS.Tests.Managers
             await context.Faculties.AddAsync(faculty);
             await context.SaveChangesAsync();
 
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
 
             var user = new User { Id = "1", FullName = "Test Faculty", Email = "faculty@test.com" };
 
@@ -133,7 +134,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
 
             var user = new User { Id = "1", FullName = "Test", Email = "test@test.com" };
 
@@ -157,7 +158,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
 
             var user = new User { Id = "1", FullName = "Old" };
             var updateDto = new UserUpdateDto { FullName = "New", Email = "new@test.com" };
@@ -178,7 +179,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
 
             var updateDto = new UserUpdateDto { FullName = "New", Email = "new@test.com" };
 
@@ -197,7 +198,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
 
             var user = new User { Id = "1", FullName = "Old" };
             var updateDto = new UserUpdateDto { FullName = "New", Email = "new@test.com" };
@@ -229,7 +230,7 @@ namespace SMARTCAMPUS.Tests.Managers
             await context.RefreshTokens.AddAsync(token);
             await context.SaveChangesAsync();
 
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", IsActive = true };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
@@ -252,7 +253,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync((User?)null);
 
@@ -269,7 +270,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", IsActive = true };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
@@ -292,7 +293,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", FullName = "Test" };
             var newRoles = new List<string> { "Admin", "Faculty" };
 
@@ -314,7 +315,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync((User?)null);
 
@@ -331,7 +332,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", FullName = "Test" };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
@@ -352,7 +353,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", FullName = "Test" };
             var newRoles = new List<string> { "Admin" };
 
@@ -379,7 +380,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync((User?)null);
 
@@ -398,7 +399,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", FullName = "Test" };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
@@ -417,7 +418,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", FullName = "Test" };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
@@ -438,7 +439,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", FullName = "Test" };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
@@ -461,7 +462,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", FullName = "Test" };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
@@ -484,7 +485,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", FullName = "Test" };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
@@ -521,7 +522,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", FullName = "Test" };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
@@ -556,7 +557,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var user = new User { Id = "1", FullName = "Test" };
 
             _mockUserManager.Setup(x => x.FindByIdAsync("1")).ReturnsAsync(user);
@@ -595,7 +596,7 @@ namespace SMARTCAMPUS.Tests.Managers
         {
             // Arrange
             using var context = new CampusContext(_dbContextOptions);
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var queryParams = new UserQueryParameters { Page = 1, Limit = 10 };
 
             // Act
@@ -621,7 +622,7 @@ namespace SMARTCAMPUS.Tests.Managers
             }
             await context.SaveChangesAsync();
 
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var queryParams = new UserQueryParameters { Page = 1, Limit = 10 };
 
             // Act
@@ -644,7 +645,7 @@ namespace SMARTCAMPUS.Tests.Managers
             await context.Users.AddAsync(new User { Id = "u2", FullName = "Jane Smith", Email = "jane@test.com" });
             await context.SaveChangesAsync();
 
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var queryParams = new UserQueryParameters { Page = 1, Limit = 10, Search = "John" };
 
             // Act
@@ -666,7 +667,7 @@ namespace SMARTCAMPUS.Tests.Managers
             await context.Users.AddAsync(new User { Id = "u2", FullName = "Jane Smith", Email = "jane@test.com" });
             await context.SaveChangesAsync();
 
-            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, context);
+            var userService = new UserService(_mockUserManager.Object, _mockMapper.Object, new UnitOfWork(context));
             var queryParams = new UserQueryParameters { Page = 1, Limit = 10, Search = "jane@" };
 
             // Act

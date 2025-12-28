@@ -176,7 +176,7 @@ namespace SMARTCAMPUS.Tests.Managers
                             .ReturnsAsync(roles);
 
             // Mock Token Generator
-            _mockTokenGenerator.Setup(x => x.GenerateToken(user, roles))
+            _mockTokenGenerator.Setup(x => x.GenerateToken(user, roles, It.IsAny<int?>(), It.IsAny<int?>()))
                                .Returns(tokenDto);
 
             // Act
@@ -317,7 +317,7 @@ namespace SMARTCAMPUS.Tests.Managers
             // (Already setup in constructor, but ensuring specific behavior here if needed)
 
             // Mock Token Generator
-            _mockTokenGenerator.Setup(x => x.GenerateToken(user, It.Is<List<string>>(r => r.Contains("Student"))))
+            _mockTokenGenerator.Setup(x => x.GenerateToken(user, It.Is<List<string>>(r => r.Contains("Student")), It.IsAny<int?>(), It.IsAny<int?>()))
                                .Returns(tokenDto);
 
             // Mock Email Generation
@@ -499,7 +499,13 @@ namespace SMARTCAMPUS.Tests.Managers
             _mockUserManager.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(roles);
 
             var newTokenDto = new TokenDto { AccessToken = "new_access", RefreshToken = "new_refresh" };
-            _mockTokenGenerator.Setup(x => x.GenerateToken(user, roles)).Returns(newTokenDto);
+            _mockTokenGenerator.Setup(x => x.GenerateToken(user, roles, It.IsAny<int?>(), It.IsAny<int?>())).Returns(newTokenDto);
+
+             // Ensure Student DAL returns empty list so FirstOrDefaultAsync doesn't fail with InvalidOperationException
+            var emptyStudents = new List<Student>();
+            var asyncEnumerableStudents = new TestAsyncEnumerable<Student>(emptyStudents);
+            _mockStudentDal.Setup(x => x.Where(It.IsAny<System.Linq.Expressions.Expression<Func<Student, bool>>>()))
+                .Returns(asyncEnumerableStudents);
 
             // Act
             var result = await _authManager.CreateTokenByRefreshTokenAsync("valid_token");
@@ -975,7 +981,7 @@ namespace SMARTCAMPUS.Tests.Managers
             _mockUnitOfWork.Setup(u => u.Faculties).Returns(mockFacultyDal.Object);
 
             // Mock Token Generator
-            _mockTokenGenerator.Setup(x => x.GenerateToken(user, It.Is<List<string>>(r => r.Contains("Faculty"))))
+            _mockTokenGenerator.Setup(x => x.GenerateToken(user, It.Is<List<string>>(r => r.Contains("Faculty")), It.IsAny<int?>(), It.IsAny<int?>()))
                 .Returns(tokenDto);
 
             // Mock Email Generation
@@ -1046,7 +1052,7 @@ namespace SMARTCAMPUS.Tests.Managers
             _mockSignInManager.Setup(x => x.CheckPasswordSignInAsync(user, loginDto.Password, false))
                 .ReturnsAsync(SignInResult.Success);
             _mockUserManager.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(roles);
-            _mockTokenGenerator.Setup(x => x.GenerateToken(user, roles)).Returns(tokenDto);
+            _mockTokenGenerator.Setup(x => x.GenerateToken(user, roles, It.IsAny<int?>(), It.IsAny<int?>())).Returns(tokenDto);
 
             // Mock Student data
             var students = new List<Student> { new Student { UserId = "u1", StudentNumber = "STU001", DepartmentId = 1 } };
@@ -1077,7 +1083,7 @@ namespace SMARTCAMPUS.Tests.Managers
             _mockSignInManager.Setup(x => x.CheckPasswordSignInAsync(user, loginDto.Password, false))
                 .ReturnsAsync(SignInResult.Success);
             _mockUserManager.Setup(x => x.GetRolesAsync(user)).ReturnsAsync(roles);
-            _mockTokenGenerator.Setup(x => x.GenerateToken(user, roles)).Returns(tokenDto);
+            _mockTokenGenerator.Setup(x => x.GenerateToken(user, roles, It.IsAny<int?>(), It.IsAny<int?>())).Returns(tokenDto);
 
             // Mock Faculty data
             var mockFacultyDal = new Mock<IFacultyDal>();
@@ -1131,4 +1137,3 @@ namespace SMARTCAMPUS.Tests.Managers
 
     }
 }
-

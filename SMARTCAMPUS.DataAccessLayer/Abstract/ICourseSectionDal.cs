@@ -4,10 +4,11 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
 {
     public interface ICourseSectionDal : IGenericDal<CourseSection>
     {
-        Task<CourseSection?> GetSectionWithDetailsAsync(int id);
-        Task<IEnumerable<CourseSection>> GetSectionsBySemesterAsync(string semester, int year);
-        Task<IEnumerable<CourseSection>> GetSectionsByInstructorAsync(int instructorId);
-        Task<bool> IncrementEnrolledCountAsync(int sectionId);
-        Task<bool> DecrementEnrolledCountAsync(int sectionId);
+        Task<List<CourseSection>> GetSectionsByInstructorAsync(int instructorId);
+        Task<CourseSection?> GetSectionWithDetailsAsync(int sectionId);
+        Task IncrementEnrolledCountAsync(int sectionId);
+        Task DecrementEnrolledCountAsync(int sectionId);
+        Task<List<CourseSection>> GetSectionsBySemesterAsync(string semester, int year);
+        Task<List<CourseSection>> GetSectionsByDepartmentAsync(int departmentId);
     }
 }

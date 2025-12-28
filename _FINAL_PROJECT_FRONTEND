@@ -1,0 +1,1377 @@
+[1mdiff --git a/SMARTCAMPUS.Tests/Constants/ConstantsTests.cs b/SMARTCAMPUS.Tests/Constants/ConstantsTests.cs[m
+[1mnew file mode 100644[m
+[1mindex 0000000..3eaa719[m
+[1m--- /dev/null[m
+[1m+++ b/SMARTCAMPUS.Tests/Constants/ConstantsTests.cs[m
+[36m@@ -0,0 +1,199 @@[m
+[32m+[m[32musing FluentAssertions;[m
+[32m+[m[32musing SMARTCAMPUS.BusinessLayer.Constants;[m
+[32m+[m[32musing Xunit;[m
+[32m+[m
+[32m+[m[32mnamespace SMARTCAMPUS.Tests.Constants[m
+[32m+[m[32m{[m
+[32m+[m[32m    public class ConstantsTests[m
+[32m+[m[32m    {[m
+[32m+[m[32m        #region CampusNetworkConstants Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void CampusIpRanges_ShouldNotBeEmpty()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            CampusNetworkConstants.CampusIpRanges.Should().NotBeNullOrEmpty();[m
+[32m+[m[32m            CampusNetworkConstants.CampusIpRanges.Length.Should().BeGreaterThan(0);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void CampusIpRanges_ShouldContainValidCidrRanges()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Assert - each range should have valid CIDR notation[m
+[32m+[m[32m            foreach (var range in CampusNetworkConstants.CampusIpRanges)[m
+[32m+[m[32m            {[m
+[32m+[m[32m                range.Should().Contain("/");[m
+[32m+[m[32m                var parts = range.Split('/');[m
+[32m+[m[32m                parts.Length.Should().Be(2);[m
+[32m+[m[32m                int.TryParse(parts[1], out var prefix).Should().BeTrue();[m
+[32m+[m[32m                prefix.Should().BeInRange(0, 32);[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void MaxRealisticVelocity_ShouldBeReasonable()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            CampusNetworkConstants.MaxRealisticVelocity.Should().Be(200m);[m
+[32m+[m[32m            CampusNetworkConstants.MaxRealisticVelocity.Should().BeGreaterThan(0);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void MaxTimeDifferenceForVelocityCheck_ShouldBe3600()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Assert - 1 hour in seconds[m
+[32m+[m[32m            CampusNetworkConstants.MaxTimeDifferenceForVelocityCheck.Should().Be(3600);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void FraudScoreThresholds_ShouldBeInOrder()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            CampusNetworkConstants.FraudScoreLow.Should().Be(30);[m
+[32m+[m[32m            CampusNetworkConstants.FraudScoreMedium.Should().Be(60);[m
+[32m+[m[32m            CampusNetworkConstants.FraudScoreHigh.Should().Be(80);[m
+[32m+[m
+[32m+[m[32m            CampusNetworkConstants.FraudScoreLow.Should().BeLessThan(CampusNetworkConstants.FraudScoreMedium);[m
+[32m+[m[32m            CampusNetworkConstants.FraudScoreMedium.Should().BeLessThan(CampusNetworkConstants.FraudScoreHigh);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m
+[32m+[m[32m        #region GradeConstants Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradeWeights_ShouldSumTo100Percent()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            var totalWeight = GradeConstants.MidtermWeight + GradeConstants.FinalWeight;[m
+[32m+[m[32m            totalWeight.Should().Be(1.0m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void MidtermWeight_ShouldBe40Percent()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            GradeConstants.MidtermWeight.Should().Be(0.4m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void FinalWeight_ShouldBe60Percent()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            GradeConstants.FinalWeight.Should().Be(0.6m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void LateCheckInGracePeriodMinutes_ShouldBe15()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            GradeConstants.LateCheckInGracePeriodMinutes.Should().Be(15);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradeThresholds_ShouldBeInDescendingOrder()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            GradeConstants.GradeA.Should().Be(90);[m
+[32m+[m[32m            GradeConstants.GradeAMinus.Should().Be(85);[m
+[32m+[m[32m            GradeConstants.GradeBPlus.Should().Be(80);[m
+[32m+[m[32m            GradeConstants.GradeB.Should().Be(75);[m
+[32m+[m[32m            GradeConstants.GradeBMinus.Should().Be(70);[m
+[32m+[m[32m            GradeConstants.GradeCPlus.Should().Be(65);[m
+[32m+[m[32m            GradeConstants.GradeC.Should().Be(60);[m
+[32m+[m[32m            GradeConstants.GradeCMinus.Should().Be(55);[m
+[32m+[m[32m            GradeConstants.GradeD.Should().Be(50);[m
+[32m+[m
+[32m+[m[32m            // Verify descending order[m
+[32m+[m[32m            GradeConstants.GradeA.Should().BeGreaterThan(GradeConstants.GradeAMinus);[m
+[32m+[m[32m            GradeConstants.GradeAMinus.Should().BeGreaterThan(GradeConstants.GradeBPlus);[m
+[32m+[m[32m            GradeConstants.GradeBPlus.Should().BeGreaterThan(GradeConstants.GradeB);[m
+[32m+[m[32m            GradeConstants.GradeB.Should().BeGreaterThan(GradeConstants.GradeBMinus);[m
+[32m+[m[32m            GradeConstants.GradeBMinus.Should().BeGreaterThan(GradeConstants.GradeCPlus);[m
+[32m+[m[32m            GradeConstants.GradeCPlus.Should().BeGreaterThan(GradeConstants.GradeC);[m
+[32m+[m[32m            GradeConstants.GradeC.Should().BeGreaterThan(GradeConstants.GradeCMinus);[m
+[32m+[m[32m            GradeConstants.GradeCMinus.Should().BeGreaterThan(GradeConstants.GradeD);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m
+[32m+[m[32m        #region GradePoints Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradePoints_A_ShouldBe4Point0()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            GradePoints.A.Should().Be(4.0m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradePoints_AMinus_ShouldBe3Point7()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            GradePoints.AMinus.Should().Be(3.7m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradePoints_BPlus_ShouldBe3Point3()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            GradePoints.BPlus.Should().Be(3.3m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradePoints_B_ShouldBe3Point0()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            GradePoints.B.Should().Be(3.0m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradePoints_BMinus_ShouldBe2Point7()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            GradePoints.BMinus.Should().Be(2.7m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradePoints_CPlus_ShouldBe2Point3()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            GradePoints.CPlus.Should().Be(2.3m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradePoints_C_ShouldBe2Point0()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            GradePoints.C.Should().Be(2.0m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradePoints_CMinus_ShouldBe1Point7()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            GradePoints.CMinus.Should().Be(1.7m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradePoints_D_ShouldBe1Point0()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            GradePoints.D.Should().Be(1.0m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradePoints_F_ShouldBe0()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            GradePoints.F.Should().Be(0.0m);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void GradePoints_ShouldBeInDescendingOrder()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Verify all grade points are in proper descending order[m
+[32m+[m[32m            GradePoints.A.Should().BeGreaterThan(GradePoints.AMinus);[m
+[32m+[m[32m            GradePoints.AMinus.Should().BeGreaterThan(GradePoints.BPlus);[m
+[32m+[m[32m            GradePoints.BPlus.Should().BeGreaterThan(GradePoints.B);[m
+[32m+[m[32m            GradePoints.B.Should().BeGreaterThan(GradePoints.BMinus);[m
+[32m+[m[32m            GradePoints.BMinus.Should().BeGreaterThan(GradePoints.CPlus);[m
+[32m+[m[32m            GradePoints.CPlus.Should().BeGreaterThan(GradePoints.C);[m
+[32m+[m[32m            GradePoints.C.Should().BeGreaterThan(GradePoints.CMinus);[m
+[32m+[m[32m            GradePoints.CMinus.Should().BeGreaterThan(GradePoints.D);[m
+[32m+[m[32m            GradePoints.D.Should().BeGreaterThan(GradePoints.F);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/SMARTCAMPUS.Tests/Controllers/AcademicCalendarsControllerTests.cs b/SMARTCAMPUS.Tests/Controllers/AcademicCalendarsControllerTests.cs[m
+[1mnew file mode 100644[m
+[1mindex 0000000..e26c2f8[m
+[1m--- /dev/null[m
+[1m+++ b/SMARTCAMPUS.Tests/Controllers/AcademicCalendarsControllerTests.cs[m
+[36m@@ -0,0 +1,159 @@[m
+[32m+[m[32musing System;[m
+[32m+[m[32musing System.Collections.Generic;[m
+[32m+[m[32musing System.Threading.Tasks;[m
+[32m+[m[32musing FluentAssertions;[m
+[32m+[m[32musing Microsoft.AspNetCore.Mvc;[m
+[32m+[m[32musing Moq;[m
+[32m+[m[32musing SMARTCAMPUS.API.Controllers;[m
+[32m+[m[32musing SMARTCAMPUS.BusinessLayer.Abstract;[m
+[32m+[m[32musing SMARTCAMPUS.BusinessLayer.Common;[m
+[32m+[m[32musing SMARTCAMPUS.EntityLayer.DTOs.Academic;[m
+[32m+[m[32musing Xunit;[m
+[32m+[m
+[32m+[m[32mnamespace SMARTCAMPUS.Tests.Controllers[m
+[32m+[m[32m{[m
+[32m+[m[32m    public class AcademicCalendarsControllerTests[m
+[32m+[m[32m    {[m
+[32m+[m[32m        private readonly Mock<IAcademicCalendarService> _mockService;[m
+[32m+[m[32m        private readonly AcademicCalendarsController _controller;[m
+[32m+[m
+[32m+[m[32m        public AcademicCalendarsControllerTests()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            _mockService = new Mock<IAcademicCalendarService>();[m
+[32m+[m[32m            _controller = new AcademicCalendarsController(_mockService.Object);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #region GetCalendars Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetCalendars_ShouldReturnStatusCode_WhenNoParameters()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var calendars = new List<AcademicCalendarDto>[m
+[32m+[m[32m            {[m
+[32m+[m[32m                new AcademicCalendarDto { Id = 1, Title = "Spring Semester Start" }[m
+[32m+[m[32m            };[m
+[32m+[m[32m            var response = Response<IEnumerable<AcademicCalendarDto>>.Success(calendars, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetCalendarsAsync(null, null)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetCalendars(null, null) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetCalendars_ShouldReturnStatusCode_WithYearParameter()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var calendars = new List<AcademicCalendarDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<AcademicCalendarDto>>.Success(calendars, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetCalendarsAsync(2024, null)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetCalendars(2024, null) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetCalendars_ShouldReturnStatusCode_WithSemesterParameter()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var calendars = new List<AcademicCalendarDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<AcademicCalendarDto>>.Success(calendars, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetCalendarsAsync(null, "Fall")).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetCalendars(null, "Fall") as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetCalendars_ShouldReturnStatusCode_WithAllParameters()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var calendars = new List<AcademicCalendarDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<AcademicCalendarDto>>.Success(calendars, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetCalendarsAsync(2024, "Spring")).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetCalendars(2024, "Spring") as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m            _mockService.Verify(x => x.GetCalendarsAsync(2024, "Spring"), Times.Once);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m
+[32m+[m[32m        #region GetCalendarsByDateRange Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetCalendarsByDateRange_ShouldReturnStatusCode()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var startDate = new DateTime(2024, 1, 1);[m
+[32m+[m[32m            var endDate = new DateTime(2024, 12, 31);[m
+[32m+[m[32m            var calendars = new List<AcademicCalendarDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<AcademicCalendarDto>>.Success(calendars, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetCalendarsByDateRangeAsync(startDate, endDate)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetCalendarsByDateRange(startDate, endDate) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m            _mockService.Verify(x => x.GetCalendarsByDateRangeAsync(startDate, endDate), Times.Once);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m
+[32m+[m[32m        #region GetUpcomingEvents Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetUpcomingEvents_ShouldReturnStatusCode_WithDefaultDays()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var calendars = new List<AcademicCalendarDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<AcademicCalendarDto>>.Success(calendars, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetUpcomingEventsAsync(30)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetUpcomingEvents() as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m            _mockService.Verify(x => x.GetUpcomingEventsAsync(30), Times.Once);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetUpcomingEvents_ShouldReturnStatusCode_WithCustomDays()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var calendars = new List<AcademicCalendarDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<AcademicCalendarDto>>.Success(calendars, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetUpcomingEventsAsync(7)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetUpcomingEvents(7) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m            _mockService.Verify(x => x.GetUpcomingEventsAsync(7), Times.Once);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/SMARTCAMPUS.Tests/Controllers/AnnouncementsControllerTests.cs b/SMARTCAMPUS.Tests/Controllers/AnnouncementsControllerTests.cs[m
+[1mnew file mode 100644[m
+[1mindex 0000000..a0d6a0d[m
+[1m--- /dev/null[m
+[1m+++ b/SMARTCAMPUS.Tests/Controllers/AnnouncementsControllerTests.cs[m
+[36m@@ -0,0 +1,197 @@[m
+[32m+[m[32musing System.Collections.Generic;[m
+[32m+[m[32musing System.Threading.Tasks;[m
+[32m+[m[32musing FluentAssertions;[m
+[32m+[m[32musing Microsoft.AspNetCore.Mvc;[m
+[32m+[m[32musing Moq;[m
+[32m+[m[32musing SMARTCAMPUS.API.Controllers;[m
+[32m+[m[32musing SMARTCAMPUS.BusinessLayer.Abstract;[m
+[32m+[m[32musing SMARTCAMPUS.BusinessLayer.Common;[m
+[32m+[m[32musing SMARTCAMPUS.EntityLayer.DTOs.Academic;[m
+[32m+[m[32musing Xunit;[m
+[32m+[m
+[32m+[m[32mnamespace SMARTCAMPUS.Tests.Controllers[m
+[32m+[m[32m{[m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// Tests for AnnouncementsController.[m
+[32m+[m[32m    /// Note: This controller uses UserClaimsHelper which has non-virtual methods,[m
+[32m+[m[32m    /// making direct mocking impossible. These tests focus on service layer mocking.[m
+[32m+[m[32m    /// </summary>[m
+[32m+[m[32m    public class AnnouncementsControllerTests[m
+[32m+[m[32m    {[m
+[32m+[m[32m        private readonly Mock<IAnnouncementService> _mockService;[m
+[32m+[m
+[32m+[m[32m        public AnnouncementsControllerTests()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            _mockService = new Mock<IAnnouncementService>();[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #region GetAnnouncements Service Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IAnnouncementService_GetAnnouncementsAsync_ShouldReturnList()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var announcements = new List<AnnouncementDto>[m
+[32m+[m[32m            {[m
+[32m+[m[32m                new AnnouncementDto { Id = 1, Title = "Test Announcement" }[m
+[32m+[m[32m            };[m
+[32m+[m[32m            var response = Response<IEnumerable<AnnouncementDto>>.Success(announcements, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetAnnouncementsAsync(null, null)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.GetAnnouncementsAsync(null, null);[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeTrue();[m
+[32m+[m[32m            result.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IAnnouncementService_GetAnnouncementsAsync_WithTargetAudience_ShouldFilter()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var announcements = new List<AnnouncementDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<AnnouncementDto>>.Success(announcements, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetAnnouncementsAsync("Students", null)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.GetAnnouncementsAsync("Students", null);[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeTrue();[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IAnnouncementService_GetAnnouncementsAsync_WithDepartmentId_ShouldFilter()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var announcements = new List<AnnouncementDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<AnnouncementDto>>.Success(announcements, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetAnnouncementsAsync(null, 5)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.GetAnnouncementsAsync(null, 5);[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeTrue();[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m
+[32m+[m[32m        #region GetImportantAnnouncements Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IAnnouncementService_GetImportantAnnouncementsAsync_ShouldReturnList()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var announcements = new List<AnnouncementDto>[m
+[32m+[m[32m            {[m
+[32m+[m[32m                new AnnouncementDto { Id = 1, Title = "Important Notice", IsImportant = true }[m
+[32m+[m[32m            };[m
+[32m+[m[32m            var response = Response<IEnumerable<AnnouncementDto>>.Success(announcements, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetImportantAnnouncementsAsync()).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.GetImportantAnnouncementsAsync();[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeTrue();[m
+[32m+[m[32m            result.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m
+[32m+[m[32m        #region GetAnnouncementById Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IAnnouncementService_GetAnnouncementByIdAsync_ShouldReturnAnnouncement()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var announcement = new AnnouncementDto { Id = 1, Title = "Test Announcement" };[m
+[32m+[m[32m            var response = Response<AnnouncementDto>.Success(announcement, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetAnnouncementByIdAsync(1)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.GetAnnouncementByIdAsync(1);[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeTrue();[m
+[32m+[m[32m            result.Data!.Title.Should().Be("Test Announcement");[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IAnnouncementService_GetAnnouncementByIdAsync_ShouldFail_WhenNotFound()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<AnnouncementDto>.Fail("Announcement not found", 404);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetAnnouncementByIdAsync(999)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.GetAnnouncementByIdAsync(999);[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeFalse();[m
+[32m+[m[32m            result.StatusCode.Should().Be(404);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m
+[32m+[m[32m        #region IncrementViewCount Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IAnnouncementService_IncrementViewCountAsync_ShouldSucceed()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<EntityLayer.DTOs.NoDataDto>.Success(200);[m
+[32m+[m[32m            _mockService.Setup(x => x.IncrementViewCountAsync(1)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.IncrementViewCountAsync(1);[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeTrue();[m
+[32m+[m[32m            result.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IAnnouncementService_IncrementViewCountAsync_ShouldFail_WhenNotFound()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<EntityLayer.DTOs.NoDataDto>.Fail("Announcement not found", 404);[m
+[32m+[m[32m            _mockService.Setup(x => x.IncrementViewCountAsync(999)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.IncrementViewCountAsync(999);[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeFalse();[m
+[32m+[m[32m            result.StatusCode.Should().Be(404);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m
+[32m+[m[32m        #region Controller Method Existence Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void AnnouncementsController_ShouldHaveExpectedMethods()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Verify controller has expected endpoints[m
+[32m+[m[32m            var controllerType = typeof(AnnouncementsController);[m
+[32m+[m[41m            [m
+[32m+[m[32m            controllerType.GetMethod("GetAnnouncements").Should().NotBeNull();[m
+[32m+[m[32m            controllerType.GetMethod("GetImportantAnnouncements").Should().NotBeNull();[m
+[32m+[m[32m            controllerType.GetMethod("GetAnnouncementById").Should().NotBeNull();[m
+[32m+[m[32m            controllerType.GetMethod("IncrementViewCount").Should().NotBeNull();[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/SMARTCAMPUS.Tests/Controllers/AttendanceControllerTests.cs b/SMARTCAMPUS.Tests/Controllers/AttendanceControllerTests.cs[m
+[1mindex f6ad82f..ca86199 100644[m
+[1m--- a/SMARTCAMPUS.Tests/Controllers/AttendanceControllerTests.cs[m
+[1m+++ b/SMARTCAMPUS.Tests/Controllers/AttendanceControllerTests.cs[m
+[36m@@ -38,10 +38,38 @@[m [mnamespace SMARTCAMPUS.Tests.Controllers[m
+             };[m
+         }[m
+ [m
+[32m+[m[32m        private void SetupFacultyUser()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[][m
+[32m+[m[32m            {[m
+[32m+[m[32m                new Claim("FacultyId", "2"),[m
+[32m+[m[32m                new Claim(ClaimTypes.Role, "Faculty")[m
+[32m+[m[32m            }, "mock"));[m
+[32m+[m[32m            _controller.ControllerContext.HttpContext.User = user;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        private void SetupStudentUser()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[][m
+[32m+[m[32m            {[m
+[32m+[m[32m                new Claim("StudentId", "1"),[m
+[32m+[m[32m                new Claim(ClaimTypes.Role, "Student")[m
+[32m+[m[32m            }, "mock"));[m
+[32m+[m[32m            _controller.ControllerContext.HttpContext.User = user;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        private void SetupEmptyUser()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            _controller.ControllerContext.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #region Session Management Tests[m
+[32m+[m
+         [Fact][m
+         public async Task CreateSession_ShouldReturnStatusCode()[m
+         {[m
+             // Arrange[m
+[32m+[m[32m            SetupFacultyUser();[m
+             var dto = new CreateSessionDto();[m
+             var response = Response<AttendanceSessionDto>.Success(new AttendanceSessionDto(), 201);[m
+             _mockService.Setup(x => x.CreateSessionAsync(2, dto)).ReturnsAsync(response);[m
+[36m@@ -51,20 +79,21 @@[m [mnamespace SMARTCAMPUS.Tests.Controllers[m
+ [m
+             // Assert[m
+             result.Should().NotBeNull();[m
+[31m-            result.StatusCode.Should().Be(201);[m
+[32m+[m[32m            result!.StatusCode.Should().Be(201);[m
+         }[m
+ [m
+         [Fact][m
+         public async Task CreateSession_ShouldReturnUnauthorized_WhenFacultyIdMissing()[m
+         {[m
+             // Arrange[m
+[31m-            _controller.ControllerContext.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());[m
+[32m+[m[32m            SetupEmptyUser();[m
+ [m
+             // Act[m
+             var result = await _controller.CreateSession(new CreateSessionDto()) as UnauthorizedObjectResult;[m
+ [m
+             // Assert[m
+             result.Should().NotBeNull();[m
+[32m+[m[32m            result!.Value.Should().Be("Faculty ID not found");[m
+         }[m
+ [m
+         [Fact][m
+[36m@@ -79,13 +108,96 @@[m [mnamespace SMARTCAMPUS.Tests.Controllers[m
+ [m
+             // Assert[m
+             result.Should().NotBeNull();[m
+[31m-            result.StatusCode.Should().Be(200);[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task CloseSession_ShouldReturnStatusCode_WhenSuccess()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupFacultyUser();[m
+[32m+[m[32m            var response = Response<NoDataDto>.Success(200);[m
+[32m+[m[32m            _mockService.Setup(x => x.CloseSessionAsync(2, 1)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.CloseSession(1) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+         }[m
+ [m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task CloseSession_ShouldReturnUnauthorized_WhenFacultyIdMissing()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupEmptyUser();[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.CloseSession(1) as UnauthorizedObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.Value.Should().Be("Faculty ID not found");[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetMySessions_ShouldReturnStatusCode_WhenSuccess()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupFacultyUser();[m
+[32m+[m[32m            var sessions = new List<AttendanceSessionDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<AttendanceSessionDto>>.Success(sessions, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetMySessionsAsync(2)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetMySessions() as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetMySessions_ShouldReturnUnauthorized_WhenFacultyIdMissing()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupEmptyUser();[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetMySessions() as UnauthorizedObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.Value.Should().Be("Faculty ID not found");[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetSessionRecords_ShouldReturnStatusCode()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupFacultyUser();[m
+[32m+[m[32m            var records = new List<AttendanceRecordDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<AttendanceRecordDto>>.Success(records, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetSessionRecordsAsync(1)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetSessionRecords(1) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m
+[32m+[m[32m        #region Student Check-in Tests[m
+[32m+[m
+         [Fact][m
+         public async Task CheckIn_ShouldReturnStatusCode()[m
+         {[m
+             // Arrange[m
+[32m+[m[32m            SetupStudentUser();[m
+             var dto = new CheckInDto();[m
+             var response = Response<CheckInResultDto>.Success(new CheckInResultDto(), 200);[m
+             _mockService.Setup(x => x.CheckInAsync(1, 1, dto)).ReturnsAsync(response);[m
+[36m@@ -95,20 +207,290 @@[m [mnamespace SMARTCAMPUS.Tests.Controllers[m
+ [m
+             // Assert[m
+             result.Should().NotBeNull();[m
+[31m-            result.StatusCode.Should().Be(200);[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+         }[m
+ [m
+         [Fact][m
+         public async Task CheckIn_ShouldReturnUnauthorized_WhenStudentIdMissing()[m
+         {[m
+             // Arrange[m
+[31m-            _controller.ControllerContext.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());[m
+[32m+[m[32m            SetupEmptyUser();[m
+ [m
+             // Act[m
+             var result = await _controller.CheckIn(1, new CheckInDto()) as UnauthorizedObjectResult;[m
+ [m
+             // Assert[m
+             result.Should().NotBeNull();[m
+[32m+[m[32m            result!.Value.Should().Be("Student ID not found");[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetMyAttendance_ShouldReturnStatusCode_WhenSuccess()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupStudentUser();[m
+[32m+[m[32m            var attendance = new List<StudentAttendanceDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<StudentAttendanceDto>>.Success(attendance, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetMyAttendanceAsync(1)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetMyAttendance() as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetMyAttendance_ShouldReturnUnauthorized_WhenStudentIdMissing()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupEmptyUser();[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetMyAttendance() as UnauthorizedObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.Value.Should().Be("Student ID not found");[m
+         }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m
+[32m+[m[32m        #region Excuse Request Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task CreateExcuseRequest_ShouldReturnStatusCode_WhenSuccess()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupStudentUser();[m
+[32m+[m[32m            var dto = new CreateExcuseRequestDto { Reason = "Medical" };[m
+[32m+[m[32m            var responseDto = new ExcuseRequestDto { Id = 1, Reason = "Medical" };[m
+[32m+[m[32m            var response = Response<ExcuseRequestDto>.Success(responseDto, 201);[m
+[32m+[m[32m            _mockService.Setup(x => x.CreateExcuseRequestAsync(1, dto, null)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.CreateExcuseRequest(dto) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(201);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task CreateExcuseRequest_ShouldReturnUnauthorized_WhenStudentIdMissing()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupEmptyUser();[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.CreateExcuseRequest(new CreateExcuseRequestDto()) as UnauthorizedObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.Value.Should().Be("Student ID not found");[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetExcuseRequests_ShouldReturnStatusCode_WhenSuccess()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupFacultyUser();[m
+[32m+[m[32m            var requests = new List<ExcuseRequestDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<ExcuseRequestDto>>.Success(requests, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetExcuseRequestsAsync(2, null)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetExcuseRequests(null) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetExcuseRequests_ShouldReturnStatusCode_WithSectionId()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupFacultyUser();[m
+[32m+[m[32m            var requests = new List<ExcuseRequestDto>();[m
+[32m+[m[32m            var response = Response<IEnumerable<ExcuseRequestDto>>.Success(requests, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetExcuseRequestsAsync(2, 5)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetExcuseRequests(5) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetExcuseRequests_ShouldReturnUnauthorized_WhenFacultyIdMissing()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupEmptyUser();[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetExcuseRequests(null) as UnauthorizedObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.Value.Should().Be("Faculty ID not found");[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task ApproveExcuseRequest_ShouldReturnStatusCode_WhenSuccess()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupFacultyUser();[m
+[32m+[m[32m            var dto = new ReviewExcuseRequestDto { Notes = "Approved" };[m
+[32m+[m[32m            var response = Response<NoDataDto>.Success(200);[m
+[32m+[m[32m            _mockService.Setup(x => x.ApproveExcuseRequestAsync(2, 1, dto)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.ApproveExcuseRequest(1, dto) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task ApproveExcuseRequest_ShouldReturnUnauthorized_WhenFacultyIdMissing()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupEmptyUser();[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.ApproveExcuseRequest(1, new ReviewExcuseRequestDto()) as UnauthorizedObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.Value.Should().Be("Faculty ID not found");[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task RejectExcuseRequest_ShouldReturnStatusCode_WhenSuccess()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupFacultyUser();[m
+[32m+[m[32m            var dto = new ReviewExcuseRequestDto { Notes = "Rejected" };[m
+[32m+[m[32m            var response = Response<NoDataDto>.Success(200);[m
+[32m+[m[32m            _mockService.Setup(x => x.RejectExcuseRequestAsync(2, 1, dto)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.RejectExcuseRequest(1, dto) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task RejectExcuseRequest_ShouldReturnUnauthorized_WhenFacultyIdMissing()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            SetupEmptyUser();[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.RejectExcuseRequest(1, new ReviewExcuseRequestDto()) as UnauthorizedObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.Value.Should().Be("Faculty ID not found");[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+[32m+[m
+[32m+[m[32m        #region Private Method Coverage Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task CreateSession_ShouldParseFacultyIdCorrectly_WithValidClaim()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange - test with different FacultyId value[m
+[32m+[m[32m            var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[][m
+[32m+[m[32m            {[m
+[32m+[m[32m                new Claim("FacultyId", "100"),[m
+[32m+[m[32m                new Claim(ClaimTypes.Role, "Faculty")[m
+[32m+[m[32m            }, "mock"));[m
+[32m+[m[32m            _controller.ControllerContext.HttpContext.User = user;[m
+[32m+[m
+[32m+[m[32m            var dto = new CreateSessionDto();[m
+[32m+[m[32m            var response = Response<AttendanceSessionDto>.Success(new AttendanceSessionDto(), 201);[m
+[32m+[m[32m            _mockService.Setup(x => x.CreateSessionAsync(100, dto)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.CreateSession(dto) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(201);[m
+[32m+[m[32m            _mockService.Verify(x => x.CreateSessionAsync(100, dto), Times.Once);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task CheckIn_ShouldParseStudentIdCorrectly_WithValidClaim()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange - test with different StudentId value[m
+[32m+[m[32m            var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[][m
+[32m+[m[32m            {[m
+[32m+[m[32m                new Claim("StudentId", "50"),[m
+[32m+[m[32m                new Claim(ClaimTypes.Role, "Student")[m
+[32m+[m[32m            }, "mock"));[m
+[32m+[m[32m            _controller.ControllerContext.HttpContext.User = user;[m
+[32m+[m
+[32m+[m[32m            var dto = new CheckInDto();[m
+[32m+[m[32m            var response = Response<CheckInResultDto>.Success(new CheckInResultDto(), 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.CheckInAsync(50, 1, dto)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.CheckIn(1, dto) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m            _mockService.Verify(x => x.CheckInAsync(50, 1, dto), Times.Once);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task CreateSession_ShouldReturnUnauthorized_WhenFacultyIdClaimHasInvalidValue()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange - non-parseable FacultyId[m
+[32m+[m[32m            var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[][m
+[32m+[m[32m            {[m
+[32m+[m[32m                new Claim("FacultyId", "not-a-number"),[m
+[32m+[m[32m                new Claim(ClaimTypes.Role, "Faculty")[m
+[32m+[m[32m            }, "mock"));[m
+[32m+[m[32m            _controller.ControllerContext.HttpContext.User = user;[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.CreateSession(new CreateSessionDto()) as UnauthorizedObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.Value.Should().Be("Faculty ID not found");[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task CheckIn_ShouldReturnUnauthorized_WhenStudentIdClaimHasInvalidValue()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange - non-parseable StudentId[m
+[32m+[m[32m            var user = new ClaimsPrincipal(new ClaimsIdentity(new Claim[][m
+[32m+[m[32m            {[m
+[32m+[m[32m                new Claim("StudentId", "invalid"),[m
+[32m+[m[32m                new Claim(ClaimTypes.Role, "Student")[m
+[32m+[m[32m            }, "mock"));[m
+[32m+[m[32m            _controller.ControllerContext.HttpContext.User = user;[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.CheckIn(1, new CheckInDto()) as UnauthorizedObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.Value.Should().Be("Student ID not found");[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #endregion[m
+     }[m
+ }[m
+[1mdiff --git a/SMARTCAMPUS.Tests/Controllers/DepartmentsControllerTests.cs b/SMARTCAMPUS.Tests/Controllers/DepartmentsControllerTests.cs[m
+[1mnew file mode 100644[m
+[1mindex 0000000..6b87f8f[m
+[1m--- /dev/null[m
+[1m+++ b/SMARTCAMPUS.Tests/Controllers/DepartmentsControllerTests.cs[m
+[36m@@ -0,0 +1,77 @@[m
+[32m+[m[32musing System.Collections.Generic;[m
+[32m+[m[32musing System.Threading.Tasks;[m
+[32m+[m[32musing FluentAssertions;[m
+[32m+[m[32musing Microsoft.AspNetCore.Mvc;[m
+[32m+[m[32musing Moq;[m
+[32m+[m[32musing SMARTCAMPUS.API.Controllers;[m
+[32m+[m[32musing SMARTCAMPUS.BusinessLayer.Abstract;[m
+[32m+[m[32musing SMARTCAMPUS.BusinessLayer.Common;[m
+[32m+[m[32musing SMARTCAMPUS.EntityLayer.DTOs.Academic;[m
+[32m+[m[32musing Xunit;[m
+[32m+[m
+[32m+[m[32mnamespace SMARTCAMPUS.Tests.Controllers[m
+[32m+[m[32m{[m
+[32m+[m[32m    public class DepartmentsControllerTests[m
+[32m+[m[32m    {[m
+[32m+[m[32m        private readonly Mock<IDepartmentService> _mockService;[m
+[32m+[m[32m        private readonly DepartmentsController _controller;[m
+[32m+[m
+[32m+[m[32m        public DepartmentsControllerTests()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            _mockService = new Mock<IDepartmentService>();[m
+[32m+[m[32m            _controller = new DepartmentsController(_mockService.Object);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetDepartments_ShouldReturnStatusCode_WhenSuccess()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var departments = new List<DepartmentDto>[m
+[32m+[m[32m            {[m
+[32m+[m[32m                new DepartmentDto { Id = 1, Name = "Computer Science", Code = "CS" },[m
+[32m+[m[32m                new DepartmentDto { Id = 2, Name = "Electrical Engineering", Code = "EE" }[m
+[32m+[m[32m            };[m
+[32m+[m[32m            var response = Response<List<DepartmentDto>>.Success(departments, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetDepartmentsAsync()).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetDepartments() as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m            _mockService.Verify(x => x.GetDepartmentsAsync(), Times.Once);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetDepartments_ShouldReturnEmptyList_WhenNoDepartments()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var departments = new List<DepartmentDto>();[m
+[32m+[m[32m            var response = Response<List<DepartmentDto>>.Success(departments, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetDepartmentsAsync()).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetDepartments() as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetDepartments_ShouldReturnError_WhenServiceFails()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<List<DepartmentDto>>.Fail("Error retrieving departments", 500);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetDepartmentsAsync()).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetDepartments() as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(500);[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/SMARTCAMPUS.Tests/Controllers/EnrollmentsControllerTests.cs b/SMARTCAMPUS.Tests/Controllers/EnrollmentsControllerTests.cs[m
+[1mindex 9d31c68..f9efb0c 100644[m
+[1m--- a/SMARTCAMPUS.Tests/Controllers/EnrollmentsControllerTests.cs[m
+[1m+++ b/SMARTCAMPUS.Tests/Controllers/EnrollmentsControllerTests.cs[m
+[36m@@ -96,5 +96,134 @@[m [mnamespace SMARTCAMPUS.Tests.Controllers[m
+             result.Should().NotBeNull();[m
+             result.StatusCode.Should().Be(200);[m
+         }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetStudentsBySection_ShouldReturnStatusCode()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<IEnumerable<SectionStudentDto>>.Success(new List<SectionStudentDto>(), 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetStudentsBySectionAsync(1, 2)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetStudentsBySection(1) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task CheckPrerequisites_ShouldReturnStatusCode()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<NoDataDto>.Success(200);[m
+[32m+[m[32m            _mockService.Setup(x => x.CheckPrerequisitesAsync(1, 1)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.CheckPrerequisites(1) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task CheckScheduleConflict_ShouldReturnStatusCode()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<NoDataDto>.Success(200);[m
+[32m+[m[32m            _mockService.Setup(x => x.CheckScheduleConflictAsync(1, 1)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.CheckScheduleConflict(1) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetMySections_ShouldReturnStatusCode()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<IEnumerable<FacultySectionDto>>.Success(new List<FacultySectionDto>(), 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetMySectionsAsync(2)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetMySections() as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task GetPendingEnrollments_ShouldReturnStatusCode()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<IEnumerable<PendingEnrollmentDto>>.Success(new List<PendingEnrollmentDto>(), 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetPendingEnrollmentsAsync(1, 2)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.GetPendingEnrollments(1) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task RejectEnrollment_ShouldReturnStatusCode()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<NoDataDto>.Success(200);[m
+[32m+[m[32m            _mockService.Setup(x => x.RejectEnrollmentAsync(1, 2, null)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.RejectEnrollment(1, null) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task RejectEnrollment_WithReason_ShouldReturnStatusCode()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var dto = new RejectEnrollmentDto { Reason = "Class is full" };[m
+[32m+[m[32m            var response = Response<NoDataDto>.Success(200);[m
+[32m+[m[32m            _mockService.Setup(x => x.RejectEnrollmentAsync(1, 2, "Class is full")).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _controller.RejectEnrollment(1, dto) as ObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task EnrollInCourse_NoStudentId_ShouldReturnUnauthorized()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange - Create controller with no StudentId claim[m
+[32m+[m[32m            var userWithoutStudent = new ClaimsPrincipal(new ClaimsIdentity(new Claim[][m
+[32m+[m[32m            {[m
+[32m+[m[32m                new Claim("FacultyId", "2")[m
+[32m+[m[32m            }, "mock"));[m
+[32m+[m
+[32m+[m[32m            var controller = new EnrollmentsController(_mockService.Object);[m
+[32m+[m[32m            controller.ControllerContext = new ControllerContext[m
+[32m+[m[32m            {[m
+[32m+[m[32m                HttpContext = new DefaultHttpContext { User = userWithoutStudent }[m
+[32m+[m[32m            };[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await controller.EnrollInCourse(new CreateEnrollmentDto()) as UnauthorizedObjectResult;[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result!.StatusCode.Should().Be(401);[m
+[32m+[m[32m        }[m
+     }[m
+ }[m
+[1mdiff --git a/SMARTCAMPUS.Tests/Controllers/ExcuseRequestsControllerTests.cs b/SMARTCAMPUS.Tests/Controllers/ExcuseRequestsControllerTests.cs[m
+[1mnew file mode 100644[m
+[1mindex 0000000..c1a5b76[m
+[1m--- /dev/null[m
+[1m+++ b/SMARTCAMPUS.Tests/Controllers/ExcuseRequestsControllerTests.cs[m
+[36m@@ -0,0 +1,135 @@[m
+[32m+[m[32musing System.Collections.Generic;[m
+[32m+[m[32musing System.Threading.Tasks;[m
+[32m+[m[32musing FluentAssertions;[m
+[32m+[m[32musing Microsoft.AspNetCore.Mvc;[m
+[32m+[m[32musing Moq;[m
+[32m+[m[32musing SMARTCAMPUS.API.Controllers;[m
+[32m+[m[32musing SMARTCAMPUS.BusinessLayer.Abstract;[m
+[32m+[m[32musing SMARTCAMPUS.BusinessLayer.Common;[m
+[32m+[m[32musing SMARTCAMPUS.EntityLayer.DTOs;[m
+[32m+[m[32musing SMARTCAMPUS.EntityLayer.DTOs.Academic;[m
+[32m+[m[32musing Xunit;[m
+[32m+[m
+[32m+[m[32mnamespace SMARTCAMPUS.Tests.Controllers[m
+[32m+[m[32m{[m
+[32m+[m[32m    /// <summary>[m
+[32m+[m[32m    /// Tests for ExcuseRequestsController.[m
+[32m+[m[32m    /// Note: This controller uses UserClaimsHelper which has non-virtual methods,[m
+[32m+[m[32m    /// making direct mocking impossible. These tests focus on service layer mocking.[m
+[32m+[m[32m    /// Integration tests would be needed for full coverage of auth scenarios.[m
+[32m+[m[32m    /// </summary>[m
+[32m+[m[32m    public class ExcuseRequestsControllerTests[m
+[32m+[m[32m    {[m
+[32m+[m[32m        private readonly Mock<IExcuseRequestService> _mockService;[m
+[32m+[m
+[32m+[m[32m        public ExcuseRequestsControllerTests()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            _mockService = new Mock<IExcuseRequestService>();[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        #region Service Integration Tests[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public void ExcuseRequestsController_ShouldHaveExpectedMethods()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange - Verify controller has required endpoints[m
+[32m+[m[32m            var controllerType = typeof(ExcuseRequestsController);[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            controllerType.GetMethod("CreateExcuseRequest").Should().NotBeNull();[m
+[32m+[m[32m            controllerType.GetMethod("GetExcuseRequests").Should().NotBeNull();[m
+[32m+[m[32m            controllerType.GetMethod("ApproveExcuseRequest").Should().NotBeNull();[m
+[32m+[m[32m            controllerType.GetMethod("RejectExcuseRequest").Should().NotBeNull();[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IExcuseRequestService_CreateExcuseRequestAsync_ShouldReturnDto()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var createDto = new ExcuseRequestCreateDto { SessionId = 1, Reason = "Medical appointment" };[m
+[32m+[m[32m            var responseDto = new ExcuseRequestDto { Id = 1, Reason = "Medical appointment" };[m
+[32m+[m[32m            var response = Response<ExcuseRequestDto>.Success(responseDto, 201);[m
+[32m+[m[32m            _mockService.Setup(x => x.CreateExcuseRequestAsync(1, createDto)).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.CreateExcuseRequestAsync(1, createDto);[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeTrue();[m
+[32m+[m[32m            result.StatusCode.Should().Be(201);[m
+[32m+[m[32m            result.Data.Should().NotBeNull();[m
+[32m+[m[32m            result.Data!.Reason.Should().Be("Medical appointment");[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IExcuseRequestService_GetExcuseRequestsAsync_ShouldReturnList()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var requests = new List<ExcuseRequestDto>[m
+[32m+[m[32m            {[m
+[32m+[m[32m                new ExcuseRequestDto { Id = 1, Reason = "Reason 1" }[m
+[32m+[m[32m            };[m
+[32m+[m[32m            var response = Response<IEnumerable<ExcuseRequestDto>>.Success(requests, 200);[m
+[32m+[m[32m            _mockService.Setup(x => x.GetExcuseRequestsAsync("instructor-1")).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.GetExcuseRequestsAsync("instructor-1");[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeTrue();[m
+[32m+[m[32m            result.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IExcuseRequestService_ApproveExcuseRequestAsync_ShouldSucceed()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<NoDataDto>.Success(200);[m
+[32m+[m[32m            _mockService.Setup(x => x.ApproveExcuseRequestAsync(1, "instructor-1", "Approved")).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.ApproveExcuseRequestAsync(1, "instructor-1", "Approved");[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeTrue();[m
+[32m+[m[32m            result.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IExcuseRequestService_RejectExcuseRequestAsync_ShouldSucceed()[m
+[32m+[m[32m        {[m
+[32m+[m[32m            // Arrange[m
+[32m+[m[32m            var response = Response<NoDataDto>.Success(200);[m
+[32m+[m[32m            _mockService.Setup(x => x.RejectExcuseRequestAsync(1, "instructor-1", "Rejected")).ReturnsAsync(response);[m
+[32m+[m
+[32m+[m[32m            // Act[m
+[32m+[m[32m            var result = await _mockService.Object.RejectExcuseRequestAsync(1, "instructor-1", "Rejected");[m
+[32m+[m
+[32m+[m[32m            // Assert[m
+[32m+[m[32m            result.Should().NotBeNull();[m
+[32m+[m[32m            result.IsSuccessful.Should().BeTrue();[m
+[32m+[m[32m            result.StatusCode.Should().Be(200);[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        [Fact][m
+[32m+[m[32m        public async Task IExcuseRequestService_RejectExcuseRequ

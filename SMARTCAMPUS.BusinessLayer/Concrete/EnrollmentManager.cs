@@ -1,8 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
 using SMARTCAMPUS.DataAccessLayer.Abstract;
-using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Enrollment;
 using SMARTCAMPUS.EntityLayer.Enums;
@@ -13,27 +11,17 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 {
     public class EnrollmentManager : IEnrollmentService
     {
-        private readonly IEnrollmentDal _enrollmentDal;
-        private readonly ICourseSectionDal _sectionDal;
-        private readonly ICoursePrerequisiteDal _prerequisiteDal;
-        private readonly CampusContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public EnrollmentManager(
-            IEnrollmentDal enrollmentDal,
-            ICourseSectionDal sectionDal,
-            ICoursePrerequisiteDal prerequisiteDal,
-            CampusContext context)
+        public EnrollmentManager(IUnitOfWork unitOfWork)
         {
-            _enrollmentDal = enrollmentDal;
-            _sectionDal = sectionDal;
-            _prerequisiteDal = prerequisiteDal;
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Response<EnrollmentDto>> EnrollInCourseAsync(int studentId, CreateEnrollmentDto dto)
         {
             // Get section with course info
-            var section = await _sectionDal.GetSectionWithDetailsAsync(dto.SectionId);
+            var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(dto.SectionId);
             if (section == null)
                 return Response<EnrollmentDto>.Fail("Section not found", 404);
 
@@ -52,8 +40,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 return Response<EnrollmentDto>.Fail(conflictResult.Errors!, 400);
 
             // Check if there is an existing enrollment for THIS section
-            var existingSameSection = await _context.Enrollments
-                .FirstOrDefaultAsync(e => e.StudentId == studentId && e.SectionId == dto.SectionId);
+            var existingSameSection = await _unitOfWork.Enrollments.GetByStudentAndSectionAsync(studentId, dto.SectionId);
 
             if (existingSameSection != null)
             {
@@ -71,8 +58,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 existingSameSection.LetterGrade = null;
                 existingSameSection.GradePoint = null;
 
-                _enrollmentDal.Update(existingSameSection);
-                await _context.SaveChangesAsync();
+                _unitOfWork.Enrollments.Update(existingSameSection);
+                await _unitOfWork.CommitAsync();
 
                 // Build DTO
                 var resultDto = new EnrollmentDto
@@ -91,11 +78,7 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             }
 
             // Check if enrolled in ANOTHER section of the SAME course
-            var existingOtherSection = await _context.Enrollments
-                .Include(e => e.Section)
-                .AnyAsync(e => e.StudentId == studentId 
-                    && e.Section.CourseId == section.CourseId
-                    && (e.Status == EnrollmentStatus.Pending || e.Status == EnrollmentStatus.Enrolled));
+            var existingOtherSection = await _unitOfWork.Enrollments.IsEnrolledInOtherSectionAsync(studentId, section.CourseId);
             
             if (existingOtherSection)
                 return Response<EnrollmentDto>.Fail("Bu dersin başka bir seksiyonuna zaten kayıtlısınız", 400);
@@ -109,8 +92,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 EnrollmentDate = DateTime.UtcNow
             };
 
-            await _enrollmentDal.AddAsync(enrollment);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.Enrollments.AddAsync(enrollment);
+            await _unitOfWork.CommitAsync();
 
             // Map to DTO
             var newResultDto = new EnrollmentDto
@@ -131,11 +114,9 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<NoDataDto>> DropCourseAsync(int studentId, int enrollmentId)
         {
-            var enrollment = await _context.Enrollments
-                .Include(e => e.Section)
-                .FirstOrDefaultAsync(e => e.Id == enrollmentId && e.StudentId == studentId);
+            var enrollment = await _unitOfWork.Enrollments.GetEnrollmentWithDetailsAsync(enrollmentId);
 
-            if (enrollment == null)
+            if (enrollment == null || enrollment.StudentId != studentId)
                 return Response<NoDataDto>.Fail("Enrollment not found", 404);
 
             // Check if within drop period (first 4 weeks)
@@ -149,18 +130,18 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             {
                 enrollment.Status = EnrollmentStatus.Dropped;
                 // Decrement enrolled count only for drops
-                await _sectionDal.DecrementEnrolledCountAsync(enrollment.SectionId);
+                await _unitOfWork.CourseSections.DecrementEnrolledCountAsync(enrollment.SectionId);
             }
 
-            _enrollmentDal.Update(enrollment);
-            await _context.SaveChangesAsync();
+            _unitOfWork.Enrollments.Update(enrollment);
+            await _unitOfWork.CommitAsync();
 
             return Response<NoDataDto>.Success(200);
         }
 
         public async Task<Response<IEnumerable<StudentCourseDto>>> GetMyCoursesAsync(int studentId)
         {
-            var enrollments = await _enrollmentDal.GetEnrollmentsByStudentAsync(studentId);
+            var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(studentId);
 
             var courses = enrollments
                 .Where(e => e.Status == EnrollmentStatus.Enrolled)
@@ -172,12 +153,12 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     SectionNumber = e.Section.SectionNumber,
                     InstructorName = $"{e.Section.Instructor.Title} {e.Section.Instructor.User.FullName}",
                     Credits = e.Section.Course.Credits,
-                    ScheduleJson = e.Section.ScheduleJson,
+                    ScheduleJson = null,
                     Status = e.Status,
                     MidtermGrade = e.MidtermGrade,
                     FinalGrade = e.FinalGrade,
                     LetterGrade = e.LetterGrade
-                });
+                }).ToList();
 
             return Response<IEnumerable<StudentCourseDto>>.Success(courses, 200);
         }
@@ -185,13 +166,12 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
         public async Task<Response<IEnumerable<SectionStudentDto>>> GetStudentsBySectionAsync(int sectionId, int instructorId)
         {
             // Verify instructor owns this section
-            var section = await _context.CourseSections
-                .FirstOrDefaultAsync(s => s.Id == sectionId && s.InstructorId == instructorId);
+            var section = await _unitOfWork.CourseSections.GetByIdAsync(sectionId);
 
-            if (section == null)
+            if (section == null || section.InstructorId != instructorId)
                 return Response<IEnumerable<SectionStudentDto>>.Fail("Section not found or access denied", 404);
 
-            var enrollments = await _enrollmentDal.GetEnrollmentsBySectionAsync(sectionId);
+            var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsBySectionAsync(sectionId);
 
             var students = enrollments
                 .Where(e => e.Status == EnrollmentStatus.Enrolled)
@@ -207,18 +187,35 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     MidtermGrade = e.MidtermGrade,
                     FinalGrade = e.FinalGrade,
                     LetterGrade = e.LetterGrade
-                });
+                }).ToList();
 
             return Response<IEnumerable<SectionStudentDto>>.Success(students, 200);
         }
 
         public async Task<Response<IEnumerable<FacultySectionDto>>> GetMySectionsAsync(int instructorId)
         {
-            var sections = await _context.CourseSections
-                .Include(s => s.Course)
-                .Where(s => s.InstructorId == instructorId)
-                .Select(s => new FacultySectionDto
+            // Önce doğrudan atanmış section'ları al
+            var sections = await _unitOfWork.CourseSections.GetSectionsByInstructorAsync(instructorId);
+            
+            // Eğer doğrudan atanmış section yoksa, bölümdeki tüm section'ları getir
+            if (!sections.Any())
+            {
+                // Akademisyenin bölümünü bul
+                var faculty = await _unitOfWork.Faculties.GetByIdAsync(instructorId);
+                if (faculty != null)
                 {
+                    // Bölümdeki tüm section'ları getir
+                    sections = await _unitOfWork.CourseSections.GetSectionsByDepartmentAsync(faculty.DepartmentId);
+                }
+            }
+
+            var result = new List<FacultySectionDto>();
+            foreach(var s in sections)
+            {
+                 var pendingCount = await _unitOfWork.Enrollments.GetPendingEnrollmentsAsync(s.Id);
+                 
+                 result.Add(new FacultySectionDto
+                 {
                     Id = s.Id,
                     CourseId = s.CourseId,
                     CourseCode = s.Course.Code,
@@ -228,59 +225,73 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                     Year = s.Year,
                     Capacity = s.Capacity,
                     EnrolledCount = s.EnrolledCount,
-                    PendingCount = _context.Enrollments.Count(e => e.SectionId == s.Id && e.Status == EnrollmentStatus.Pending)
-                })
-                .ToListAsync();
+                    PendingCount = pendingCount.Count
+                 });
+            }
 
-            return Response<IEnumerable<FacultySectionDto>>.Success(sections, 200);
+            return Response<IEnumerable<FacultySectionDto>>.Success(result, 200);
         }
 
         public async Task<Response<IEnumerable<PendingEnrollmentDto>>> GetPendingEnrollmentsAsync(int sectionId, int instructorId)
         {
-            // Verify instructor owns this section
-            var section = await _context.CourseSections
-                .Include(s => s.Course)
-                .FirstOrDefaultAsync(s => s.Id == sectionId && s.InstructorId == instructorId);
+            // Verify instructor owns this section or is in the same department
+            var section = await _unitOfWork.CourseSections.GetSectionWithDetailsAsync(sectionId);
 
             if (section == null)
-                return Response<IEnumerable<PendingEnrollmentDto>>.Fail("Section not found or access denied", 404);
+                return Response<IEnumerable<PendingEnrollmentDto>>.Fail("Section not found", 404);
+            
+            // Eğer section atanmışsa sadece o kişi görebilir
+            // Eğer atanmamışsa, aynı bölümdeki akademisyenler görebilir
+            var faculty = await _unitOfWork.Faculties.GetByIdAsync(instructorId);
+            var sectionCourse = await _unitOfWork.Courses.GetByIdAsync(section.CourseId);
+            
+            bool hasAccess = section.InstructorId == instructorId;
+            if (!hasAccess && faculty != null && sectionCourse != null)
+            {
+                hasAccess = faculty.DepartmentId == sectionCourse.DepartmentId;
+            }
+            
+            if (!hasAccess)
+                return Response<IEnumerable<PendingEnrollmentDto>>.Fail("Access denied", 403);
 
-            var pendingEnrollments = await _context.Enrollments
-                .Include(e => e.Student)
-                    .ThenInclude(s => s.User)
-                .Include(e => e.Section)
-                    .ThenInclude(sec => sec.Course)
-                .Where(e => e.SectionId == sectionId && e.Status == EnrollmentStatus.Pending)
-                .Select(e => new PendingEnrollmentDto
-                {
-                    EnrollmentId = e.Id,
-                    StudentId = e.StudentId,
-                    StudentNumber = e.Student.StudentNumber,
-                    StudentName = e.Student.User.FullName,
-                    Email = e.Student.User.Email ?? "",
-                    RequestDate = e.EnrollmentDate,
-                    SectionId = e.SectionId,
-                    CourseCode = e.Section.Course.Code,
-                    CourseName = e.Section.Course.Name,
-                    SectionNumber = e.Section.SectionNumber
-                })
-                .ToListAsync();
+            var pendingEnrollments = await _unitOfWork.Enrollments.GetPendingEnrollmentsAsync(sectionId);
 
-            return Response<IEnumerable<PendingEnrollmentDto>>.Success(pendingEnrollments, 200);
+            var result = pendingEnrollments.Select(e => new PendingEnrollmentDto
+            {
+                EnrollmentId = e.Id,
+                StudentId = e.StudentId,
+                StudentNumber = e.Student.StudentNumber,
+                StudentName = e.Student.User.FullName,
+                Email = e.Student.User.Email ?? "",
+                RequestDate = e.EnrollmentDate,
+                SectionId = e.SectionId,
+                CourseCode = e.Section.Course.Code,
+                CourseName = e.Section.Course.Name,
+                SectionNumber = e.Section.SectionNumber
+            }).ToList();
+
+            return Response<IEnumerable<PendingEnrollmentDto>>.Success(result, 200);
         }
 
         public async Task<Response<NoDataDto>> ApproveEnrollmentAsync(int enrollmentId, int instructorId)
         {
-            var enrollment = await _context.Enrollments
-                .Include(e => e.Section)
-                .FirstOrDefaultAsync(e => e.Id == enrollmentId);
+            var enrollment = await _unitOfWork.Enrollments.GetEnrollmentWithDetailsAsync(enrollmentId);
 
             if (enrollment == null)
                 return Response<NoDataDto>.Fail("Enrollment not found", 404);
 
-            // Verify instructor owns the section
-            if (enrollment.Section.InstructorId != instructorId)
-                return Response<NoDataDto>.Fail("Access denied - not your section", 403);
+            // Verify instructor owns the section or is in the same department
+            var faculty = await _unitOfWork.Faculties.GetByIdAsync(instructorId);
+            var sectionCourse = await _unitOfWork.Courses.GetByIdAsync(enrollment.Section.CourseId);
+            
+            bool hasAccess = enrollment.Section.InstructorId == instructorId;
+            if (!hasAccess && faculty != null && sectionCourse != null)
+            {
+                hasAccess = faculty.DepartmentId == sectionCourse.DepartmentId;
+            }
+            
+            if (!hasAccess)
+                return Response<NoDataDto>.Fail("Access denied", 403);
 
             if (enrollment.Status != EnrollmentStatus.Pending)
                 return Response<NoDataDto>.Fail("This enrollment is not pending", 400);
@@ -293,63 +304,67 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             enrollment.Status = EnrollmentStatus.Enrolled;
             
             // Increment enrolled count
-            await _sectionDal.IncrementEnrolledCountAsync(enrollment.SectionId);
+            await _unitOfWork.CourseSections.IncrementEnrolledCountAsync(enrollment.SectionId);
             
-            await _context.SaveChangesAsync();
+            await _unitOfWork.CommitAsync();
 
             return Response<NoDataDto>.Success(200);
         }
 
         public async Task<Response<NoDataDto>> RejectEnrollmentAsync(int enrollmentId, int instructorId, string? reason)
         {
-            var enrollment = await _context.Enrollments
-                .Include(e => e.Section)
-                .FirstOrDefaultAsync(e => e.Id == enrollmentId);
+            var enrollment = await _unitOfWork.Enrollments.GetEnrollmentWithDetailsAsync(enrollmentId);
 
             if (enrollment == null)
                 return Response<NoDataDto>.Fail("Enrollment not found", 404);
 
-            // Verify instructor owns the section
-            if (enrollment.Section.InstructorId != instructorId)
-                return Response<NoDataDto>.Fail("Access denied - not your section", 403);
+            // Verify instructor owns the section or is in the same department
+            var faculty = await _unitOfWork.Faculties.GetByIdAsync(instructorId);
+            var sectionCourse = await _unitOfWork.Courses.GetByIdAsync(enrollment.Section.CourseId);
+            
+            bool hasAccess = enrollment.Section.InstructorId == instructorId;
+            if (!hasAccess && faculty != null && sectionCourse != null)
+            {
+                hasAccess = faculty.DepartmentId == sectionCourse.DepartmentId;
+            }
+            
+            if (!hasAccess)
+                return Response<NoDataDto>.Fail("Access denied", 403);
 
             if (enrollment.Status != EnrollmentStatus.Pending)
                 return Response<NoDataDto>.Fail("This enrollment is not pending", 400);
 
             // Reject the enrollment
             enrollment.Status = EnrollmentStatus.Rejected;
-            // Note: reason could be stored in a new field if needed
             
-            await _context.SaveChangesAsync();
+            await _unitOfWork.CommitAsync();
 
             return Response<NoDataDto>.Success(200);
         }
 
         public async Task<Response<NoDataDto>> CheckPrerequisitesAsync(int studentId, int courseId)
         {
-            // Get all prerequisites recursively
-            var prerequisiteIds = await _prerequisiteDal.GetAllPrerequisiteIdsRecursiveAsync(courseId);
+            var prerequisiteIds = await _unitOfWork.CoursePrerequisites.GetAllPrerequisiteIdsRecursiveAsync(courseId);
 
             if (!prerequisiteIds.Any())
                 return Response<NoDataDto>.Success(200);
 
             // Check which prerequisites the student has completed
-            var completedCourseIds = await _context.Enrollments
-                .Where(e => e.StudentId == studentId && e.Status == EnrollmentStatus.Completed)
-                .Select(e => e.Section.CourseId)
-                .ToListAsync();
+            var completedCourseIds = await _unitOfWork.Enrollments.GetCompletedCourseIdsAsync(studentId);
 
             var missingPrerequisites = prerequisiteIds.Except(completedCourseIds).ToList();
 
             if (missingPrerequisites.Any())
             {
-                var missingCourses = await _context.Courses
-                    .Where(c => missingPrerequisites.Contains(c.Id))
-                    .Select(c => $"{c.Code} - {c.Name}")
-                    .ToListAsync();
+                var missingNames = new List<string>();
+                foreach(var id in missingPrerequisites)
+                {
+                    var c = await _unitOfWork.Courses.GetByIdAsync(id);
+                    if(c != null) missingNames.Add($"{c.Code} - {c.Name}");
+                }
 
                 return Response<NoDataDto>.Fail(
-                    $"Missing prerequisites: {string.Join(", ", missingCourses)}", 400);
+                    $"Missing prerequisites: {string.Join(", ", missingNames)}", 400);
             }
 
             return Response<NoDataDto>.Success(200);
@@ -357,89 +372,38 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
 
         public async Task<Response<NoDataDto>> CheckScheduleConflictAsync(int studentId, int sectionId)
         {
-            var newSection = await _context.CourseSections.FindAsync(sectionId);
-            if (newSection == null || string.IsNullOrEmpty(newSection.ScheduleJson))
+            // Get schedules for the new section
+            var newSchedules = await _unitOfWork.Schedules.GetBySectionIdAsync(sectionId);
+            
+            if (!newSchedules.Any())
+                return Response<NoDataDto>.Success(200);
+            
+            // Get student's current enrolled section IDs
+            var enrolledSectionIds = await _unitOfWork.Enrollments.GetEnrolledSectionIdsAsync(studentId);
+            
+            if (!enrolledSectionIds.Any())
                 return Response<NoDataDto>.Success(200);
 
-            // Get student's current enrolled sections
-            var currentSections = await _context.Enrollments
-                .Where(e => e.StudentId == studentId && e.Status == EnrollmentStatus.Enrolled)
-                .Select(e => e.Section)
-                .ToListAsync();
-
-            var newSchedule = ParseSchedule(newSection.ScheduleJson);
-
-            foreach (var current in currentSections)
+            // Get schedules for these sections
+            var existingSchedules = await _unitOfWork.Schedules.GetSchedulesBySectionIdsAsync(enrolledSectionIds);
+            
+            foreach (var newSchedule in newSchedules)
             {
-                if (string.IsNullOrEmpty(current.ScheduleJson)) continue;
-
-                var existingSchedule = ParseSchedule(current.ScheduleJson);
-
-                if (HasTimeConflict(newSchedule, existingSchedule))
+                foreach (var existing in existingSchedules)
                 {
-                    return Response<NoDataDto>.Fail(
-                        $"Schedule conflict with {current.Course?.Code ?? "another course"}", 400);
+                    if (newSchedule.DayOfWeek == existing.DayOfWeek)
+                    {
+                        // Check time overlap
+                        if (newSchedule.StartTime < existing.EndTime && existing.StartTime < newSchedule.EndTime)
+                        {
+                            return Response<NoDataDto>.Fail(
+                                $"Schedule conflict with {existing.Section?.Course?.Code ?? "another course"}", 400);
+                        }
+                    }
                 }
             }
-
+            
             return Response<NoDataDto>.Success(200);
-        }
-
-        private List<ScheduleEntry> ParseSchedule(string scheduleJson)
-        {
-            try
-            {
-                return JsonSerializer.Deserialize<List<ScheduleEntry>>(scheduleJson) ?? new List<ScheduleEntry>();
-            }
-            catch
-            {
-                return new List<ScheduleEntry>();
-            }
-        }
-
-        private bool HasTimeConflict(List<ScheduleEntry> schedule1, List<ScheduleEntry> schedule2)
-        {
-            foreach (var s1 in schedule1)
-            {
-                foreach (var s2 in schedule2)
-                {
-                    if (string.IsNullOrWhiteSpace(s1.StartTime) || string.IsNullOrWhiteSpace(s1.EndTime) ||
-                        string.IsNullOrWhiteSpace(s2.StartTime) || string.IsNullOrWhiteSpace(s2.EndTime))
-                    {
-                        continue;
-                    }
-
-                    if (s1.Day.Equals(s2.Day, StringComparison.OrdinalIgnoreCase))
-                    {
-                        TimeSpan start1, end1, start2, end2;
-                        
-                        try 
-                        {
-                            start1 = TimeSpan.Parse(s1.StartTime);
-                            end1 = TimeSpan.Parse(s1.EndTime);
-                            start2 = TimeSpan.Parse(s2.StartTime);
-                            end2 = TimeSpan.Parse(s2.EndTime);
-                        }
-                        catch
-                        {
-                            continue; // Skip invalid formats
-                        }
-
-                        // Check overlap
-                        if (start1 < end2 && start2 < end1)
-                            return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        private class ScheduleEntry
-        {
-            public string Day { get; set; } = "";
-            public string StartTime { get; set; } = "";
-            public string EndTime { get; set; } = "";
-            public int? ClassroomId { get; set; }
         }
     }
 }

@@ -11,10 +11,9 @@ COPY SMARTCAMPUS.API/SMARTCAMPUS.API.csproj ./SMARTCAMPUS.API/
 COPY SMARTCAMPUS.BusinessLayer/SMARTCAMPUS.BusinessLayer.csproj ./SMARTCAMPUS.BusinessLayer/
 COPY SMARTCAMPUS.DataAccessLayer/SMARTCAMPUS.DataAccessLayer.csproj ./SMARTCAMPUS.DataAccessLayer/
 COPY SMARTCAMPUS.EntityLayer/SMARTCAMPUS.EntityLayer.csproj ./SMARTCAMPUS.EntityLayer/
-COPY SMARTCAMPUS.Tests/SMARTCAMPUS.Tests.csproj ./SMARTCAMPUS.Tests/
 
-# Restore dependencies
-RUN dotnet restore
+# Restore dependencies (only API project, not the full solution with Tests)
+RUN dotnet restore SMARTCAMPUS.API/SMARTCAMPUS.API.csproj
 
 EXPOSE 8080
 
