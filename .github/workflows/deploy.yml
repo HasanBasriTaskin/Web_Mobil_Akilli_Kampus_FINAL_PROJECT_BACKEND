@@ -56,7 +56,10 @@ jobs:
                 .EmailSettings.EnableSsl = true |
                 .EmailSettings.FromEmail = "${{ secrets.SMTP_FROM_EMAIL }}" | 
                 .EmailSettings.Username = "${{ secrets.SMTP_USERNAME }}" | 
-                .EmailSettings.Password = "${{ secrets.SMTP_PASSWORD }}"' \
+                .EmailSettings.Password = "${{ secrets.SMTP_PASSWORD }}" |
+                .IyzicoSettings.ApiKey = "${{ secrets.IYZICO_API_KEY }}" |
+                .IyzicoSettings.SecretKey = "${{ secrets.IYZICO_SECRET_KEY }}" |
+                .IyzicoSettings.BaseUrl = "https://sandbox-api.iyzipay.com"' \
                 SMARTCAMPUS.API/appsettings.json > SMARTCAMPUS.API/appsettings.tmp.json && \
                 mv SMARTCAMPUS.API/appsettings.tmp.json SMARTCAMPUS.API/appsettings.json
             
