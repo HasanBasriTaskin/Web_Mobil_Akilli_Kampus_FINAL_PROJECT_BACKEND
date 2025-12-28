@@ -7,16 +7,19 @@ using SMARTCAMPUS.EntityLayer.DTOs;
 using SMARTCAMPUS.EntityLayer.DTOs.Attendance;
 using SMARTCAMPUS.EntityLayer.Enums;
 using SMARTCAMPUS.EntityLayer.Models;
+using SMARTCAMPUS.EntityLayer.DTOs.Notifications;
 
 namespace SMARTCAMPUS.BusinessLayer.Concrete
 {
     public class AttendanceManager : IAttendanceService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IAdvancedNotificationService _notificationService;
 
-        public AttendanceManager(IUnitOfWork unitOfWork)
+        public AttendanceManager(IUnitOfWork unitOfWork, IAdvancedNotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
         }
 
         public async Task<Response<AttendanceSessionDto>> CreateSessionAsync(int instructorId, CreateSessionDto dto)
@@ -48,6 +51,39 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             await _unitOfWork.CommitAsync();
 
             var enrolledCountSafe = await _unitOfWork.Enrollments.CountAsync(e => e.SectionId == dto.SectionId && e.Status == EnrollmentStatus.Enrolled);
+
+            // ==================== NOTIFICATIONS ====================
+            try
+            {
+                // Get enrolled students to notify
+                var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsBySectionAsync(dto.SectionId);
+                var activeStudents = enrollments
+                    .Where(e => e.Status == EnrollmentStatus.Enrolled && e.Student?.User != null)
+                    .Select(e => e.Student.User.Id)
+                    .Distinct()
+                    .ToList();
+
+                if (activeStudents.Any())
+                {
+                    await _notificationService.SendBulkNotificationAsync(activeStudents, new CreateNotificationDto
+                    {
+                        Title = "Yoklama Başlatıldı",
+                        Message = $"{section.Course.Code} dersi için yoklama başladı. Derse katılmak için tıklayın.",
+                        Type = NotificationType.Info,
+                        Category = NotificationCategory.Attendance,
+                        RelatedEntityType = "AttendanceSession",
+                        RelatedEntityId = session.Id,
+                        UserId = "" // Bulk send ignores this
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log notification failure but don't fail the request
+                // Logger usage if available, else silent
+                Console.WriteLine($"Notification failed: {ex.Message}");
+            }
+            // =======================================================
 
             var result = new AttendanceSessionDto
             {
