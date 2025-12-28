@@ -74,6 +74,12 @@ namespace SMARTCAMPUS.API.Controllers
 
             // IP adresi al
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+            // Sandbox ortamında local IP'ler (::1, 127.0.0.1) bazen Iyzico tarafından reddedilir (Hata 6001).
+            // Bu yüzden test için geçerli bir Public IP gönderiyoruz.
+            if (ipAddress == "::1" || ipAddress == "127.0.0.1" || ipAddress == "0.0.0.1")
+            {
+                ipAddress = "85.74.123.12"; 
+            }
 
             // Sadece IPaymentService inject etmemiz lazım, ctor'a ekleyeceğiz.
             // Ancak WalletController zaten IWalletService alıyor.
