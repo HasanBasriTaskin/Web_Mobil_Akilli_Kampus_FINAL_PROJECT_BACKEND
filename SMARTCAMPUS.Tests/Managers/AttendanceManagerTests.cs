@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Moq;
+using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Concrete;
 using SMARTCAMPUS.DataAccessLayer.Concrete;
 using SMARTCAMPUS.DataAccessLayer.Context;
@@ -18,6 +20,7 @@ namespace SMARTCAMPUS.Tests.Managers
     {
         private readonly CampusContext _context;
         private readonly AttendanceManager _manager;
+        private readonly Mock<IAdvancedNotificationService> _mockNotificationService;
 
         public AttendanceManagerTests()
         {
@@ -26,7 +29,8 @@ namespace SMARTCAMPUS.Tests.Managers
                 .Options;
 
             _context = new CampusContext(options);
-            _manager = new AttendanceManager(new UnitOfWork(_context));
+            _mockNotificationService = new Mock<IAdvancedNotificationService>();
+            _manager = new AttendanceManager(new UnitOfWork(_context), _mockNotificationService.Object);
         }
 
         public void Dispose()
