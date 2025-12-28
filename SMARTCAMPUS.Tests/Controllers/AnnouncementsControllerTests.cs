@@ -1,197 +1,128 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using SMARTCAMPUS.API.Controllers;
 using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Common;
+using SMARTCAMPUS.BusinessLayer.Tools;
+using SMARTCAMPUS.DataAccessLayer.Abstract;
 using SMARTCAMPUS.EntityLayer.DTOs.Academic;
+using SMARTCAMPUS.EntityLayer.Models;
+using SMARTCAMPUS.Tests.TestUtilities;
+using System.Security.Claims;
 using Xunit;
 
 namespace SMARTCAMPUS.Tests.Controllers
 {
-    /// <summary>
-    /// Tests for AnnouncementsController.
-    /// Note: This controller uses UserClaimsHelper which has non-virtual methods,
-    /// making direct mocking impossible. These tests focus on service layer mocking.
-    /// </summary>
     public class AnnouncementsControllerTests
     {
         private readonly Mock<IAnnouncementService> _mockService;
+        private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
+        private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+        private readonly UserClaimsHelper _userClaimsHelper;
+        private readonly AnnouncementsController _controller;
 
         public AnnouncementsControllerTests()
         {
             _mockService = new Mock<IAnnouncementService>();
+            _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
+            _mockUnitOfWork = new Mock<IUnitOfWork>();
+            _userClaimsHelper = new UserClaimsHelper(_mockHttpContextAccessor.Object, _mockUnitOfWork.Object);
+            _controller = new AnnouncementsController(_mockService.Object, _userClaimsHelper);
+            SetupHttpContext("user1");
         }
 
-        #region GetAnnouncements Service Tests
-
-        [Fact]
-        public async Task IAnnouncementService_GetAnnouncementsAsync_ShouldReturnList()
+        private void SetupHttpContext(string userId)
         {
-            // Arrange
-            var announcements = new List<AnnouncementDto>
+            var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, userId) };
+            var identity = new ClaimsIdentity(claims, "Test");
+            var principal = new ClaimsPrincipal(identity);
+            var httpContext = new DefaultHttpContext { User = principal };
+            _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(httpContext);
+            _controller.ControllerContext = new ControllerContext
             {
-                new AnnouncementDto { Id = 1, Title = "Test Announcement" }
+                HttpContext = httpContext
             };
-            var response = Response<IEnumerable<AnnouncementDto>>.Success(announcements, 200);
-            _mockService.Setup(x => x.GetAnnouncementsAsync(null, null)).ReturnsAsync(response);
-
-            // Act
-            var result = await _mockService.Object.GetAnnouncementsAsync(null, null);
-
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeTrue();
-            result.StatusCode.Should().Be(200);
         }
 
         [Fact]
-        public async Task IAnnouncementService_GetAnnouncementsAsync_WithTargetAudience_ShouldFilter()
+        public async Task GetAnnouncements_ShouldReturnOk()
         {
-            // Arrange
-            var announcements = new List<AnnouncementDto>();
-            var response = Response<IEnumerable<AnnouncementDto>>.Success(announcements, 200);
-            _mockService.Setup(x => x.GetAnnouncementsAsync("Students", null)).ReturnsAsync(response);
+            var mockStudent = new Mock<IStudentDal>();
+            var students = new List<Student>();
+            var asyncEnumerable = new TestAsyncEnumerable<Student>(students);
+            _mockUnitOfWork.Setup(x => x.Students).Returns(mockStudent.Object);
+            mockStudent.Setup(x => x.Where(It.IsAny<System.Linq.Expressions.Expression<Func<Student, bool>>>()))
+                .Returns(asyncEnumerable);
 
-            // Act
-            var result = await _mockService.Object.GetAnnouncementsAsync("Students", null);
+            _mockService.Setup(x => x.GetAnnouncementsAsync(null, null))
+                .ReturnsAsync(Response<IEnumerable<AnnouncementDto>>.Success(new List<AnnouncementDto>(), 200));
 
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeTrue();
+            var result = await _controller.GetAnnouncements(null, null);
+
+            result.Should().BeOfType<ObjectResult>();
+            ((ObjectResult)result).StatusCode.Should().Be(200);
         }
 
         [Fact]
-        public async Task IAnnouncementService_GetAnnouncementsAsync_WithDepartmentId_ShouldFilter()
+        public async Task GetAnnouncements_ShouldUseStudentDepartment_WhenStudent()
         {
-            // Arrange
-            var announcements = new List<AnnouncementDto>();
-            var response = Response<IEnumerable<AnnouncementDto>>.Success(announcements, 200);
-            _mockService.Setup(x => x.GetAnnouncementsAsync(null, 5)).ReturnsAsync(response);
+            var mockStudent = new Mock<IStudentDal>();
+            var student = new Student { Id = 1, UserId = "user1", DepartmentId = 5, IsActive = true };
+            var students = new List<Student> { student };
+            var asyncEnumerable = new TestAsyncEnumerable<Student>(students);
+            _mockUnitOfWork.Setup(x => x.Students).Returns(mockStudent.Object);
+            mockStudent.Setup(x => x.Where(It.IsAny<System.Linq.Expressions.Expression<Func<Student, bool>>>()))
+                .Returns(asyncEnumerable);
+            mockStudent.Setup(x => x.GetStudentWithDetailsAsync(1))
+                .ReturnsAsync(student);
 
-            // Act
-            var result = await _mockService.Object.GetAnnouncementsAsync(null, 5);
+            _mockService.Setup(x => x.GetAnnouncementsAsync(null, 5))
+                .ReturnsAsync(Response<IEnumerable<AnnouncementDto>>.Success(new List<AnnouncementDto>(), 200));
 
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeTrue();
-        }
+            var result = await _controller.GetAnnouncements(null, null);
 
-        #endregion
-
-        #region GetImportantAnnouncements Tests
-
-        [Fact]
-        public async Task IAnnouncementService_GetImportantAnnouncementsAsync_ShouldReturnList()
-        {
-            // Arrange
-            var announcements = new List<AnnouncementDto>
-            {
-                new AnnouncementDto { Id = 1, Title = "Important Notice", IsImportant = true }
-            };
-            var response = Response<IEnumerable<AnnouncementDto>>.Success(announcements, 200);
-            _mockService.Setup(x => x.GetImportantAnnouncementsAsync()).ReturnsAsync(response);
-
-            // Act
-            var result = await _mockService.Object.GetImportantAnnouncementsAsync();
-
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeTrue();
-            result.StatusCode.Should().Be(200);
-        }
-
-        #endregion
-
-        #region GetAnnouncementById Tests
-
-        [Fact]
-        public async Task IAnnouncementService_GetAnnouncementByIdAsync_ShouldReturnAnnouncement()
-        {
-            // Arrange
-            var announcement = new AnnouncementDto { Id = 1, Title = "Test Announcement" };
-            var response = Response<AnnouncementDto>.Success(announcement, 200);
-            _mockService.Setup(x => x.GetAnnouncementByIdAsync(1)).ReturnsAsync(response);
-
-            // Act
-            var result = await _mockService.Object.GetAnnouncementByIdAsync(1);
-
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeTrue();
-            result.Data!.Title.Should().Be("Test Announcement");
+            result.Should().BeOfType<ObjectResult>();
+            ((ObjectResult)result).StatusCode.Should().Be(200);
         }
 
         [Fact]
-        public async Task IAnnouncementService_GetAnnouncementByIdAsync_ShouldFail_WhenNotFound()
+        public async Task GetImportantAnnouncements_ShouldReturnOk()
         {
-            // Arrange
-            var response = Response<AnnouncementDto>.Fail("Announcement not found", 404);
-            _mockService.Setup(x => x.GetAnnouncementByIdAsync(999)).ReturnsAsync(response);
+            _mockService.Setup(x => x.GetImportantAnnouncementsAsync())
+                .ReturnsAsync(Response<IEnumerable<AnnouncementDto>>.Success(new List<AnnouncementDto>(), 200));
 
-            // Act
-            var result = await _mockService.Object.GetAnnouncementByIdAsync(999);
+            var result = await _controller.GetImportantAnnouncements();
 
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeFalse();
-            result.StatusCode.Should().Be(404);
-        }
-
-        #endregion
-
-        #region IncrementViewCount Tests
-
-        [Fact]
-        public async Task IAnnouncementService_IncrementViewCountAsync_ShouldSucceed()
-        {
-            // Arrange
-            var response = Response<EntityLayer.DTOs.NoDataDto>.Success(200);
-            _mockService.Setup(x => x.IncrementViewCountAsync(1)).ReturnsAsync(response);
-
-            // Act
-            var result = await _mockService.Object.IncrementViewCountAsync(1);
-
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeTrue();
-            result.StatusCode.Should().Be(200);
+            result.Should().BeOfType<ObjectResult>();
+            ((ObjectResult)result).StatusCode.Should().Be(200);
         }
 
         [Fact]
-        public async Task IAnnouncementService_IncrementViewCountAsync_ShouldFail_WhenNotFound()
+        public async Task GetAnnouncementById_ShouldReturnOk()
         {
-            // Arrange
-            var response = Response<EntityLayer.DTOs.NoDataDto>.Fail("Announcement not found", 404);
-            _mockService.Setup(x => x.IncrementViewCountAsync(999)).ReturnsAsync(response);
+            _mockService.Setup(x => x.GetAnnouncementByIdAsync(1))
+                .ReturnsAsync(Response<AnnouncementDto>.Success(new AnnouncementDto(), 200));
 
-            // Act
-            var result = await _mockService.Object.IncrementViewCountAsync(999);
+            var result = await _controller.GetAnnouncementById(1);
 
-            // Assert
-            result.Should().NotBeNull();
-            result.IsSuccessful.Should().BeFalse();
-            result.StatusCode.Should().Be(404);
+            result.Should().BeOfType<ObjectResult>();
+            ((ObjectResult)result).StatusCode.Should().Be(200);
         }
-
-        #endregion
-
-        #region Controller Method Existence Tests
 
         [Fact]
-        public void AnnouncementsController_ShouldHaveExpectedMethods()
+        public async Task IncrementViewCount_ShouldReturnOk()
         {
-            // Verify controller has expected endpoints
-            var controllerType = typeof(AnnouncementsController);
-            
-            controllerType.GetMethod("GetAnnouncements").Should().NotBeNull();
-            controllerType.GetMethod("GetImportantAnnouncements").Should().NotBeNull();
-            controllerType.GetMethod("GetAnnouncementById").Should().NotBeNull();
-            controllerType.GetMethod("IncrementViewCount").Should().NotBeNull();
-        }
+            _mockService.Setup(x => x.IncrementViewCountAsync(1))
+                .ReturnsAsync(Response<EntityLayer.DTOs.NoDataDto>.Success(200));
 
-        #endregion
+            var result = await _controller.IncrementViewCount(1);
+
+            result.Should().BeOfType<ObjectResult>();
+            ((ObjectResult)result).StatusCode.Should().Be(200);
+        }
     }
 }

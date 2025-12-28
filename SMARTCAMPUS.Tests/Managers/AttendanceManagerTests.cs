@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Moq;
+using SMARTCAMPUS.BusinessLayer.Abstract;
 using SMARTCAMPUS.BusinessLayer.Concrete;
 using SMARTCAMPUS.DataAccessLayer.Concrete;
 using SMARTCAMPUS.DataAccessLayer.Context;
@@ -18,6 +20,7 @@ namespace SMARTCAMPUS.Tests.Managers
     {
         private readonly CampusContext _context;
         private readonly AttendanceManager _manager;
+        private readonly Mock<IAdvancedNotificationService> _mockNotificationService;
 
         public AttendanceManagerTests()
         {
@@ -26,7 +29,8 @@ namespace SMARTCAMPUS.Tests.Managers
                 .Options;
 
             _context = new CampusContext(options);
-            _manager = new AttendanceManager(new UnitOfWork(_context));
+            _mockNotificationService = new Mock<IAdvancedNotificationService>();
+            _manager = new AttendanceManager(new UnitOfWork(_context), _mockNotificationService.Object);
         }
 
         public void Dispose()
@@ -110,17 +114,32 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task GetSessionByIdAsync_ShouldSucceed_WhenExists()
         {
             // Arrange - Need Course, Section with required fields, and Session
-            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
-            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, SectionNumber = "1", Semester = "Fall", Year = 2024 };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var user = new User { Id = "u1", FullName = "Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = user, EmployeeNumber = "E1", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
             var session = new AttendanceSession
             {
                 Id = 1,
                 Section = section,
                 SectionId = 1,
+                InstructorId = 1,
+                Instructor = instructor,
                 Status = AttendanceSessionStatus.Open,
-                Date = DateTime.UtcNow
+                Date = DateTime.UtcNow.Date,
+                StartTime = new TimeSpan(9, 0, 0),
+                EndTime = new TimeSpan(10, 30, 0),
+                Latitude = 0,
+                Longitude = 0,
+                GeofenceRadius = 15,
+                AttendanceRecords = new List<AttendanceRecord>(),
+                IsActive = true
             };
             
+            await _context.Departments.AddAsync(dept);
+            await _context.Users.AddAsync(user);
+            await _context.Faculties.AddAsync(instructor);
             await _context.Courses.AddAsync(course);
             await _context.CourseSections.AddAsync(section);
             await _context.AttendanceSessions.AddAsync(session);
@@ -153,8 +172,10 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task CloseSessionAsync_ShouldSucceed_WhenOpen()
         {
             // Arrange - Need CourseSection for FK constraint
-            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
-            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, SectionNumber = "1", Semester = "Fall", Year = 2024 };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = dept.Id, Department = dept };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30 };
+            await _context.Departments.AddAsync(dept);
             var session = new AttendanceSession { Id = 1, InstructorId = 1, Status = AttendanceSessionStatus.Open, SectionId = 1, Section = section, Date = DateTime.UtcNow };
             
             await _context.Courses.AddAsync(course);
@@ -235,42 +256,25 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task GetMyAttendanceAsync_ShouldReturnAttendance()
         {
             // Arrange
-            // Needs User -> Student -> Enrollment -> Section -> Course
-            // Manager: GetUserAsync(User) -> GetByUserId -> StudentId -> ...
-            // We need to Mock UserManager? 
-            // Wait, AttendanceManager DOES NOT use UserManager directly anymore?
-            // Let's check. 
-            // Refactoring: "var user = await _userManager.GetUserAsync(User);" line 258.
-            // AttendanceManager DOES use UserManager!
-            // I removed _context, but _userManager is still there?
-            // I need to check if I removed _userManager.
-            // If I did NOT remove _userManager, checking GetMyAttendanceAsync in tests is tricky because _userManager is usually Mocked.
-            // But I initialized AttendanceManager with `new AttendanceManager(new UnitOfWork(_context))`. 
-            // Does AttendanceManager constructor take UserManager?
-            // Refactoring Step 325 or so said: "Constructor now injects IUnitOfWork only."
-            // If I removed UserManager injection, how does it get current user?
-            // Maybe it takes ClaimsPrincipal? No, usually Service doesn't take ClaimsPrincipal directly.
-            // Usually Controller passes userId.
-            // Check `AttendanceManager` signature.
-            // Methods like `GetMyAttendanceAsync(int studentId)`?
-            // If the method signature takes `studentId`, good.
-            // Old Test `GetMyAttendanceAsync` passed `1`. `GetMyAttendanceAsync(1)`.
-            // So it takes `studentId`.
-            // So no UserManager needed?
-            // Wait, old test `GetMyAttendanceAsync` calls `_manager.GetMyAttendanceAsync(1)`.
-            // Code view (Step 358) showed: `r.StudentId == studentId`.
-            // So it relies on the argument.
-            // Excellent.
-            // Need Course and Section with proper FKs for GetMyAttendanceAsync query
-            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
-            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, SectionNumber = "1", Semester = "Fall", Year = 2024 };
-            var student = new Student { Id = 1, StudentNumber = "S1", UserId = "u1" };
-            var enrollment = new Enrollment { StudentId = 1, SectionId = 1, Section = section, Student = student, Status = EnrollmentStatus.Enrolled };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var user = new User { Id = "u1", FullName = "Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u1", User = user, EmployeeNumber = "E1", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+            var student = new Student { Id = 1, StudentNumber = "S1", UserId = "s1", DepartmentId = 1, Department = dept, IsActive = true };
+            var enrollment = new Enrollment { Id = 1, StudentId = 1, SectionId = 1, Section = section, Student = student, Status = EnrollmentStatus.Enrolled, IsActive = true };
+            var session = new AttendanceSession { Id = 1, SectionId = 1, Section = section, InstructorId = 1, Instructor = instructor, Date = DateTime.UtcNow.Date, StartTime = new TimeSpan(9, 0, 0), EndTime = new TimeSpan(10, 30, 0), Latitude = 0, Longitude = 0, GeofenceRadius = 15, IsActive = true };
+            var record = new AttendanceRecord { Id = 1, StudentId = 1, Student = student, SessionId = 1, Session = session, CheckInTime = DateTime.UtcNow, IsActive = true };
 
+            await _context.Departments.AddAsync(dept);
+            await _context.Users.AddAsync(user);
+            await _context.Faculties.AddAsync(instructor);
             await _context.Courses.AddAsync(course);
-            await _context.Students.AddAsync(student);
             await _context.CourseSections.AddAsync(section);
+            await _context.Students.AddAsync(student);
             await _context.Enrollments.AddAsync(enrollment);
+            await _context.AttendanceSessions.AddAsync(session);
+            await _context.AttendanceRecords.AddAsync(record);
             await _context.SaveChangesAsync();
 
             // Act
@@ -289,24 +293,26 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task CreateExcuseRequestAsync_ShouldSucceed()
         {
             // Arrange
-            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
-            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, SectionNumber = "1", Semester = "Fall", Year = 2024 };
-            var session = new AttendanceSession { Id = 1, Section = section, SectionId = 1, Date = DateTime.UtcNow.Date };
-            
-            // Need Student?
-            // CreateExcuseRequestAsync logic might check Student existence or Enrollment?
-            // Step 325: "GetStudentWithDetailsAsync(studentId)".
-            // So we need Student in DB.
-            var student = new Student { Id = 1, StudentNumber = "123", UserId = "u1" };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS", IsActive = true };
+            var user = new User { Id = "u1", FullName = "Student", IsActive = true };
+            var student = new Student { Id = 1, StudentNumber = "123", UserId = "u1", User = user, DepartmentId = 1, Department = dept, IsActive = true };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = 1, Department = dept, IsActive = true };
+            var instructorUser = new User { Id = "u2", FullName = "Instructor", IsActive = true };
+            var instructor = new Faculty { Id = 1, UserId = "u2", User = instructorUser, EmployeeNumber = "E1", Title = "Prof", DepartmentId = 1, Department = dept, IsActive = true };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, InstructorId = 1, Instructor = instructor, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30, IsActive = true };
+            var session = new AttendanceSession { Id = 1, Section = section, SectionId = 1, InstructorId = 1, Instructor = instructor, Date = DateTime.UtcNow.Date, StartTime = new TimeSpan(9, 0, 0), EndTime = new TimeSpan(10, 30, 0), Latitude = 0, Longitude = 0, GeofenceRadius = 15, IsActive = true };
 
+            await _context.Departments.AddAsync(dept);
+            await _context.Users.AddRangeAsync(user, instructorUser);
+            await _context.Faculties.AddAsync(instructor);
+            await _context.Students.AddAsync(student);
             await _context.Courses.AddAsync(course);
             await _context.CourseSections.AddAsync(section);
             await _context.AttendanceSessions.AddAsync(session);
-            await _context.Students.AddAsync(student);
             await _context.SaveChangesAsync();
 
             // Act
-            var result = await _manager.CreateExcuseRequestAsync(1, new CreateExcuseRequestDto { SessionId = session.Id, Reason = "Sick" }, "url");
+            var result = await _manager.CreateExcuseRequestAsync(1, new CreateExcuseRequestDto { SessionId = 1, Reason = "Sick" }, "url");
 
             // Assert
             result.IsSuccessful.Should().BeTrue();
@@ -325,8 +331,10 @@ namespace SMARTCAMPUS.Tests.Managers
         public async Task GetMySessionsAsync_ShouldReturnSessions()
         {
             // Arrange
-            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
-            var section = new CourseSection { Id = 1, Course = course, SectionNumber = "1", Semester = "Fall", Year = 2024 };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = dept.Id, Department = dept };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30 };
+            await _context.Departments.AddAsync(dept);
             var session = new AttendanceSession { Id = 1, Section = section, SectionId = 1, InstructorId = 1 };
             
             await _context.Courses.AddAsync(course);
@@ -379,8 +387,10 @@ namespace SMARTCAMPUS.Tests.Managers
             // Arrange
             var user = new User { Id = "u1", FullName = "Student" };
             var student = new Student { Id = 1, StudentNumber = "S1", UserId = "u1", User = user };
-            var course = new Course { Id = 1, Code = "C1", Name = "C1" };
-            var section = new CourseSection { Id = 1, Course = course, SectionNumber = "1", Semester = "Fall", Year = 2024 };
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var course = new Course { Id = 1, Code = "C1", Name = "C1", Credits = 3, ECTS = 5, DepartmentId = dept.Id, Department = dept };
+            var section = new CourseSection { Id = 1, CourseId = 1, Course = course, SectionNumber = "1", Semester = "Fall", Year = 2024, Capacity = 30 };
+            await _context.Departments.AddAsync(dept);
             var session = new AttendanceSession { Id = 1, Section = section, InstructorId = 1 };
 
             var request = new ExcuseRequest
