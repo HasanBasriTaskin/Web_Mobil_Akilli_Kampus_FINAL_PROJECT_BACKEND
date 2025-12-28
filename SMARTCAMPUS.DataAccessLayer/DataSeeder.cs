@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SMARTCAMPUS.DataAccessLayer.Context;
 using SMARTCAMPUS.EntityLayer.Models;
 
@@ -35,6 +36,11 @@ namespace SMARTCAMPUS.DataAccessLayer
             await SeedCafeteriasAsync(context);
             await SeedFoodItemsAsync(context);
             await SeedEventCategoriesAsync(context);
+            
+            // Bogus Data Seeding - Fake veriler ekle
+            var logger = serviceProvider.GetRequiredService<ILogger<BogusDataSeeder>>();
+            var bogusSeeder = new BogusDataSeeder(context, userManager, configuration, logger);
+            await bogusSeeder.SeedAllAsync();
         }
 
         private static async Task SeedRolesAsync(RoleManager<Role> roleManager)

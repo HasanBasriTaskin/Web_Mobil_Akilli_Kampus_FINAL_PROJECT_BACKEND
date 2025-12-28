@@ -18,6 +18,33 @@ namespace SMARTCAMPUS.EntityLayer.Models
         
         public bool IsFlagged { get; set; } = false;
         
+        /// <summary>
+        /// GPS Spoofing detection - Mock location kullanılıp kullanılmadığı
+        /// </summary>
+        public bool IsMockLocation { get; set; } = false;
+        
+        /// <summary>
+        /// GPS Spoofing detection - Fraud skoru (0-100)
+        /// </summary>
+        public int FraudScore { get; set; } = 0;
+        
+        /// <summary>
+        /// GPS Spoofing detection - IP adresi
+        /// </summary>
+        [MaxLength(45)]
+        public string? IpAddress { get; set; }
+        
+        /// <summary>
+        /// GPS Spoofing detection - Hareket hızı (m/s)
+        /// </summary>
+        public decimal? Velocity { get; set; }
+        
+        /// <summary>
+        /// GPS Spoofing detection - Cihaz bilgisi
+        /// </summary>
+        [MaxLength(1000)]
+        public string? DeviceInfo { get; set; }
+        
         [MaxLength(500)]
         public string? FlagReason { get; set; }
         
