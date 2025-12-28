@@ -35,7 +35,7 @@ jobs:
               cd backend
             fi
             
-            # Create nginx certs directory
+            # Create nginx certs directory FINE
             mkdir -p nginx/certs
             
             # Create .env file
