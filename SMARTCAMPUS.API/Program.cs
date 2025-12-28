@@ -143,6 +143,7 @@ builder.Services.AddScoped<INotificationService, EmailService>();
 builder.Services.AddScoped<ICourseService, CourseManager>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentManager>();
 builder.Services.AddScoped<IAttendanceService, AttendanceManager>();
+builder.Services.AddScoped<IFacultyRequestService, FacultyRequestManager>();
 
 // Part 3 Services
 builder.Services.AddScoped<IQRCodeService, QRCodeManager>();

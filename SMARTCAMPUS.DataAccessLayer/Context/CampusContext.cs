@@ -61,6 +61,9 @@ namespace SMARTCAMPUS.DataAccessLayer.Context
         public DbSet<Sensor> Sensors { get; set; }
         public DbSet<SensorReading> SensorReadings { get; set; }
 
+        // Faculty Course Assignment Requests
+        public DbSet<FacultyCourseSectionRequest> FacultyCourseSectionRequests { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
