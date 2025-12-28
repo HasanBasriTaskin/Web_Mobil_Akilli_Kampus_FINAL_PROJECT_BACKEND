@@ -49,5 +49,16 @@ jobs:
               cp SMARTCAMPUS.API/appsettings.example.json SMARTCAMPUS.API/appsettings.json
             fi
             
+            # Update SMTP settings in appsettings.json using jq
+            sudo apt-get update && sudo apt-get install -y jq
+            jq '.EmailSettings.Host = "${{ secrets.SMTP_HOST }}" | 
+                .EmailSettings.Port = ${{ secrets.SMTP_PORT }} | 
+                .EmailSettings.EnableSsl = true |
+                .EmailSettings.FromEmail = "${{ secrets.SMTP_FROM_EMAIL }}" | 
+                .EmailSettings.Username = "${{ secrets.SMTP_USERNAME }}" | 
+                .EmailSettings.Password = "${{ secrets.SMTP_PASSWORD }}"' \
+                SMARTCAMPUS.API/appsettings.json > SMARTCAMPUS.API/appsettings.tmp.json && \
+                mv SMARTCAMPUS.API/appsettings.tmp.json SMARTCAMPUS.API/appsettings.json
+            
             # Build and restart all services
             docker compose -f docker-compose.prod.yml up -d --build nginx db backend phpmyadmin
