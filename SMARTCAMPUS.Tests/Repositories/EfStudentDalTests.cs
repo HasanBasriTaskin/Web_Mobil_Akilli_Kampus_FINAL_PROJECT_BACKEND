@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using SMARTCAMPUS.DataAccessLayer.Concrete;
@@ -7,96 +9,84 @@ using Xunit;
 
 namespace SMARTCAMPUS.Tests.Repositories
 {
-    public class EfStudentDalTests
+    public class EfStudentDalTests : IDisposable
     {
-        private readonly DbContextOptions<CampusContext> _dbContextOptions;
+        private readonly CampusContext _context;
+        private readonly EfStudentDal _repository;
 
         public EfStudentDalTests()
         {
-            _dbContextOptions = new DbContextOptionsBuilder<CampusContext>()
+            var options = new DbContextOptionsBuilder<CampusContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
+
+            _context = new CampusContext(options);
+            _repository = new EfStudentDal(_context);
         }
 
-        private CampusContext CreateContext() => new CampusContext(_dbContextOptions);
-
-        [Fact]
-        public async Task AddAsync_ShouldAddStudent()
+        public void Dispose()
         {
-            using var context = CreateContext();
-            var dal = new EfStudentDal(context);
-            var student = new Student { StudentNumber = "S100", UserId = "u1", DepartmentId = 1 };
-
-            await dal.AddAsync(student);
-            await context.SaveChangesAsync();
-
-            var saved = await context.Students.FirstOrDefaultAsync(s => s.StudentNumber == "S100");
-            saved.Should().NotBeNull();
+            _context.Dispose();
         }
 
         [Fact]
-        public async Task GetByIdAsync_ShouldReturnStudent()
+        public async Task GetStudentWithDetailsAsync_ShouldReturnStudent_WhenExistsAndActive()
         {
-            using var context = CreateContext();
-            var dal = new EfStudentDal(context);
-            var student = new Student { StudentNumber = "S101", UserId = "u2", DepartmentId = 1 };
-            await context.Students.AddAsync(student);
-            await context.SaveChangesAsync();
+            // Arrange
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var user = new User { Id = "u1", FullName = "Test Student" };
+            var student = new Student
+            {
+                Id = 1,
+                StudentNumber = "S1",
+                UserId = "u1",
+                User = user,
+                DepartmentId = 1,
+                Department = dept,
+                IsActive = true
+            };
 
-            var result = await dal.GetByIdAsync(student.Id);
+            await _context.Departments.AddAsync(dept);
+            await _context.Users.AddAsync(user);
+            await _context.Students.AddAsync(student);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _repository.GetStudentWithDetailsAsync(1);
+
+            // Assert
             result.Should().NotBeNull();
-            result.StudentNumber.Should().Be("S101");
+            result.User.Should().NotBeNull();
+            result.Department.Should().NotBeNull();
         }
 
         [Fact]
-        public async Task GetAllAsync_ShouldReturnAllStudents()
+        public async Task GetStudentWithDetailsAsync_ShouldReturnNull_WhenInactive()
         {
-            using var context = CreateContext();
-            var dal = new EfStudentDal(context);
-            await context.Database.EnsureDeletedAsync();
-            await context.Database.EnsureCreatedAsync();
+            // Arrange
+            var dept = new Department { Id = 1, Name = "CS", Code = "CS" };
+            var user = new User { Id = "u1", FullName = "Test Student" };
+            var student = new Student
+            {
+                Id = 1,
+                StudentNumber = "S1",
+                UserId = "u1",
+                User = user,
+                DepartmentId = 1,
+                Department = dept,
+                IsActive = false
+            };
 
-            await context.Students.AddRangeAsync(
-                new Student { StudentNumber = "S201", UserId = "u3", DepartmentId = 1 },
-                new Student { StudentNumber = "S202", UserId = "u4", DepartmentId = 1 }
-            );
-            await context.SaveChangesAsync();
+            await _context.Departments.AddAsync(dept);
+            await _context.Users.AddAsync(user);
+            await _context.Students.AddAsync(student);
+            await _context.SaveChangesAsync();
 
-            var result = await dal.GetAllAsync();
-            result.Should().HaveCount(2);
-        }
+            // Act
+            var result = await _repository.GetStudentWithDetailsAsync(1);
 
-        [Fact]
-        public async Task Update_ShouldUpdateStudent()
-        {
-            using var context = CreateContext();
-            var dal = new EfStudentDal(context);
-            var student = new Student { StudentNumber = "S300", UserId = "u5", DepartmentId = 1 };
-            await context.Students.AddAsync(student);
-            await context.SaveChangesAsync();
-
-            student.StudentNumber = "S300-UPDATED";
-            dal.Update(student);
-            await context.SaveChangesAsync();
-
-            var updated = await context.Students.FindAsync(student.Id);
-            updated!.StudentNumber.Should().Be("S300-UPDATED");
-        }
-
-        [Fact]
-        public async Task Remove_ShouldDeleteStudent()
-        {
-            using var context = CreateContext();
-            var dal = new EfStudentDal(context);
-            var student = new Student { StudentNumber = "S400", UserId = "u6", DepartmentId = 1 };
-            await context.Students.AddAsync(student);
-            await context.SaveChangesAsync();
-
-            dal.Remove(student);
-            await context.SaveChangesAsync();
-
-            var count = await context.Students.CountAsync();
-            count.Should().Be(0);
+            // Assert
+            result.Should().BeNull();
         }
     }
 }

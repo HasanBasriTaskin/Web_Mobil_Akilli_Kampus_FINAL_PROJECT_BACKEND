@@ -30,6 +30,11 @@ namespace SMARTCAMPUS.DataAccessLayer
             await SeedClassroomsAsync(context);
             await SeedCoursesAsync(context);
             await SeedCourseSectionsAsync(context);
+            
+            // Part 3 Seed Data
+            await SeedCafeteriasAsync(context);
+            await SeedFoodItemsAsync(context);
+            await SeedEventCategoriesAsync(context);
         }
 
         private static async Task SeedRolesAsync(RoleManager<Role> roleManager)
@@ -211,35 +216,92 @@ namespace SMARTCAMPUS.DataAccessLayer
         {
             if (!await context.Courses.AnyAsync())
             {
-                var dept = await context.Departments.FirstOrDefaultAsync();
-                var deptId = dept?.Id ?? 1;
+                var departments = await context.Departments.ToListAsync();
+                var courses = new List<Course>();
 
-                var courses = new List<Course>
+                foreach (var dept in departments)
                 {
-                    new Course { Code = "CS101", Name = "Introduction to Programming", Description = "Fundamentals of programming using C#", Credits = 3, ECTS = 6, DepartmentId = deptId },
-                    new Course { Code = "CS201", Name = "Data Structures", Description = "Arrays, linked lists, trees, and graphs", Credits = 3, ECTS = 6, DepartmentId = deptId },
-                    new Course { Code = "CS301", Name = "Algorithms", Description = "Algorithm design and analysis", Credits = 3, ECTS = 6, DepartmentId = deptId },
-                    new Course { Code = "CS401", Name = "Database Systems", Description = "RDBMS, SQL, and database design", Credits = 3, ECTS = 6, DepartmentId = deptId },
-                    new Course { Code = "MATH101", Name = "Calculus I", Description = "Limits, derivatives, and integrals", Credits = 4, ECTS = 7, DepartmentId = deptId }
-                };
-                await context.Courses.AddRangeAsync(courses);
-                await context.SaveChangesAsync();
-
-                // Add prerequisites
-                var cs201 = await context.Courses.FirstOrDefaultAsync(c => c.Code == "CS201");
-                var cs101 = await context.Courses.FirstOrDefaultAsync(c => c.Code == "CS101");
-                var cs301 = await context.Courses.FirstOrDefaultAsync(c => c.Code == "CS301");
-
-                if (cs201 != null && cs101 != null)
-                {
-                    await context.CoursePrerequisites.AddAsync(new CoursePrerequisite { CourseId = cs201.Id, PrerequisiteCourseId = cs101.Id });
+                    // Her bölüm için 5 ders ekle
+                    var deptCourses = GetCoursesForDepartment(dept.Code, dept.Id);
+                    courses.AddRange(deptCourses);
                 }
-                if (cs301 != null && cs201 != null)
+
+                if (courses.Any())
                 {
-                    await context.CoursePrerequisites.AddAsync(new CoursePrerequisite { CourseId = cs301.Id, PrerequisiteCourseId = cs201.Id });
+                    await context.Courses.AddRangeAsync(courses);
+                    await context.SaveChangesAsync();
+                }
+
+                // Bilgisayar Mühendisliği için prerequisites ekle
+                var ceng201 = await context.Courses.FirstOrDefaultAsync(c => c.Code == "CENG201");
+                var ceng101 = await context.Courses.FirstOrDefaultAsync(c => c.Code == "CENG101");
+                var ceng301 = await context.Courses.FirstOrDefaultAsync(c => c.Code == "CENG301");
+
+                if (ceng201 != null && ceng101 != null)
+                {
+                    await context.CoursePrerequisites.AddAsync(new CoursePrerequisite { CourseId = ceng201.Id, PrerequisiteCourseId = ceng101.Id });
+                }
+                if (ceng301 != null && ceng201 != null)
+                {
+                    await context.CoursePrerequisites.AddAsync(new CoursePrerequisite { CourseId = ceng301.Id, PrerequisiteCourseId = ceng201.Id });
                 }
                 await context.SaveChangesAsync();
             }
+        }
+
+        private static List<Course> GetCoursesForDepartment(string deptCode, int deptId)
+        {
+            return deptCode switch
+            {
+                "CENG" => new List<Course>
+                {
+                    new Course { Code = "CENG101", Name = "Programlamaya Giriş", Description = "C# ile programlama temelleri", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "CENG201", Name = "Veri Yapıları", Description = "Diziler, bağlı listeler, ağaçlar ve graflar", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "CENG301", Name = "Algoritmalar", Description = "Algoritma tasarımı ve analizi", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "CENG401", Name = "Veritabanı Sistemleri", Description = "RDBMS, SQL ve veritabanı tasarımı", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "CENG402", Name = "Yazılım Mühendisliği", Description = "Yazılım geliştirme süreçleri ve metodolojileri", Credits = 3, ECTS = 6, DepartmentId = deptId }
+                },
+                "EEE" => new List<Course>
+                {
+                    new Course { Code = "EEE101", Name = "Elektrik Devre Temelleri", Description = "Temel elektrik devreleri ve analizi", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "EEE201", Name = "Elektronik I", Description = "Yarı iletkenler ve temel elektronik devreler", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "EEE301", Name = "Sinyal ve Sistemler", Description = "Sürekli ve ayrık zamanlı sinyaller", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "EEE401", Name = "Güç Elektroniği", Description = "Güç dönüştürücüler ve uygulamaları", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "EEE402", Name = "Kontrol Sistemleri", Description = "Otomatik kontrol teorisi ve uygulamaları", Credits = 3, ECTS = 6, DepartmentId = deptId }
+                },
+                "ME" => new List<Course>
+                {
+                    new Course { Code = "ME101", Name = "Statik", Description = "Kuvvetler, momentler ve denge", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "ME201", Name = "Dinamik", Description = "Kinematik ve kinetik", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "ME301", Name = "Termodinamik", Description = "Enerji dönüşümleri ve ısı transferi", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "ME401", Name = "Makine Elemanları", Description = "Makine parçaları tasarımı", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "ME402", Name = "Akışkanlar Mekaniği", Description = "Akışkan davranışı ve uygulamaları", Credits = 3, ECTS = 6, DepartmentId = deptId }
+                },
+                "CE" => new List<Course>
+                {
+                    new Course { Code = "CE101", Name = "İnşaat Mühendisliğine Giriş", Description = "İnşaat mühendisliği temel kavramları", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "CE201", Name = "Mukavemet", Description = "Malzeme dayanımı ve gerilme analizi", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "CE301", Name = "Yapı Statiği", Description = "Yapı sistemlerinin analizi", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "CE401", Name = "Betonarme", Description = "Betonarme yapı tasarımı", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "CE402", Name = "Zemin Mekaniği", Description = "Zemin davranışı ve temel tasarımı", Credits = 3, ECTS = 6, DepartmentId = deptId }
+                },
+                "IE" => new List<Course>
+                {
+                    new Course { Code = "IE101", Name = "Endüstri Mühendisliğine Giriş", Description = "Endüstri mühendisliği temel kavramları", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "IE201", Name = "Yöneylem Araştırması I", Description = "Lineer programlama ve optimizasyon", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "IE301", Name = "Üretim Planlama", Description = "Üretim sistemleri ve planlama", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "IE401", Name = "Kalite Kontrol", Description = "İstatistiksel kalite kontrol yöntemleri", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = "IE402", Name = "Simülasyon", Description = "Sistem simülasyonu ve modelleme", Credits = 3, ECTS = 6, DepartmentId = deptId }
+                },
+                _ => new List<Course>
+                {
+                    new Course { Code = $"{deptCode}101", Name = $"{deptCode} Giriş Dersi", Description = "Bölüme giriş dersi", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = $"{deptCode}201", Name = $"{deptCode} Temel Ders I", Description = "Temel kavramlar", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = $"{deptCode}301", Name = $"{deptCode} İleri Ders I", Description = "İleri düzey konular", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = $"{deptCode}401", Name = $"{deptCode} Uygulama Dersi", Description = "Uygulamalı çalışmalar", Credits = 3, ECTS = 6, DepartmentId = deptId },
+                    new Course { Code = $"{deptCode}402", Name = $"{deptCode} Proje Dersi", Description = "Bitirme projesi", Credits = 3, ECTS = 6, DepartmentId = deptId }
+                }
+            };
         }
 
         private static async Task SeedCourseSectionsAsync(CampusContext context)
@@ -262,12 +324,92 @@ namespace SMARTCAMPUS.DataAccessLayer
                         Semester = "Fall",
                         Year = 2024,
                         Capacity = 40,
-                        EnrolledCount = 0,
-                        ScheduleJson = "[{\"day\":\"Monday\",\"startTime\":\"09:00\",\"endTime\":\"10:50\"},{\"day\":\"Wednesday\",\"startTime\":\"09:00\",\"endTime\":\"10:50\"}]"
+                        EnrolledCount = 0
                     });
                 }
 
                 await context.CourseSections.AddRangeAsync(sections);
+                await context.SaveChangesAsync();
+            }
+        }
+        
+        // Part 3 - Seed Cafeterias
+        private static async Task SeedCafeteriasAsync(CampusContext context)
+        {
+            if (!await context.Cafeterias.AnyAsync())
+            {
+                var cafeterias = new List<Cafeteria>
+                {
+                    new Cafeteria { Name = "Ana Yemekhane", Location = "Merkez Kampüs, A Blok", Capacity = 500 },
+                    new Cafeteria { Name = "Mühendislik Kantini", Location = "Mühendislik Fakültesi, B Blok", Capacity = 200 },
+                    new Cafeteria { Name = "Kütüphane Kafeteryası", Location = "Merkez Kütüphane, Zemin Kat", Capacity = 100 }
+                };
+                await context.Cafeterias.AddRangeAsync(cafeterias);
+                await context.SaveChangesAsync();
+            }
+        }
+        
+        // Part 3 - Seed FoodItems
+        private static async Task SeedFoodItemsAsync(CampusContext context)
+        {
+            if (!await context.FoodItems.AnyAsync())
+            {
+                var foodItems = new List<FoodItem>
+                {
+                    // Çorbalar
+                    new FoodItem { Name = "Mercimek Çorbası", Category = EntityLayer.Enums.MealItemCategory.Soup, Calories = 150 },
+                    new FoodItem { Name = "Ezogelin Çorbası", Category = EntityLayer.Enums.MealItemCategory.Soup, Calories = 140 },
+                    new FoodItem { Name = "Domates Çorbası", Category = EntityLayer.Enums.MealItemCategory.Soup, Calories = 120 },
+                    new FoodItem { Name = "Tarhana Çorbası", Category = EntityLayer.Enums.MealItemCategory.Soup, Calories = 130 },
+                    
+                    // Ana Yemekler
+                    new FoodItem { Name = "Tavuk Sote", Category = EntityLayer.Enums.MealItemCategory.MainCourse, Calories = 350 },
+                    new FoodItem { Name = "Etli Kuru Fasulye", Category = EntityLayer.Enums.MealItemCategory.MainCourse, Calories = 400 },
+                    new FoodItem { Name = "İzmir Köfte", Category = EntityLayer.Enums.MealItemCategory.MainCourse, Calories = 380 },
+                    new FoodItem { Name = "Fırın Tavuk", Category = EntityLayer.Enums.MealItemCategory.MainCourse, Calories = 320 },
+                    new FoodItem { Name = "Etli Nohut", Category = EntityLayer.Enums.MealItemCategory.MainCourse, Calories = 380 },
+                    
+                    // Yan Yemekler
+                    new FoodItem { Name = "Pirinç Pilavı", Category = EntityLayer.Enums.MealItemCategory.SideDish, Calories = 200 },
+                    new FoodItem { Name = "Bulgur Pilavı", Category = EntityLayer.Enums.MealItemCategory.SideDish, Calories = 180 },
+                    new FoodItem { Name = "Makarna", Category = EntityLayer.Enums.MealItemCategory.SideDish, Calories = 220 },
+                    new FoodItem { Name = "Patates Püresi", Category = EntityLayer.Enums.MealItemCategory.SideDish, Calories = 190 },
+                    
+                    // Salatalar
+                    new FoodItem { Name = "Mevsim Salatası", Category = EntityLayer.Enums.MealItemCategory.Salad, Calories = 50 },
+                    new FoodItem { Name = "Çoban Salatası", Category = EntityLayer.Enums.MealItemCategory.Salad, Calories = 60 },
+                    new FoodItem { Name = "Cacık", Category = EntityLayer.Enums.MealItemCategory.Salad, Calories = 80 },
+                    
+                    // İçecekler
+                    new FoodItem { Name = "Ayran", Category = EntityLayer.Enums.MealItemCategory.Beverage, Calories = 70 },
+                    new FoodItem { Name = "Komposto", Category = EntityLayer.Enums.MealItemCategory.Beverage, Calories = 90 },
+                    new FoodItem { Name = "Limonata", Category = EntityLayer.Enums.MealItemCategory.Beverage, Calories = 100 },
+                    
+                    // Tatlılar
+                    new FoodItem { Name = "Sütlaç", Category = EntityLayer.Enums.MealItemCategory.Dessert, Calories = 200 },
+                    new FoodItem { Name = "Puding", Category = EntityLayer.Enums.MealItemCategory.Dessert, Calories = 180 },
+                    new FoodItem { Name = "Meyve", Category = EntityLayer.Enums.MealItemCategory.Dessert, Calories = 80 }
+                };
+                await context.FoodItems.AddRangeAsync(foodItems);
+                await context.SaveChangesAsync();
+            }
+        }
+        
+        // Part 3 - Seed EventCategories
+        private static async Task SeedEventCategoriesAsync(CampusContext context)
+        {
+            if (!await context.EventCategories.AnyAsync())
+            {
+                var categories = new List<EventCategory>
+                {
+                    new EventCategory { Name = "Kültürel Etkinlikler", Description = "Konserler, tiyatro, sergi ve kültürel organizasyonlar", IconName = "cultural" },
+                    new EventCategory { Name = "Spor Etkinlikleri", Description = "Turnuvalar, maçlar ve spor aktiviteleri", IconName = "sports" },
+                    new EventCategory { Name = "Akademik Etkinlikler", Description = "Konferanslar, seminerler ve akademik sunumlar", IconName = "academic" },
+                    new EventCategory { Name = "Sosyal Etkinlikler", Description = "Öğrenci toplantıları, partiler ve sosyal organizasyonlar", IconName = "social" },
+                    new EventCategory { Name = "Kariyer Etkinlikleri", Description = "Kariyer fuarları, iş görüşmeleri ve staj tanıtımları", IconName = "career" },
+                    new EventCategory { Name = "Atölye Çalışmaları", Description = "Workshop, eğitim ve uygulamalı çalışmalar", IconName = "workshop" }
+                };
+                await context.EventCategories.AddRangeAsync(categories);
                 await context.SaveChangesAsync();
             }
         }

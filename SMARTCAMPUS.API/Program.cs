@@ -20,6 +20,9 @@ using SMARTCAMPUS.API.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SMARTCAMPUS.API.Services;
+using SMARTCAMPUS.API.Hubs;
+using AspNetCoreRateLimit;
 using System.Text; 
 
 // Bootstrap logger for catching startup errors
@@ -38,6 +41,13 @@ try
         configuration.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddHttpContextAccessor();
+
+// Rate Limiting Configuration
+builder.Services.AddMemoryCache();
+builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
+builder.Services.Configure<IpRateLimitPolicies>(builder.Configuration.GetSection("IpRateLimitPolicies"));
+builder.Services.AddInMemoryRateLimiting();
+builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
 
 // Add services to the container.
 
@@ -105,6 +115,22 @@ builder.Services.AddScoped<IAttendanceRecordDal, EfAttendanceRecordDal>();
 builder.Services.AddScoped<IExcuseRequestDal, EfExcuseRequestDal>();
 builder.Services.AddScoped<IClassroomDal, EfClassroomDal>();
 
+// Part 3 Repositories
+builder.Services.AddScoped<ICafeteriaDal, EfCafeteriaDal>();
+builder.Services.AddScoped<IFoodItemDal, EfFoodItemDal>();
+builder.Services.AddScoped<IMealMenuDal, EfMealMenuDal>();
+builder.Services.AddScoped<IMealMenuItemDal, EfMealMenuItemDal>();
+builder.Services.AddScoped<IMealNutritionDal, EfMealNutritionDal>();
+builder.Services.AddScoped<IMealReservationDal, EfMealReservationDal>();
+builder.Services.AddScoped<IWalletDal, EfWalletDal>();
+builder.Services.AddScoped<IWalletTransactionDal, EfWalletTransactionDal>();
+builder.Services.AddScoped<IEventCategoryDal, EfEventCategoryDal>();
+builder.Services.AddScoped<IEventDal, EfEventDal>();
+builder.Services.AddScoped<IEventRegistrationDal, EfEventRegistrationDal>();
+builder.Services.AddScoped<IEventWaitlistDal, EfEventWaitlistDal>();
+builder.Services.AddScoped<IScheduleDal, EfScheduleDal>();
+builder.Services.AddScoped<IClassroomReservationDal, EfClassroomReservationDal>();
+
 // 5. Business Layer Services (AutoMapper & FluentValidation & Tools)
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddScoped<JwtTokenGenerator>();
@@ -117,7 +143,34 @@ builder.Services.AddScoped<INotificationService, EmailService>();
 builder.Services.AddScoped<ICourseService, CourseManager>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentManager>();
 builder.Services.AddScoped<IAttendanceService, AttendanceManager>();
+builder.Services.AddScoped<IFacultyRequestService, FacultyRequestManager>();
 
+// Part 3 Services
+builder.Services.AddScoped<IQRCodeService, QRCodeManager>();
+builder.Services.AddScoped<ICafeteriaService, CafeteriaManager>();
+builder.Services.AddScoped<IFoodItemService, FoodItemManager>();
+builder.Services.AddScoped<IMealMenuService, MealMenuManager>();
+    builder.Services.AddScoped<IMockPaymentService, MockPaymentManager>();
+    builder.Services.AddScoped<IPaymentService, IyzicoPaymentManager>();
+    builder.Services.AddScoped<IWalletService, WalletManager>();
+builder.Services.AddScoped<IMealReservationService, MealReservationManager>();
+builder.Services.AddScoped<IEventCategoryService, EventCategoryManager>();
+builder.Services.AddScoped<IEventService, EventManager>();
+builder.Services.AddScoped<IScheduleService, ScheduleManager>();
+builder.Services.AddScoped<IClassroomReservationService, ClassroomReservationManager>();
+
+// Part 4 Services
+builder.Services.AddScoped<IAnalyticsService, AnalyticsManager>();
+builder.Services.AddScoped<IReportExportService, ReportExportManager>();
+builder.Services.AddScoped<IAdvancedNotificationService, AdvancedNotificationManager>();
+
+// SignalR Configuration
+builder.Services.AddSignalR();
+
+// Background Services
+builder.Services.AddHostedService<SMARTCAMPUS.API.BackgroundServices.AttendanceWarningService>();
+builder.Services.AddHostedService<SMARTCAMPUS.API.BackgroundServices.EventReminderService>();
+builder.Services.AddHostedService<SMARTCAMPUS.API.BackgroundServices.SensorSimulationService>();
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginValidator>(); // Scans assembly for all AbstractValidator<T>
@@ -212,6 +265,9 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseCors("AllowClient");
 
+// Rate Limiting Middleware
+app.UseIpRateLimiting();
+
 // Enable Serilog request logging
 app.UseSerilogRequestLogging();
 
@@ -222,6 +278,9 @@ app.UseAuthentication(); // Must be before Authorization
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map SignalR Hub
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 // Run Seeder
 using (var scope = app.Services.CreateScope())

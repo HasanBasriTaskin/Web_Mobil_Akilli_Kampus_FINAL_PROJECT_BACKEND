@@ -9,6 +9,10 @@ namespace SMARTCAMPUS.EntityLayer.Models
         public double GPA { get; set; }
         public double CGPA { get; set; }
         
+        // Part 3 - Scholarship & Meal Quota
+        public bool HasScholarship { get; set; } = false;
+        public int DailyMealQuota { get; set; } = 2;
+        
         // Foreign Keys
         public string UserId { get; set; } = null!;
         [ForeignKey("UserId")]

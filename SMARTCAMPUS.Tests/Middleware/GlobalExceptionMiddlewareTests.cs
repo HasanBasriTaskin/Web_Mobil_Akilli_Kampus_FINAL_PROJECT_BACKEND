@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
 using SMARTCAMPUS.API.Middleware;
@@ -14,13 +15,16 @@ namespace SMARTCAMPUS.Tests.Middleware
     {
         private readonly Mock<RequestDelegate> _nextMock;
         private readonly Mock<ILogger<GlobalExceptionMiddleware>> _loggerMock;
+        private readonly Mock<IHostEnvironment> _environmentMock;
         private readonly GlobalExceptionMiddleware _middleware;
 
         public GlobalExceptionMiddlewareTests()
         {
             _nextMock = new Mock<RequestDelegate>();
             _loggerMock = new Mock<ILogger<GlobalExceptionMiddleware>>();
-            _middleware = new GlobalExceptionMiddleware(_nextMock.Object, _loggerMock.Object);
+            _environmentMock = new Mock<IHostEnvironment>();
+            _environmentMock.Setup(e => e.EnvironmentName).Returns("Development");
+            _middleware = new GlobalExceptionMiddleware(_nextMock.Object, _loggerMock.Object, _environmentMock.Object);
         }
 
         [Fact]
