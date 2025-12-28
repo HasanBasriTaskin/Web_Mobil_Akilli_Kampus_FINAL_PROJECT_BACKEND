@@ -46,6 +46,9 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
         IScheduleDal Schedules { get; }
         IClassroomReservationDal ClassroomReservations { get; }
 
+        // Faculty Course Assignment
+        IFacultyRequestDal FacultyRequests { get; }
+
         Task CommitAsync();
         void Commit();
         Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync();
