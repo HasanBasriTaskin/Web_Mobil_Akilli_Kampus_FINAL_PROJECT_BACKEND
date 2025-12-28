@@ -9,5 +9,6 @@ namespace SMARTCAMPUS.DataAccessLayer.Abstract
         Task IncrementEnrolledCountAsync(int sectionId);
         Task DecrementEnrolledCountAsync(int sectionId);
         Task<List<CourseSection>> GetSectionsBySemesterAsync(string semester, int year);
+        Task<List<CourseSection>> GetSectionsByDepartmentAsync(int departmentId);
     }
 }

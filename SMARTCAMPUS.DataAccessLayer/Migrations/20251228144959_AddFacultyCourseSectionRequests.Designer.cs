@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SMARTCAMPUS.DataAccessLayer.Context;
 
@@ -11,9 +12,11 @@ using SMARTCAMPUS.DataAccessLayer.Context;
 namespace SMARTCAMPUS.DataAccessLayer.Migrations
 {
     [DbContext(typeof(CampusContext))]
-    partial class CampusContextModelSnapshot : ModelSnapshot
+    [Migration("20251228144959_AddFacultyCourseSectionRequests")]
+    partial class AddFacultyCourseSectionRequests
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1080,9 +1083,8 @@ namespace SMARTCAMPUS.DataAccessLayer.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("ProcessedByAdminId")
-                        .HasMaxLength(450)
-                        .HasColumnType("varchar(450)");
+                    b.Property<int?>("ProcessedByAdminId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("RequestDate")
                         .HasColumnType("datetime(6)");
