@@ -49,6 +49,9 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
         public IScheduleDal Schedules { get; }
         public IClassroomReservationDal ClassroomReservations { get; }
 
+        // Faculty Course Assignment
+        public IFacultyRequestDal FacultyRequests { get; }
+
         public UnitOfWork(CampusContext context)
         {
             _context = context;
@@ -94,6 +97,9 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
             // Part 3 - Scheduling Repositories
             Schedules = new EfScheduleDal(_context);
             ClassroomReservations = new EfClassroomReservationDal(_context);
+
+            // Faculty Course Assignment Repository
+            FacultyRequests = new EfFacultyRequestDal(_context);
         }
 
         public void Commit()
