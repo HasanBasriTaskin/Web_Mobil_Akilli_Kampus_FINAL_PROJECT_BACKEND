@@ -18,10 +18,10 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
         private readonly IUnitOfWork _unitOfWork;
 
         // Callback URL yapılandırması
-        // Not: Localhost'ta çalışırken webhooks çalışmayabilir, ngrok vb. gerekebilir.
-        // Ancak frontend üzerinden redirect ile sonuca varılacaksa bu URL frontend olmalı.
-        // Backend verification için:
-        private string CallbackUrl => $"{_configuration["ClientSettings:Url"] ?? "http://localhost:3000"}/wallet/callback";
+        // Not: Iyzico başarılı ödemede buraya POST atar.
+        // Frontend yerine Backend API'ye yönlendiriyoruz, böylece token'ı verify edip bakiyeyi ekleyebiliriz.
+        // Ardından PaymentWebhookController kullanıcıyı frontend success/fail sayfasına yönlendirecek.
+        private string CallbackUrl => $"{_configuration["ApiBaseUrl"] ?? "https://api.smartcampus.taskinnovation.net"}/api/v1/paymentwebhook/callback";
 
         public IyzicoPaymentManager(IConfiguration configuration, IUnitOfWork unitOfWork)
         {
