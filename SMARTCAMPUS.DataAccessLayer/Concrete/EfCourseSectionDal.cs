@@ -78,5 +78,14 @@ namespace SMARTCAMPUS.DataAccessLayer.Concrete
                 .ThenBy(s => s.SectionNumber)
                 .ToListAsync();
         }
+        public async Task<List<CourseSection>> GetSectionsByDepartmentAsync(int departmentId)
+        {
+            return await _context.CourseSections
+                .Where(s => s.Course.DepartmentId == departmentId && s.IsActive)
+                .Include(s => s.Course)
+                .OrderBy(s => s.Course.Code)
+                .ThenBy(s => s.SectionNumber)
+                .ToListAsync();
+        }
     }
 }

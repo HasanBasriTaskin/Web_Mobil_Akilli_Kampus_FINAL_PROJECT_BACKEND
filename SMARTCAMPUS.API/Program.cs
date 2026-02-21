@@ -137,12 +137,18 @@ builder.Services.AddScoped<JwtTokenGenerator>();
 builder.Services.AddScoped<IAuthService, AuthManager>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentManager>();
+
+// Email Configuration
+builder.Services.Configure<SMARTCAMPUS.EntityLayer.Configuration.EmailSettings>(
+    builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<INotificationService, EmailService>();
 
 // Part 2 Services
 builder.Services.AddScoped<ICourseService, CourseManager>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentManager>();
+builder.Services.AddScoped<IGradeService, GradeManager>();
 builder.Services.AddScoped<IAttendanceService, AttendanceManager>();
+builder.Services.AddScoped<IFacultyRequestService, FacultyRequestManager>();
 
 // Part 3 Services
 builder.Services.AddScoped<IQRCodeService, QRCodeManager>();
