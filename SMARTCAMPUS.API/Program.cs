@@ -232,11 +232,11 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // 6. CORS Configuration
-var clientUrl = builder.Configuration["ClientSettings:Url"] ?? "http://localhost:3000";
+var clientUrls = builder.Configuration.GetSection("ClientSettings:Urls").Get<string[]>() ?? new[] { "http://localhost:3000" };
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClient",
-        b => b.WithOrigins(clientUrl)
+        b => b.WithOrigins(clientUrls)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials());
