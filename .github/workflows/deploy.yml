@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: Deploy via FTP
 
 on:
   push:
@@ -6,62 +6,46 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Deploy to VM
-        uses: appleboy/ssh-action@v1.0.3
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup .NET 8
+        uses: actions/setup-dotnet@v4
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          passphrase: ${{ secrets.SSH_PASSPHRASE }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            # Create directories
-            mkdir -p ~/MehmetFinalProje
-            
-            cd ~/MehmetFinalProje
-            
-            # Backend: Clone or pull
-            if [ -d "backend/.git" ]; then
-              cd backend
-              git fetch origin
-              git reset --hard origin/main
-            else
-              rm -rf backend
-              git clone https://${{ secrets.GH_TOKEN }}@github.com/HasanBasriTaskin/Web_Mobil_Akilli_Kampus_FINAL_PROJECT_BACKEND.git backend
-              cd backend
-            fi
-            
-            # Create nginx certs directory
-            mkdir -p nginx/certs
-            
-            # Create .env file
-            cat > .env << EOF
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            EOF
-            
-            # Copy appsettings.example.json to appsettings.json (if not exists)
-            if [ ! -f "SMARTCAMPUS.API/appsettings.json" ]; then
-              cp SMARTCAMPUS.API/appsettings.example.json SMARTCAMPUS.API/appsettings.json
-            fi
-            
-            # Update SMTP settings in appsettings.json using jq
-            sudo apt-get update && sudo apt-get install -y jq
-            jq '.EmailSettings.Host = "${{ secrets.SMTP_HOST }}" | 
-                .EmailSettings.Port = ${{ secrets.SMTP_PORT }} | 
-                .EmailSettings.EnableSsl = true |
-                .EmailSettings.FromEmail = "${{ secrets.SMTP_FROM_EMAIL }}" | 
-                .EmailSettings.Username = "${{ secrets.SMTP_USERNAME }}" | 
-                .EmailSettings.Password = "${{ secrets.SMTP_PASSWORD }}" |
-                .IyzicoSettings.ApiKey = "${{ secrets.IYZICO_API_KEY }}" |
-                .IyzicoSettings.SecretKey = "${{ secrets.IYZICO_SECRET_KEY }}" |
-                .IyzicoSettings.BaseUrl = "https://sandbox-api.iyzipay.com"' \
-                SMARTCAMPUS.API/appsettings.json > SMARTCAMPUS.API/appsettings.tmp.json && \
-                mv SMARTCAMPUS.API/appsettings.tmp.json SMARTCAMPUS.API/appsettings.json
-            
-            # Build and restart all services
-            docker compose -f docker-compose.prod.yml up -d --build nginx db backend phpmyadmin
+          dotnet-version: '8.0.x'
+
+      - name: 📝 Prepare appsettings.json
+        run: |
+          cp SMARTCAMPUS.API/appsettings.example.json SMARTCAMPUS.API/appsettings.json
+          
+          sudo apt-get update && sudo apt-get install -y jq
+          
+          jq '.EmailSettings.Host = "${{ secrets.SMTP_HOST }}" | 
+              .EmailSettings.Port = ${{ secrets.SMTP_PORT }} | 
+              .EmailSettings.EnableSsl = true |
+              .EmailSettings.FromEmail = "${{ secrets.SMTP_FROM_EMAIL }}" | 
+              .EmailSettings.Username = "${{ secrets.SMTP_USERNAME }}" | 
+              .EmailSettings.Password = "${{ secrets.SMTP_PASSWORD }}" |
+              .IyzicoSettings.ApiKey = "${{ secrets.IYZICO_API_KEY }}" |
+              .IyzicoSettings.SecretKey = "${{ secrets.IYZICO_SECRET_KEY }}" |
+              .IyzicoSettings.BaseUrl = "https://sandbox-api.iyzipay.com" |
+              .ConnectionStrings.DefaultConnection = "Server=localhost;Database=${{ secrets.DB_NAME }};User=${{ secrets.DB_USER }};Password=${{ secrets.DB_PASSWORD }};" |
+              .JwtSettings.Secret = "${{ secrets.JWT_SECRET }}"' \
+              SMARTCAMPUS.API/appsettings.json > SMARTCAMPUS.API/appsettings.tmp.json && \
+              mv SMARTCAMPUS.API/appsettings.tmp.json SMARTCAMPUS.API/appsettings.json
+
+      - name: 🛠️ Restore & Publish .NET Project
+        run: dotnet publish SMARTCAMPUS.API/SMARTCAMPUS.API.csproj -c Release -o ./publish
+
+      - name: 🚀 Upload to FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./publish/
+          server-dir: /
