@@ -232,14 +232,27 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // 6. CORS Configuration
-var clientUrls = builder.Configuration.GetSection("ClientSettings:Urls").Get<string[]>() ?? new[] { "http://localhost:3000" };
+var clientUrls = builder.Configuration.GetSection("ClientSettings:Urls").Get<string[]>() ?? Array.Empty<string>();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowClient",
-        b => b.WithOrigins(clientUrls)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials());
+    options.AddPolicy("AllowClient", b =>
+    {
+        if (clientUrls.Any())
+        {
+            b.WithOrigins(clientUrls);
+        }
+
+        // Daima sistemin içine taskinnovation.net ve tüm alt alan adları gömülür:
+        b.SetIsOriginAllowed(origin =>
+            {
+                var uri = new Uri(origin);
+                var host = uri.Host;
+                return host == "taskinnovation.net" || host.EndsWith(".taskinnovation.net") || clientUrls.Contains(origin);
+            })
+         .AllowAnyMethod()
+         .AllowAnyHeader()
+         .AllowCredentials();
+    });
 });
 
 var app = builder.Build();
