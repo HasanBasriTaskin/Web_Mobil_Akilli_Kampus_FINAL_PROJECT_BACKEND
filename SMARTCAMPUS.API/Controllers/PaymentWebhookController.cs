@@ -14,7 +14,7 @@ namespace SMARTCAMPUS.API.Controllers
         private readonly ILogger<PaymentWebhookController> _logger;
         private readonly IConfiguration _configuration;
 
-        private string ClientUrl => _configuration["ClientSettings:Url"] ?? "http://localhost:3000";
+        private string ClientUrl => _configuration["ClientSettings:Url"] ?? "https://campus.taskinnovation.net/";
 
         public PaymentWebhookController(IPaymentService paymentService, IWalletService walletService, ILogger<PaymentWebhookController> logger, IConfiguration configuration)
         {

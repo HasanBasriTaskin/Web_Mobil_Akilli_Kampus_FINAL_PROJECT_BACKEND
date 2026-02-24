@@ -308,10 +308,12 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 ExpiresAt = DateTime.UtcNow.AddHours(24),
                 CreatedDate = DateTime.UtcNow
             };
+            
             await _unitOfWork.EmailVerificationTokens.AddAsync(verifTokenEntity);
             await _unitOfWork.CommitAsync();
-
-            var clientUrl = _configuration["ClientSettings:Url"] ?? "http://localhost:3000";
+            
+            var clientUrl = _configuration["ClientSettings:Url"] ?? "https://campus.taskinnovation.net/";
+            
             var verifyLink = $"{clientUrl}/verify-email?userId={user.Id}&token={Uri.EscapeDataString(emailToken)}";
             
             await _notificationService.SendEmailVerificationAsync(user.Email!, verifyLink);
@@ -444,8 +446,8 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
             await _unitOfWork.PasswordResetTokens.AddAsync(passwordResetToken);
             await _unitOfWork.CommitAsync();
 
-            // Send Email
-            var clientUrl = _configuration["ClientSettings:Url"] ?? "http://localhost:3000";
+            var clientUrl = _configuration["ClientSettings:Url"] ?? "https://campus.taskinnovation.net/";
+            
             var resetLink = $"{clientUrl}/reset-password?email={user.Email}&token={Uri.EscapeDataString(token)}";
             
             await _notificationService.SendPasswordResetEmailAsync(user.Email!, resetLink);
