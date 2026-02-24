@@ -53,12 +53,23 @@ namespace SMARTCAMPUS.BusinessLayer.Concrete
                 return Response<LoginResponseDto>.Fail("Geçersiz e-posta veya şifre", 400); 
             }
 
+            if (!user.EmailConfirmed)
+            {
+                return Response<LoginResponseDto>.Fail("Lütfen e-postanızı doğrulayın.", 400);
+            }
+
             if (!user.IsActive)
             {
-                return Response<LoginResponseDto>.Fail("Hesap aktif değil. Lütfen e-postanızı doğrulayın.", 400);
+                return Response<LoginResponseDto>.Fail("Hesabınız aktif değil. Lütfen yönetici ile iletişime geçin.", 400);
             }
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
+            
+            if (result.IsNotAllowed)
+            {
+                return Response<LoginResponseDto>.Fail("Lütfen e-postanızı doğrulayın.", 400);
+            }
+
             if (!result.Succeeded)
             {
                  return Response<LoginResponseDto>.Fail("Geçersiz e-posta veya şifre", 400); // Güvenlik için aynı mesaj
